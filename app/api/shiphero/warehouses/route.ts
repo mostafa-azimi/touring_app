@@ -11,8 +11,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access token required' }, { status: 401 })
     }
 
-    // Try the exact query format that might work
-    const query = `query { warehouses { data { id name } } }`
+    // Use the correct GraphQL query structure from the documentation
+    const query = `
+      query {
+        account {
+          request_id
+          complexity
+          data {
+            warehouses {
+              id
+              legacy_id
+              identifier
+              account_id
+              address {
+                name
+                address1
+                address2
+                city
+                state
+                country
+                zip
+                phone
+              }
+              dynamic_slotting
+              invoice_email
+              phone_number
+              profile
+            }
+          }
+        }
+      }
+    `
 
     const requestBody = { query }
     console.log('Sending request to ShipHero:', {

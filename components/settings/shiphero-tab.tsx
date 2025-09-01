@@ -63,9 +63,10 @@ export function ShipHeroTab() {
   const handleRefreshToken = async () => {
     setIsRefreshing(true)
     try {
-      // In a real implementation, you would call ShipHero's token refresh endpoint
-      // For now, we'll simulate the refresh process
-      const response = await fetch('https://public-api.shiphero.com/auth/refresh', {
+      console.log('Refreshing token via API route...')
+      
+      // Use our API route to avoid CORS issues
+      const response = await fetch('/api/shiphero/refresh-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,12 +89,14 @@ export function ShipHeroTab() {
           description: "Access token has been successfully refreshed",
         })
       } else {
-        throw new Error('Failed to refresh token')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to refresh token')
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Token refresh error:', error)
       toast({
         title: "Token Refresh Failed",
-        description: "Failed to refresh access token. Please check your refresh token.",
+        description: error.message || "Failed to refresh access token. Please check your refresh token.",
         variant: "destructive",
       })
     } finally {
@@ -110,10 +113,14 @@ export function ShipHeroTab() {
       
       // Use our API route to avoid CORS issues
       console.log('Testing via API route...')
+      console.log('API URL:', '/api/shiphero/warehouses')
+      console.log('Access token:', accessToken ? 'Present' : 'Missing')
+      
       const response = await fetch('/api/shiphero/warehouses', {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         }
       })
       
@@ -132,7 +139,7 @@ export function ShipHeroTab() {
       
       toast({
         title: "Connection Test Successful",
-        description: `Found ${result.warehouses?.data?.length || 0} warehouses in ShipHero`,
+        description: `Found ${result.data?.account?.data?.warehouses?.length || 0} warehouses in ShipHero`,
       })
     } catch (error: any) {
       console.error('Connection test error:', error)
@@ -295,10 +302,10 @@ export function ShipHeroTab() {
                         </div>
                       )}
                     </div>
-                  ) : testResults.warehouses?.data ? (
+                  ) : testResults.data?.account?.data?.warehouses ? (
                     <div className="space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        Found {testResults.warehouses.data.length} warehouses:
+                        Found {testResults.data.account.data.warehouses.length} warehouses:
                       </p>
                       <div className="border rounded-lg overflow-hidden">
                         <Table>
@@ -311,18 +318,18 @@ export function ShipHeroTab() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {testResults.warehouses.data.map((warehouse: any, index: number) => (
+                            {testResults.data.account.data.warehouses.map((warehouse: any, index: number) => (
                               <TableRow key={index}>
                                 <TableCell className="font-mono text-xs">{warehouse.id}</TableCell>
-                                <TableCell>{warehouse.name}</TableCell>
+                                <TableCell>{warehouse.address?.name || 'N/A'}</TableCell>
                                 <TableCell>{warehouse.identifier || 'N/A'}</TableCell>
                                 <TableCell className="text-sm">
-                                  {warehouse.profile?.address ? (
+                                  {warehouse.address ? (
                                     <div>
-                                      <div>{warehouse.profile.address.address1}</div>
-                                      {warehouse.profile.address.city && warehouse.profile.address.state && (
+                                      <div>{warehouse.address.address1}</div>
+                                      {warehouse.address.city && warehouse.address.state && (
                                         <div className="text-muted-foreground">
-                                          {warehouse.profile.address.city}, {warehouse.profile.address.state}
+                                          {warehouse.address.city}, {warehouse.address.state}
                                         </div>
                                       )}
                                     </div>
