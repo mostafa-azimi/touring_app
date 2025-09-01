@@ -217,15 +217,15 @@ export class ShipHeroOrderService {
                 phone: "",
                 tags: warehouse.code ? [`Airport:${warehouse.code}`] : [],
                 shipping_lines: {
-                  title: "Standard Shipping",
+                  title: "Generic Shipping",
                   price: "0.00",
-                  carrier: "UPS",
-                  method: "Ground"
+                  carrier: "Generic Carrier",
+                  method: "Generic Label"
                 },
                 shipping_address: {
-                  first_name: participant.first_name,
-                  last_name: participant.last_name,
-                  company: participant.company || '',
+                  first_name: warehouse.name,
+                  last_name: "Warehouse",
+                  company: warehouse.name,
                   address1: warehouse.address,
                   address2: warehouse.address2 || '',
                   city: warehouse.city,
