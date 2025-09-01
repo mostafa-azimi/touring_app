@@ -133,6 +133,7 @@ export class ShipHeroClient {
         }
       }
     `
+    console.log('Executing warehouses query:', query)
     return this.request(query)
   }
 

@@ -31,17 +31,21 @@ export function ShipHeroTab() {
   }, [])
 
   const handleSaveTokens = async () => {
+    console.log('Save tokens clicked', { accessToken: accessToken ? '***' : 'empty', refreshToken: refreshToken ? '***' : 'empty' })
     setIsSaving(true)
     try {
       // Save tokens to localStorage (in production, consider a more secure approach)
       localStorage.setItem('shiphero_access_token', accessToken)
       localStorage.setItem('shiphero_refresh_token', refreshToken)
       
+      console.log('Tokens saved to localStorage')
+      
       toast({
         title: "Success",
         description: "ShipHero tokens saved successfully",
       })
     } catch (error) {
+      console.error('Error saving tokens:', error)
       toast({
         title: "Error",
         description: "Failed to save tokens",
