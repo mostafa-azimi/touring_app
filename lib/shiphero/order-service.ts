@@ -43,7 +43,7 @@ export class ShipHeroOrderService {
             zip,
             country
           ),
-          host:hosts(
+          host:team_members(
             id,
             first_name,
             last_name,
@@ -326,7 +326,7 @@ export class ShipHeroOrderService {
             name,
             shiphero_warehouse_id
           ),
-          host:hosts(
+          host:team_members(
             id,
             first_name,
             last_name,

@@ -113,7 +113,7 @@ export function ViewToursPage() {
           shiphero_purchase_order_number,
           shiphero_purchase_order_url,
           warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
-          host:hosts(id, first_name, last_name, email),
+          host:team_members(id, first_name, last_name, email),
           participants:tour_participants(id, name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url),
           swag_allocations:tour_swag_allocations(
             id,
