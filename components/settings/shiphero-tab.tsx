@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, RefreshCw, Eye, EyeOff, TestTube } from "lucide-react"
+import { Save, RefreshCw, Eye, EyeOff, TestTube, Plus, ShoppingCart } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 
 export function ShipHeroTab() {
@@ -15,12 +17,49 @@ export function ShipHeroTab() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
+  const [showAdhocOrder, setShowAdhocOrder] = useState(false)
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false)
+  const [warehouses, setWarehouses] = useState<any[]>([])
+  const [hosts, setHosts] = useState<any[]>([])
+  const [swagItems, setSwagItems] = useState<any[]>([])
+  const [adhocOrderData, setAdhocOrderData] = useState({
+    warehouseId: '',
+    hostId: '',
+    swagItemIds: [] as string[],
+    notes: ''
+  })
   const { toast } = useToast()
 
   useEffect(() => {
     const savedToken = localStorage.getItem('shiphero_refresh_token') || ''
     setRefreshToken(savedToken)
   }, [])
+
+  const loadAdhocOrderData = async () => {
+    try {
+      // Load warehouses, hosts, and swag items from Supabase
+      const [warehousesRes, hostsRes, swagItemsRes] = await Promise.all([
+        fetch('/api/supabase/warehouses'),
+        fetch('/api/supabase/hosts'),
+        fetch('/api/supabase/swag-items')
+      ])
+
+      const warehousesData = await warehousesRes.json()
+      const hostsData = await hostsRes.json()
+      const swagItemsData = await swagItemsRes.json()
+
+      setWarehouses(warehousesData.data || [])
+      setHosts(hostsData.data || [])
+      setSwagItems(swagItemsData.data || [])
+    } catch (error) {
+      console.error('Error loading adhoc order data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load data for adhoc order",
+        variant: "destructive",
+      })
+    }
+  }
 
 
 
@@ -139,6 +178,148 @@ export function ShipHeroTab() {
     }
   }
 
+  const handleCreateAdhocOrder = async () => {
+    if (!adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a warehouse, host, and at least one swag item",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsCreatingOrder(true)
+    try {
+      // Get access token first
+      const tokenResponse = await fetch('/api/shiphero/refresh-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refresh_token: refreshToken
+        })
+      })
+
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to get access token')
+      }
+
+      const tokenData = await tokenResponse.json()
+      const accessToken = tokenData.access_token
+
+      if (!accessToken) {
+        throw new Error('No access token received')
+      }
+
+      // Find selected data
+      const warehouse = warehouses.find(w => w.id === adhocOrderData.warehouseId)
+      const host = hosts.find(h => h.id === adhocOrderData.hostId)
+      const selectedSwagItems = swagItems.filter(s => adhocOrderData.swagItemIds.includes(s.id))
+
+      if (!warehouse || !host || selectedSwagItems.length === 0) {
+        throw new Error('Selected data not found')
+      }
+
+      // Create line items
+      const lineItems = selectedSwagItems.map(swagItem => ({
+        sku: swagItem.sku || swagItem.name,
+        quantity: 1,
+        price: "0.00"
+      }))
+
+      // Generate order number
+      const orderNumber = `ADHOC-${Date.now()}`
+
+      // Create sales order
+      const orderResponse = await fetch('/api/shiphero/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          type: 'sales_order',
+          data: {
+            order_number: orderNumber,
+            shop_name: "Warehouse Tours - Adhoc",
+            fulfillment_status: "pending",
+            order_date: new Date().toISOString(),
+            total_tax: "0.00",
+            subtotal: "0.00",
+            total_discounts: "0.00",
+            total_price: "0.00",
+            email: host.email,
+            phone: "",
+            tags: warehouse.code ? [`Airport:${warehouse.code}`, "Adhoc Order"] : ["Adhoc Order"],
+            notes: adhocOrderData.notes,
+            shipping_lines: {
+              title: "Generic Shipping",
+              price: "0.00",
+              carrier: "Generic Carrier",
+              method: "Generic Label"
+            },
+            shipping_address: {
+              first_name: warehouse.name,
+              last_name: "Warehouse",
+              company: warehouse.name,
+              address1: warehouse.address,
+              address2: warehouse.address2 || '',
+              city: warehouse.city,
+              state: warehouse.state,
+              zip: warehouse.zip,
+              country: warehouse.country || 'US',
+              email: host.email
+            },
+            billing_address: {
+              first_name: host.first_name,
+              last_name: host.last_name,
+              company: '',
+              address1: warehouse.address,
+              address2: warehouse.address2 || '',
+              city: warehouse.city,
+              state: warehouse.state,
+              zip: warehouse.zip,
+              country: warehouse.country || 'US',
+              email: host.email
+            },
+            line_items: lineItems
+          }
+        })
+      })
+
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json()
+        throw new Error(errorData.error || 'Failed to create order')
+      }
+
+      const orderData = await orderResponse.json()
+      
+      toast({
+        title: "Adhoc Order Created Successfully!",
+        description: `Order ${orderData.order?.order_number || orderNumber} created for ${host.first_name} ${host.last_name}`,
+      })
+
+      // Reset form
+      setAdhocOrderData({
+        warehouseId: '',
+        hostId: '',
+        swagItemIds: [],
+        notes: ''
+      })
+      setShowAdhocOrder(false)
+
+    } catch (error: any) {
+      toast({
+        title: "Order Creation Failed",
+        description: error.message || "Failed to create adhoc order",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingOrder(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -226,7 +407,6 @@ export function ShipHeroTab() {
                           <TableRow>
                             <TableHead>ID</TableHead>
                             <TableHead>Name</TableHead>
-                            <TableHead>Code</TableHead>
                             <TableHead>Address</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -247,7 +427,6 @@ export function ShipHeroTab() {
                               <TableRow key={warehouse.id || index}>
                                 <TableCell className="font-mono text-xs">{String(warehouse.id || '-')}</TableCell>
                                 <TableCell className="font-medium">{String(warehouse.name || '-')}</TableCell>
-                                <TableCell className="font-mono text-xs">{String(warehouse.code || '-')}</TableCell>
                                 <TableCell className="text-sm">
                                   {warehouse.address ? (
                                     <div>
@@ -284,6 +463,121 @@ export function ShipHeroTab() {
                   )}
                 </div>
               )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Adhoc Sales Order</CardTitle>
+          <CardDescription>
+            Create a sales order manually using existing warehouses, hosts, and swag items
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button
+            onClick={() => {
+              setShowAdhocOrder(!showAdhocOrder)
+              if (!showAdhocOrder) {
+                loadAdhocOrderData()
+              }
+            }}
+            variant="outline"
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            {showAdhocOrder ? "Hide" : "Create Adhoc Order"}
+          </Button>
+
+          {showAdhocOrder && (
+            <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="warehouse-select">Warehouse *</Label>
+                  <Select
+                    value={adhocOrderData.warehouseId}
+                    onValueChange={(value) => setAdhocOrderData({ ...adhocOrderData, warehouseId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select warehouse" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {warehouses.map((warehouse) => (
+                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                          {warehouse.name} ({warehouse.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="host-select">Host *</Label>
+                  <Select
+                    value={adhocOrderData.hostId}
+                    onValueChange={(value) => setAdhocOrderData({ ...adhocOrderData, hostId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select host" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hosts.map((host) => (
+                        <SelectItem key={host.id} value={host.id}>
+                          {host.first_name} {host.last_name} ({host.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Swag Items *</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
+                  {swagItems.map((swagItem) => (
+                    <label key={swagItem.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={adhocOrderData.swagItemIds.includes(swagItem.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setAdhocOrderData({
+                              ...adhocOrderData,
+                              swagItemIds: [...adhocOrderData.swagItemIds, swagItem.id]
+                            })
+                          } else {
+                            setAdhocOrderData({
+                              ...adhocOrderData,
+                              swagItemIds: adhocOrderData.swagItemIds.filter(id => id !== swagItem.id)
+                            })
+                          }
+                        }}
+                      />
+                      <span className="text-sm">{swagItem.name} ({swagItem.sku})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  value={adhocOrderData.notes}
+                  onChange={(e) => setAdhocOrderData({ ...adhocOrderData, notes: e.target.value })}
+                  placeholder="Additional notes for this order..."
+                  rows={3}
+                />
+              </div>
+
+              <Button
+                onClick={handleCreateAdhocOrder}
+                disabled={isCreatingOrder || !adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {isCreatingOrder ? "Creating Order..." : "Create Sales Order"}
+              </Button>
             </div>
           )}
         </CardContent>
