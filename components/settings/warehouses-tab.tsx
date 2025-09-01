@@ -24,7 +24,17 @@ import { useToast } from "@/hooks/use-toast"
 interface Warehouse {
   id: string
   name: string
+  code: string
   address: string
+  address2?: string
+  city: string
+  state: string
+  zip: string
+  country: string
+  phone?: string
+  contact_person?: string
+  notes?: string
+  shiphero_warehouse_id?: string
   created_at: string
 }
 
@@ -33,7 +43,20 @@ export function WarehousesTab() {
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null)
-  const [formData, setFormData] = useState({ name: "", address: "" })
+  const [formData, setFormData] = useState({
+    name: "",
+    code: "",
+    address: "",
+    address2: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "US",
+    phone: "",
+    contact_person: "",
+    notes: "",
+    shiphero_warehouse_id: ""
+  })
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -90,7 +113,20 @@ export function WarehousesTab() {
 
   const handleEdit = (warehouse: Warehouse) => {
     setEditingWarehouse(warehouse)
-    setFormData({ name: warehouse.name, address: warehouse.address })
+    setFormData({
+      name: warehouse.name,
+      code: warehouse.code || "",
+      address: warehouse.address,
+      address2: warehouse.address2 || "",
+      city: warehouse.city || "",
+      state: warehouse.state || "",
+      zip: warehouse.zip || "",
+      country: warehouse.country || "US",
+      phone: warehouse.phone || "",
+      contact_person: warehouse.contact_person || "",
+      notes: warehouse.notes || "",
+      shiphero_warehouse_id: warehouse.shiphero_warehouse_id || ""
+    })
     setIsDialogOpen(true)
   }
 
@@ -112,7 +148,20 @@ export function WarehousesTab() {
   }
 
   const resetForm = () => {
-    setFormData({ name: "", address: "" })
+    setFormData({
+      name: "",
+      code: "",
+      address: "",
+      address2: "",
+      city: "",
+      state: "",
+      zip: "",
+      country: "US",
+      phone: "",
+      contact_person: "",
+      notes: "",
+      shiphero_warehouse_id: ""
+    })
     setEditingWarehouse(null)
   }
 
@@ -141,26 +190,144 @@ export function WarehousesTab() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Main Distribution Center"
-                    required
-                  />
+              <div className="grid gap-4 py-4 max-h-96 overflow-y-auto">
+                {/* Basic Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">Warehouse Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Main Distribution Center"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="code">Airport Code *</Label>
+                    <Input
+                      id="code"
+                      value={formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                      placeholder="LAX"
+                      maxLength={3}
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Textarea
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="123 Industrial Blvd, City, State 12345"
-                    required
-                  />
+
+                {/* Address Section */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium text-muted-foreground">Address Information</h4>
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="address">Street Address *</Label>
+                      <Input
+                        id="address"
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        placeholder="123 Industrial Blvd"
+                        required
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="address2">Address Line 2</Label>
+                      <Input
+                        id="address2"
+                        value={formData.address2}
+                        onChange={(e) => setFormData({ ...formData, address2: e.target.value })}
+                        placeholder="Suite 100"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="city">City *</Label>
+                        <Input
+                          id="city"
+                          value={formData.city}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          placeholder="Los Angeles"
+                          required
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="state">State *</Label>
+                        <Input
+                          id="state"
+                          value={formData.state}
+                          onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                          placeholder="CA"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="zip">ZIP Code *</Label>
+                        <Input
+                          id="zip"
+                          value={formData.zip}
+                          onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                          placeholder="90210"
+                          required
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="country">Country *</Label>
+                        <Input
+                          id="country"
+                          value={formData.country}
+                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                          placeholder="US"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact & Integration */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium text-muted-foreground">Contact & Integration</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="contact_person">Contact Person</Label>
+                      <Input
+                        id="contact_person"
+                        value={formData.contact_person}
+                        onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                        placeholder="John Smith"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder="(555) 123-4567"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="shiphero_warehouse_id">ShipHero Warehouse ID</Label>
+                    <Input
+                      id="shiphero_warehouse_id"
+                      value={formData.shiphero_warehouse_id}
+                      onChange={(e) => setFormData({ ...formData, shiphero_warehouse_id: e.target.value })}
+                      placeholder="SH123456"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Additional notes about this warehouse..."
+                      rows={3}
+                    />
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -178,7 +345,9 @@ export function WarehousesTab() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Address</TableHead>
+              <TableHead>Code</TableHead>
+              <TableHead>City, State</TableHead>
+              <TableHead>Contact</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -186,13 +355,13 @@ export function WarehousesTab() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   Loading warehouses...
                 </TableCell>
               </TableRow>
             ) : warehouses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No warehouses found. Add your first warehouse to get started.
                 </TableCell>
               </TableRow>
@@ -200,7 +369,14 @@ export function WarehousesTab() {
               warehouses.map((warehouse) => (
                 <TableRow key={warehouse.id}>
                   <TableCell className="font-medium">{warehouse.name}</TableCell>
-                  <TableCell>{warehouse.address}</TableCell>
+                  <TableCell>{warehouse.code || '-'}</TableCell>
+                  <TableCell>
+                    {warehouse.city && warehouse.state 
+                      ? `${warehouse.city}, ${warehouse.state}` 
+                      : warehouse.address || '-'
+                    }
+                  </TableCell>
+                  <TableCell>{warehouse.contact_person || '-'}</TableCell>
                   <TableCell>{new Date(warehouse.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">

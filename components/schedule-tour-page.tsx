@@ -19,7 +19,13 @@ import { allocateSwagToTour, getSwagAllocationPreview } from "@/lib/actions/swag
 interface Warehouse {
   id: string
   name: string
+  code?: string
   address: string
+  address2?: string
+  city?: string
+  state?: string
+  zip?: string
+  country?: string
 }
 
 interface Participant {
@@ -67,7 +73,7 @@ export function ScheduleTourPage() {
 
   const fetchWarehouses = async () => {
     try {
-      const { data, error } = await supabase.from("warehouses").select("id, name, address").order("name")
+      const { data, error } = await supabase.from("warehouses").select("id, name, code, address, address2, city, state, zip, country").order("name")
 
       if (error) throw error
       setWarehouses(data || [])
@@ -245,10 +251,18 @@ export function ScheduleTourPage() {
                     </SelectContent>
                   </Select>
                   {selectedWarehouse && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {selectedWarehouse.address}
-                    </p>
+                    <div className="text-sm text-muted-foreground">
+                      <p className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {selectedWarehouse.city && selectedWarehouse.state 
+                          ? `${selectedWarehouse.address}, ${selectedWarehouse.city}, ${selectedWarehouse.state} ${selectedWarehouse.zip || ''}`.trim()
+                          : selectedWarehouse.address
+                        }
+                      </p>
+                      {selectedWarehouse.code && (
+                        <p className="text-xs">Code: {selectedWarehouse.code}</p>
+                      )}
+                    </div>
                   )}
                 </div>
 

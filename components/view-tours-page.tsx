@@ -20,7 +20,13 @@ interface Tour {
   warehouse: {
     id: string
     name: string
+    code?: string
     address: string
+    address2?: string
+    city?: string
+    state?: string
+    zip?: string
+    country?: string
   }
   participants: Array<{
     id: string
@@ -88,7 +94,7 @@ export function ViewToursPage() {
           time,
           notes,
           created_at,
-          warehouse:warehouses(id, name, address),
+          warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
           participants:tour_participants(id, name, email, company, title),
           swag_allocations:tour_swag_allocations(
             id,
@@ -347,10 +353,18 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
           <div>
             <p className="text-sm font-medium text-muted-foreground">Warehouse</p>
             <p className="font-medium">{tour.warehouse.name}</p>
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              {tour.warehouse.address}
-            </p>
+            <div className="text-sm text-muted-foreground">
+              <p className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {tour.warehouse.city && tour.warehouse.state 
+                  ? `${tour.warehouse.address}, ${tour.warehouse.city}, ${tour.warehouse.state} ${tour.warehouse.zip || ''}`.trim()
+                  : tour.warehouse.address
+                }
+              </p>
+              {tour.warehouse.code && (
+                <p className="text-xs">Code: {tour.warehouse.code}</p>
+              )}
+            </div>
           </div>
           {tour.notes && (
             <div>

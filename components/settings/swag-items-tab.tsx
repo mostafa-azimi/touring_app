@@ -23,6 +23,8 @@ import { useToast } from "@/hooks/use-toast"
 interface SwagItem {
   id: string
   name: string
+  sku?: string
+  vendor_id?: string
   quantity: number
   created_at: string
 }
@@ -32,7 +34,7 @@ export function SwagItemsTab() {
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<SwagItem | null>(null)
-  const [formData, setFormData] = useState({ name: "", quantity: "" })
+  const [formData, setFormData] = useState({ name: "", sku: "", vendor_id: "", quantity: "" })
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -64,6 +66,8 @@ export function SwagItemsTab() {
     try {
       const submitData = {
         name: formData.name,
+        sku: formData.sku || null,
+        vendor_id: formData.vendor_id || null,
         quantity: Number.parseInt(formData.quantity),
       }
 
@@ -77,7 +81,7 @@ export function SwagItemsTab() {
         toast({ title: "Success", description: "Swag item created successfully" })
       }
 
-      setFormData({ name: "", quantity: "" })
+      setFormData({ name: "", sku: "", vendor_id: "", quantity: "" })
       setEditingItem(null)
       setIsDialogOpen(false)
       fetchSwagItems()
@@ -94,7 +98,12 @@ export function SwagItemsTab() {
 
   const handleEdit = (item: SwagItem) => {
     setEditingItem(item)
-    setFormData({ name: item.name, quantity: item.quantity.toString() })
+    setFormData({ 
+      name: item.name, 
+      sku: item.sku || "",
+      vendor_id: item.vendor_id || "",
+      quantity: item.quantity.toString() 
+    })
     setIsDialogOpen(true)
   }
 
@@ -116,7 +125,7 @@ export function SwagItemsTab() {
   }
 
   const resetForm = () => {
-    setFormData({ name: "", quantity: "" })
+    setFormData({ name: "", sku: "", vendor_id: "", quantity: "" })
     setEditingItem(null)
   }
 
@@ -147,7 +156,7 @@ export function SwagItemsTab() {
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="name">Product Name *</Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -156,8 +165,28 @@ export function SwagItemsTab() {
                     required
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="sku">SKU</Label>
+                    <Input
+                      id="sku"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                      placeholder="TSH-001"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="vendor_id">Vendor ID</Label>
+                    <Input
+                      id="vendor_id"
+                      value={formData.vendor_id}
+                      onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value })}
+                      placeholder="VND-123"
+                    />
+                  </div>
+                </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="quantity">Quantity</Label>
+                  <Label htmlFor="quantity">Quantity *</Label>
                   <Input
                     id="quantity"
                     type="number"
@@ -183,7 +212,9 @@ export function SwagItemsTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
+              <TableHead>Product Name</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead>Vendor ID</TableHead>
               <TableHead>Quantity</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
@@ -192,13 +223,13 @@ export function SwagItemsTab() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   Loading swag items...
                 </TableCell>
               </TableRow>
             ) : swagItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No swag items found. Add your first swag item to get started.
                 </TableCell>
               </TableRow>
@@ -206,6 +237,8 @@ export function SwagItemsTab() {
               swagItems.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>{item.sku || '-'}</TableCell>
+                  <TableCell>{item.vendor_id || '-'}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>{new Date(item.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>

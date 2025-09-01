@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { WarehousesTab } from "@/components/settings/warehouses-tab"
-import { TeamMembersTab } from "@/components/settings/team-members-tab"
+import { HostsTab } from "@/components/settings/hosts-tab"
 import { SwagItemsTab } from "@/components/settings/swag-items-tab"
 
 export function SettingsPage() {
@@ -14,13 +14,13 @@ export function SettingsPage() {
     <Card>
       <CardHeader>
         <CardTitle>Settings</CardTitle>
-        <CardDescription>Manage warehouses, team members, and swag items</CardDescription>
+        <CardDescription>Manage warehouses, hosts, and swag items</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="warehouses">Warehouses</TabsTrigger>
-            <TabsTrigger value="team-members">Team Members</TabsTrigger>
+            <TabsTrigger value="hosts">Hosts</TabsTrigger>
             <TabsTrigger value="swag-items">Swag Items</TabsTrigger>
           </TabsList>
 
@@ -28,8 +28,8 @@ export function SettingsPage() {
             <WarehousesTab />
           </TabsContent>
 
-          <TabsContent value="team-members" className="mt-6">
-            <TeamMembersTab />
+          <TabsContent value="hosts" className="mt-6">
+            <HostsTab />
           </TabsContent>
 
           <TabsContent value="swag-items" className="mt-6">
