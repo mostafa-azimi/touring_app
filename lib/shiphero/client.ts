@@ -27,8 +27,21 @@ export class ShipHeroClient {
 
   async request<T = any>(query: string, variables?: any): Promise<T> {
     try {
-      return await this.client.request<T>(query, variables)
+      console.log('Making ShipHero API request:', { 
+        endpoint: 'https://public-api.shiphero.com/graphql',
+        query: query.substring(0, 100) + '...', 
+        variables,
+        hasToken: !!this.accessToken
+      })
+      const result = await this.client.request<T>(query, variables)
+      console.log('ShipHero API response:', result)
+      return result
     } catch (error: any) {
+      console.error('ShipHero API error:', {
+        message: error.message,
+        status: error.response?.status,
+        response: error.response?.data
+      })
       // If token expired, try to refresh
       if (error.response?.status === 401) {
         await this.refreshAccessToken()
@@ -110,31 +123,20 @@ export class ShipHeroClient {
 
   // Warehouse operations (for connection testing)
   async getWarehouses() {
-    const query = `
-      query {
-        warehouses {
-          data {
-            id
-            identifier
-            name
-            profile {
-              name
-              address {
-                name
-                address1
-                address2
-                city
-                state
-                zip
-                country
-              }
-            }
-          }
-        }
+    console.log('Getting warehouses via API route...')
+    const response = await fetch('/api/shiphero/warehouses', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`
       }
-    `
-    console.log('Executing warehouses query:', query)
-    return this.request(query)
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    return await response.json()
   }
 
   // Purchase Order operations

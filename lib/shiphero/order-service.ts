@@ -121,30 +121,42 @@ export class ShipHeroOrderService {
 
           if (lineItems.length === 0) continue
 
-          const salesOrderResult = await this.shipHero.createSalesOrder({
-            warehouse_id: warehouse.shiphero_warehouse_id,
-            email: participant.email,
-            first_name: participant.first_name,
-            last_name: participant.last_name,
-            company: participant.company,
-            address: {
-              first_name: participant.first_name,
-              last_name: participant.last_name,
-              company: participant.company || '',
-              address1: warehouse.address,
-              address2: warehouse.address2 || '',
-              city: warehouse.city,
-              state: warehouse.state,
-              zip: warehouse.zip,
-              country: warehouse.country || 'US',
-              email: participant.email
+          const salesOrderResult = await fetch('/api/shiphero/orders', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('shiphero_access_token')}`
             },
-            line_items: lineItems
+            body: JSON.stringify({
+              type: 'sales_order',
+              data: {
+                warehouse_id: warehouse.shiphero_warehouse_id,
+                email: participant.email,
+                first_name: participant.first_name,
+                last_name: participant.last_name,
+                company: participant.company,
+                address: {
+                  first_name: participant.first_name,
+                  last_name: participant.last_name,
+                  company: participant.company || '',
+                  address1: warehouse.address,
+                  address2: warehouse.address2 || '',
+                  city: warehouse.city,
+                  state: warehouse.state,
+                  zip: warehouse.zip,
+                  country: warehouse.country || 'US',
+                  email: participant.email
+                },
+                line_items: lineItems
+              }
+            })
           })
 
-          if (salesOrderResult.order_create?.order) {
+          const salesOrderData = await salesOrderResult.json()
+
+          if (salesOrderData.order_create?.order) {
             ordersCreated++
-            console.log(`Created sales order for ${participant.first_name} ${participant.last_name}: ${salesOrderResult.order_create.order.order_number}`)
+            console.log(`Created sales order for ${participant.first_name} ${participant.last_name}: ${salesOrderData.order_create.order.order_number}`)
           } else {
             errors.push(`Failed to create order for ${participant.first_name} ${participant.last_name}`)
           }
@@ -255,18 +267,30 @@ export class ShipHeroOrderService {
       const tourDate = new Date(tour.date).toISOString().split('T')[0]
       const poNumber = `TOUR-${tourDate}-${tourId.slice(-6)}`
 
-      const purchaseOrderResult = await this.shipHero.createPurchaseOrder({
-        warehouse_id: warehouse.shiphero_warehouse_id,
-        vendor_id: vendorId,
-        po_number: poNumber,
-        line_items: lineItems
+      const purchaseOrderResult = await fetch('/api/shiphero/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('shiphero_access_token')}`
+        },
+        body: JSON.stringify({
+          type: 'purchase_order',
+          data: {
+            warehouse_id: warehouse.shiphero_warehouse_id,
+            vendor_id: vendorId,
+            po_number: poNumber,
+            line_items: lineItems
+          }
+        })
       })
 
-      if (purchaseOrderResult.purchase_order_create?.purchase_order) {
+      const purchaseOrderData = await purchaseOrderResult.json()
+
+      if (purchaseOrderData.purchase_order_create?.purchase_order) {
         return {
           success: true,
-          message: `Created purchase order ${purchaseOrderResult.purchase_order_create.purchase_order.po_number}`,
-          poNumber: purchaseOrderResult.purchase_order_create.purchase_order.po_number,
+          message: `Created purchase order ${purchaseOrderData.purchase_order_create.purchase_order.po_number}`,
+          poNumber: purchaseOrderData.purchase_order_create.purchase_order.po_number,
           errors: []
         }
       } else {

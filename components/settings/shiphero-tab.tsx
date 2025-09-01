@@ -104,10 +104,29 @@ export function ShipHeroTab() {
   const handleConnectionTest = async () => {
     setIsTesting(true)
     try {
-      const client = createShipHeroClient()
+      console.log('Starting connection test...')
+      console.log('Access token available:', !!accessToken)
+      console.log('Refresh token available:', !!refreshToken)
       
-      // Query warehouses to test connection
-      const result = await client.getWarehouses()
+      // Use our API route to avoid CORS issues
+      console.log('Testing via API route...')
+      const response = await fetch('/api/shiphero/warehouses', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+      
+      console.log('Fetch response status:', response.status)
+      console.log('Fetch response headers:', Object.fromEntries(response.headers.entries()))
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      console.log('Direct fetch result:', result)
+      
       setTestResults(result)
       setShowTestResults(true)
       
@@ -116,7 +135,8 @@ export function ShipHeroTab() {
         description: `Found ${result.warehouses?.data?.length || 0} warehouses in ShipHero`,
       })
     } catch (error: any) {
-      setTestResults({ error: error.message })
+      console.error('Connection test error:', error)
+      setTestResults({ error: error.message, details: error })
       setShowTestResults(true)
       
       toast({
@@ -267,8 +287,13 @@ export function ShipHeroTab() {
                   <h4 className="font-medium mb-3">Test Results:</h4>
                   
                   {testResults.error ? (
-                    <div className="text-red-600 text-sm">
-                      <strong>Error:</strong> {testResults.error}
+                    <div className="text-red-600 text-sm space-y-2">
+                      <div><strong>Error:</strong> {testResults.error}</div>
+                      {testResults.details && (
+                        <div className="text-xs text-muted-foreground">
+                          <pre className="whitespace-pre-wrap">{JSON.stringify(testResults.details, null, 2)}</pre>
+                        </div>
+                      )}
                     </div>
                   ) : testResults.warehouses?.data ? (
                     <div className="space-y-3">
