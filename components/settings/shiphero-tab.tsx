@@ -29,6 +29,7 @@ export function ShipHeroTab() {
     swagItemIds: [] as string[],
     notes: ''
   })
+  const [lastError, setLastError] = useState<string | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -204,6 +205,7 @@ export function ShipHeroTab() {
     }
 
     setIsCreatingOrder(true)
+    setLastError(null) // Clear previous errors
     try {
       // Get access token first
       const tokenResponse = await fetch('/api/shiphero/refresh-token', {
@@ -327,7 +329,33 @@ export function ShipHeroTab() {
       if (!orderResponse.ok) {
         const errorData = await orderResponse.json()
         console.error('Order creation error:', errorData)
-        throw new Error(errorData.error || errorData.details || 'Failed to create order')
+        
+        // Show detailed error in toast
+        toast({
+          title: "Order Creation Failed",
+          description: (
+            <div className="space-y-2">
+              <p><strong>Status:</strong> {orderResponse.status} {orderResponse.statusText}</p>
+              <p><strong>Error:</strong> {errorData.error || 'Unknown error'}</p>
+              {errorData.details && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-blue-600">Show Details</summary>
+                  <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                    {typeof errorData.details === 'string' 
+                      ? errorData.details 
+                      : JSON.stringify(errorData.details, null, 2)
+                    }
+                  </pre>
+                </details>
+              )}
+            </div>
+          ),
+          variant: "destructive",
+        })
+        
+        const errorMessage = `Order creation failed: ${orderResponse.status} - ${errorData.error || errorData.details || 'Unknown error'}`
+        setLastError(errorMessage)
+        throw new Error(errorMessage)
       }
 
       const orderData = await orderResponse.json()
@@ -366,9 +394,24 @@ export function ShipHeroTab() {
       setShowAdhocOrder(false)
 
     } catch (error: any) {
+      console.error('Adhoc order creation error:', error)
+      
+      const errorMessage = error.message || "Failed to create adhoc order"
+      setLastError(errorMessage)
+      
       toast({
         title: "Order Creation Failed",
-        description: error.message || "Failed to create adhoc order",
+        description: (
+          <div className="space-y-2">
+            <p><strong>Error:</strong> {errorMessage}</p>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-blue-600">Show Full Error</summary>
+              <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                {JSON.stringify(error, null, 2)}
+              </pre>
+            </details>
+          </div>
+        ),
         variant: "destructive",
       })
     } finally {
@@ -564,6 +607,19 @@ export function ShipHeroTab() {
 
           {showAdhocOrder && (
             <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+              {lastError && (
+                <div className="p-3 bg-red-100 border border-red-300 rounded-lg">
+                  <h5 className="font-medium text-red-800 mb-2">❌ Last Error:</h5>
+                  <p className="text-red-700 text-sm">{lastError}</p>
+                  <button 
+                    onClick={() => setLastError(null)}
+                    className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
+                  >
+                    Clear Error
+                  </button>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="warehouse-select">Warehouse *</Label>
