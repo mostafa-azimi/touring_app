@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, RefreshCw, Eye, EyeOff, Copy, Check, TestTube } from "lucide-react"
+import { Save, RefreshCw, Eye, EyeOff, TestTube } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 
@@ -14,8 +14,6 @@ export function ShipHeroTab() {
   const [showToken, setShowToken] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
-  const [newToken, setNewToken] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
   const { toast } = useToast()
 
@@ -24,23 +22,7 @@ export function ShipHeroTab() {
     setRefreshToken(savedToken)
   }, [])
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      toast({
-        title: "Copied!",
-        description: "Token copied to clipboard",
-      })
-      setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      toast({
-        title: "Copy Failed",
-        description: "Failed to copy to clipboard",
-        variant: "destructive",
-      })
-    }
-  }
+
 
   const handleSaveToken = () => {
     if (refreshToken) {
@@ -71,14 +53,11 @@ export function ShipHeroTab() {
         const expiresIn = data.expires_in
         
         if (newAccessToken) {
-          // Store the new access token temporarily for display
-          setNewToken(newAccessToken)
-          
           // Calculate expiration date
           const expirationDate = new Date(Date.now() + (expiresIn * 1000))
           
           toast({
-            title: "Token Refreshed Successfully",
+            title: "Access Token Refreshed Successfully",
             description: `New access token generated. Expires: ${expirationDate.toLocaleString()}`,
           })
         } else {
@@ -220,29 +199,7 @@ export function ShipHeroTab() {
             </Button>
           </div>
 
-          {newToken && (
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-medium text-green-800 mb-2">New Access Token Generated</h4>
-              <p className="text-sm text-green-700 mb-3">
-                This access token is valid for 28 days. The refresh token remains the same.
-              </p>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="password"
-                  value={newToken}
-                  readOnly
-                  className="font-mono text-xs bg-white"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => copyToClipboard(newToken)}
-                >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-          )}
+
 
           {testResults && (
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
