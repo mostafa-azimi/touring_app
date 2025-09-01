@@ -52,9 +52,6 @@ export function WarehousesTab() {
     state: "",
     zip: "",
     country: "US",
-    phone: "",
-    contact_person: "",
-    notes: "",
     shiphero_warehouse_id: ""
   })
   const { toast } = useToast()
@@ -143,9 +140,6 @@ export function WarehousesTab() {
       state: warehouse.state || "",
       zip: warehouse.zip || "",
       country: warehouse.country || "US",
-      phone: warehouse.phone || "",
-      contact_person: warehouse.contact_person || "",
-      notes: warehouse.notes || "",
       shiphero_warehouse_id: warehouse.shiphero_warehouse_id || ""
     })
     setIsDialogOpen(true)
@@ -180,9 +174,6 @@ export function WarehousesTab() {
       state: "",
       zip: "",
       country: "US",
-      phone: "",
-      contact_person: "",
-      notes: "",
       shiphero_warehouse_id: ""
     })
     setEditingWarehouse(null)
@@ -214,6 +205,21 @@ export function WarehousesTab() {
             </DialogHeader>
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
+                {/* ShipHero Integration */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium text-muted-foreground">ShipHero Integration</h4>
+                  <div className="grid gap-2">
+                    <Label htmlFor="shiphero_warehouse_id">ShipHero Warehouse ID *</Label>
+                    <Input
+                      id="shiphero_warehouse_id"
+                      value={formData.shiphero_warehouse_id}
+                      onChange={(e) => setFormData({ ...formData, shiphero_warehouse_id: e.target.value })}
+                      placeholder="V2FyZWhvdXN10jExOTM0Mw=="
+                      required
+                    />
+                  </div>
+                </div>
+
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
@@ -309,49 +315,7 @@ export function WarehousesTab() {
                   </div>
                 </div>
 
-                {/* Contact & Integration */}
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium text-muted-foreground">Contact & Integration</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="contact_person">Contact Person</Label>
-                      <Input
-                        id="contact_person"
-                        value={formData.contact_person}
-                        onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                        placeholder="John Smith"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="phone">Phone</Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="(555) 123-4567"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="shiphero_warehouse_id">ShipHero Warehouse ID</Label>
-                    <Input
-                      id="shiphero_warehouse_id"
-                      value={formData.shiphero_warehouse_id}
-                      onChange={(e) => setFormData({ ...formData, shiphero_warehouse_id: e.target.value })}
-                      placeholder="SH123456"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      placeholder="Additional notes about this warehouse..."
-                      rows={3}
-                    />
-                  </div>
-                </div>
+
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={isLoading}>
@@ -371,7 +335,7 @@ export function WarehousesTab() {
                 <TableHead className="min-w-[150px]">Name</TableHead>
                 <TableHead className="min-w-[80px]">Code</TableHead>
                 <TableHead className="min-w-[200px]">City, State</TableHead>
-                <TableHead className="min-w-[150px]">Contact</TableHead>
+                <TableHead className="min-w-[150px]">ShipHero ID</TableHead>
                 <TableHead className="min-w-[100px]">Created</TableHead>
                 <TableHead className="w-[140px]">Actions</TableHead>
               </TableRow>
@@ -400,7 +364,7 @@ export function WarehousesTab() {
                       : warehouse.address || '-'
                     }
                   </TableCell>
-                  <TableCell>{warehouse.contact_person || '-'}</TableCell>
+                  <TableCell className="font-mono text-xs">{warehouse.shiphero_warehouse_id || '-'}</TableCell>
                   <TableCell>{new Date(warehouse.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">

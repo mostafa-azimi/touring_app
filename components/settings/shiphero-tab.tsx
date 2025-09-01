@@ -251,11 +251,20 @@ export function ShipHeroTab() {
                                 <TableCell className="text-sm">
                                   {warehouse.address ? (
                                     <div>
-                                      <div>{String(warehouse.address)}</div>
-                                      {warehouse.city && warehouse.state && (
-                                        <div className="text-muted-foreground">
-                                          {String(warehouse.city)}, {String(warehouse.state)} {String(warehouse.zip || '')}
+                                      {typeof warehouse.address === 'object' ? (
+                                        <div>
+                                          <div>{String(warehouse.address.address1 || warehouse.address.address || '-')}</div>
+                                          {warehouse.address.address2 && (
+                                            <div>{String(warehouse.address.address2)}</div>
+                                          )}
+                                          {warehouse.address.city && warehouse.address.state && (
+                                            <div className="text-muted-foreground">
+                                              {String(warehouse.address.city)}, {String(warehouse.address.state)} {String(warehouse.address.zip || '')}
+                                            </div>
+                                          )}
                                         </div>
+                                      ) : (
+                                        <div>{String(warehouse.address)}</div>
                                       )}
                                     </div>
                                   ) : '-'}
