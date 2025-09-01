@@ -191,6 +191,7 @@ export class ShipHeroOrderService {
             participant.first_name,
             participant.last_name,
             warehouse.name,
+            warehouse.code, // Pass airport code
             tourDate
           )
           const orderNumber = generateSalesOrderNumber()
@@ -211,6 +212,7 @@ export class ShipHeroOrderService {
                 first_name: participant.first_name,
                 last_name: participant.last_name,
                 company: participant.company,
+                notes: warehouse.code ? `Airport Code: ${warehouse.code}` : undefined,
                 address: {
                   first_name: participant.first_name,
                   last_name: participant.last_name,

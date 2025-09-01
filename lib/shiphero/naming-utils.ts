@@ -3,23 +3,25 @@
  */
 
 /**
- * Generate sales order name: participant first letter of first name, first three of last name, underscore, warehouse, underscore, date
- * Example: J_Smi_warehouse1_2025-09-01
+ * Generate sales order name: participant first letter of first name, first three of last name, underscore, airport code, underscore, date
+ * Example: J_Smi_LAX_2025-09-01
  */
 export function generateSalesOrderName(
   participantFirstName: string,
   participantLastName: string,
   warehouseName: string,
+  airportCode?: string,
   date: Date = new Date()
 ): string {
   const firstInitial = participantFirstName.charAt(0).toUpperCase()
   const lastThree = participantLastName.substring(0, 3).toLowerCase()
   const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD format
   
-  // Clean warehouse name (remove spaces, special chars)
-  const cleanWarehouse = warehouseName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+  // Use airport code if available, otherwise clean warehouse name
+  const locationCode = airportCode ? airportCode.toUpperCase() : 
+    warehouseName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
   
-  return `${firstInitial}_${lastThree}_${cleanWarehouse}_${dateStr}`
+  return `${firstInitial}_${lastThree}_${locationCode}_${dateStr}`
 }
 
 /**
