@@ -86,17 +86,36 @@ export function WarehousesTab() {
     setIsLoading(true)
 
     try {
+      // Debug: Log the form data being submitted
+      console.log("Submitting warehouse data:", formData)
+      
       if (editingWarehouse) {
         const { error } = await supabase.from("warehouses").update(formData).eq("id", editingWarehouse.id)
         if (error) throw error
         toast({ title: "Success", description: "Warehouse updated successfully" })
       } else {
         const { error } = await supabase.from("warehouses").insert([formData])
-        if (error) throw error
+        if (error) {
+          console.error("Warehouse insert error:", error)
+          throw error
+        }
         toast({ title: "Success", description: "Warehouse created successfully" })
       }
 
-      setFormData({ name: "", address: "" })
+      setFormData({
+        name: "",
+        code: "",
+        address: "",
+        address2: "",
+        city: "",
+        state: "",
+        zip: "",
+        country: "US",
+        phone: "",
+        contact_person: "",
+        notes: "",
+        shiphero_warehouse_id: ""
+      })
       setEditingWarehouse(null)
       setIsDialogOpen(false)
       fetchWarehouses()

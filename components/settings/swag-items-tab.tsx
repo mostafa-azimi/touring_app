@@ -71,13 +71,22 @@ export function SwagItemsTab() {
         quantity: Number.parseInt(formData.quantity),
       }
 
+      // Debug: Log the form data being submitted
+      console.log("Submitting swag item data:", submitData)
+
       if (editingItem) {
         const { error } = await supabase.from("swag_items").update(submitData).eq("id", editingItem.id)
-        if (error) throw error
+        if (error) {
+          console.error("Swag item update error:", error)
+          throw error
+        }
         toast({ title: "Success", description: "Swag item updated successfully" })
       } else {
         const { error } = await supabase.from("swag_items").insert([submitData])
-        if (error) throw error
+        if (error) {
+          console.error("Swag item insert error:", error)
+          throw error
+        }
         toast({ title: "Success", description: "Swag item created successfully" })
       }
 
