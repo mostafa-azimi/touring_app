@@ -26,6 +26,8 @@ interface Tour {
     id: string
     name: string
     email: string
+    company: string | null
+    title: string | null
   }>
   swag_allocations: Array<{
     id: string
@@ -87,7 +89,7 @@ export function ViewToursPage() {
           notes,
           created_at,
           warehouse:warehouses(id, name, address),
-          participants:tour_participants(id, name, email),
+          participants:tour_participants(id, name, email, company, title),
           swag_allocations:tour_swag_allocations(
             id,
             quantity,
@@ -359,9 +361,17 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
             <div className="space-y-3">
               {tour.participants.map((participant) => (
                 <div key={participant.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <div>
-                    <p className="font-medium">{participant.name}</p>
+                  <div className="grid gap-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{participant.name}</p>
+                      {participant.title && (
+                        <span className="text-sm text-muted-foreground">- {participant.title}</span>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">{participant.email}</p>
+                    {participant.company && (
+                      <p className="text-sm text-muted-foreground">{participant.company}</p>
+                    )}
                   </div>
                 </div>
               ))}

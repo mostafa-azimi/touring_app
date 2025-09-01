@@ -26,6 +26,8 @@ interface Participant {
   id: string
   name: string
   email: string
+  company: string
+  title: string
 }
 
 interface SwagPreview {
@@ -47,7 +49,7 @@ export function ScheduleTourPage() {
     time: "",
     notes: "",
   })
-  const [newParticipant, setNewParticipant] = useState({ name: "", email: "" })
+  const [newParticipant, setNewParticipant] = useState({ name: "", email: "", company: "", title: "" })
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -109,10 +111,12 @@ export function ScheduleTourPage() {
       id: crypto.randomUUID(),
       name: newParticipant.name.trim(),
       email: newParticipant.email.trim().toLowerCase(),
+      company: newParticipant.company.trim(),
+      title: newParticipant.title.trim(),
     }
 
     setParticipants([...participants, participant])
-    setNewParticipant({ name: "", email: "" })
+    setNewParticipant({ name: "", email: "", company: "", title: "" })
   }
 
   const removeParticipant = (id: string) => {
@@ -164,6 +168,8 @@ export function ScheduleTourPage() {
         tour_id: tourData.id,
         name: participant.name,
         email: participant.email,
+        company: participant.company,
+        title: participant.title,
       }))
 
       const { data: insertedParticipants, error: participantError } = await supabase
@@ -189,7 +195,7 @@ export function ScheduleTourPage() {
         })
       }
 
-      // Reset form
+            // Reset form
       setFormData({ warehouse_id: "", date: "", time: "", notes: "" })
       setParticipants([])
       setSwagPreview([])
@@ -295,30 +301,52 @@ export function ScheduleTourPage() {
               {/* Add Participant Form */}
               <Card className="bg-muted/50">
                 <CardContent className="pt-4">
-                  <div className="flex gap-4 items-end">
-                    <div className="grid gap-2 flex-1">
-                      <Label htmlFor="participant-name">Name</Label>
-                      <Input
-                        id="participant-name"
-                        value={newParticipant.name}
-                        onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
-                        placeholder="John Smith"
-                      />
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="participant-name">Name</Label>
+                        <Input
+                          id="participant-name"
+                          value={newParticipant.name}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
+                          placeholder="John Smith"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="participant-email">Email</Label>
+                        <Input
+                          id="participant-email"
+                          type="email"
+                          value={newParticipant.email}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, email: e.target.value })}
+                          placeholder="john.smith@company.com"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="participant-company">Company</Label>
+                        <Input
+                          id="participant-company"
+                          value={newParticipant.company}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, company: e.target.value })}
+                          placeholder="ACME Corp"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="participant-title">Title</Label>
+                        <Input
+                          id="participant-title"
+                          value={newParticipant.title}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, title: e.target.value })}
+                          placeholder="Software Engineer"
+                        />
+                      </div>
                     </div>
-                    <div className="grid gap-2 flex-1">
-                      <Label htmlFor="participant-email">Email</Label>
-                      <Input
-                        id="participant-email"
-                        type="email"
-                        value={newParticipant.email}
-                        onChange={(e) => setNewParticipant({ ...newParticipant, email: e.target.value })}
-                        placeholder="john.smith@company.com"
-                      />
+                    <div className="flex justify-end">
+                      <Button type="button" onClick={addParticipant} size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Participant
+                      </Button>
                     </div>
-                    <Button type="button" onClick={addParticipant} size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -336,9 +364,17 @@ export function ScheduleTourPage() {
                           key={participant.id}
                           className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
                         >
-                          <div>
-                            <p className="font-medium">{participant.name}</p>
+                          <div className="grid gap-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{participant.name}</p>
+                              {participant.title && (
+                                <span className="text-sm text-muted-foreground">- {participant.title}</span>
+                              )}
+                            </div>
                             <p className="text-sm text-muted-foreground">{participant.email}</p>
+                            {participant.company && (
+                              <p className="text-sm text-muted-foreground">{participant.company}</p>
+                            )}
                           </div>
                           <Button
                             type="button"
