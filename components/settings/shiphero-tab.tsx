@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Eye, EyeOff, Save, ExternalLink, RefreshCw, TestTube, ChevronDown, ChevronUp } from "lucide-react"
+import { Eye, EyeOff, Save, ExternalLink, RefreshCw, TestTube, ChevronDown, ChevronUp, Copy, Check } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createShipHeroClient } from "@/lib/shiphero/client"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -15,11 +15,12 @@ export function ShipHeroTab() {
   const [accessToken, setAccessToken] = useState("")
   const [refreshToken, setRefreshToken] = useState("")
   const [showTokens, setShowTokens] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
   const [showTestResults, setShowTestResults] = useState(false)
+  const [newTokens, setNewTokens] = useState<{access_token?: string, refresh_token?: string} | null>(null)
+  const [copiedToken, setCopiedToken] = useState<string | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -30,29 +31,21 @@ export function ShipHeroTab() {
     setRefreshToken(savedRefreshToken)
   }, [])
 
-  const handleSaveTokens = async () => {
-    console.log('Save tokens clicked', { accessToken: accessToken ? '***' : 'empty', refreshToken: refreshToken ? '***' : 'empty' })
-    setIsSaving(true)
+  const copyToClipboard = async (text: string, tokenType: string) => {
     try {
-      // Save tokens to localStorage (in production, consider a more secure approach)
-      localStorage.setItem('shiphero_access_token', accessToken)
-      localStorage.setItem('shiphero_refresh_token', refreshToken)
-      
-      console.log('Tokens saved to localStorage')
-      
+      await navigator.clipboard.writeText(text)
+      setCopiedToken(tokenType)
       toast({
-        title: "Success",
-        description: "ShipHero tokens saved successfully",
+        title: "Copied!",
+        description: `${tokenType} copied to clipboard`,
       })
+      setTimeout(() => setCopiedToken(null), 2000)
     } catch (error) {
-      console.error('Error saving tokens:', error)
       toast({
-        title: "Error",
-        description: "Failed to save tokens",
+        title: "Copy Failed",
+        description: "Failed to copy to clipboard",
         variant: "destructive",
       })
-    } finally {
-      setIsSaving(false)
     }
   }
 
@@ -79,14 +72,23 @@ export function ShipHeroTab() {
       if (response.ok) {
         const data = await response.json()
         const newAccessToken = data.access_token
+        const newRefreshToken = data.refresh_token || refreshToken // Keep old refresh token if not provided
         
-        // Update the access token
+        // Update the tokens
         setAccessToken(newAccessToken)
+        setRefreshToken(newRefreshToken)
         localStorage.setItem('shiphero_access_token', newAccessToken)
+        localStorage.setItem('shiphero_refresh_token', newRefreshToken)
+        
+        // Store new tokens for display
+        setNewTokens({
+          access_token: newAccessToken,
+          refresh_token: newRefreshToken
+        })
         
         toast({
-          title: "Token Refreshed",
-          description: "Access token has been successfully refreshed",
+          title: "Token Refreshed Successfully!",
+          description: "New tokens have been generated and saved",
         })
       } else {
         const errorData = await response.json()
@@ -169,72 +171,37 @@ export function ShipHeroTab() {
         <CardHeader>
           <CardTitle>API Credentials</CardTitle>
           <CardDescription>
-            Enter your ShipHero access and refresh tokens. You can find these in your ShipHero dashboard under Settings → API.
+            Your ShipHero tokens are managed automatically. Use the refresh button to get new tokens when needed.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="access-token">Access Token</Label>
-              <div className="relative">
-                <Input
-                  id="access-token"
-                  type={showTokens ? "text" : "password"}
-                  value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value)}
-                  placeholder="Enter your ShipHero access token"
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={toggleTokenVisibility}
-                >
-                  {showTokens ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="refresh-token">Refresh Token</Label>
-              <div className="relative">
-                <Input
-                  id="refresh-token"
-                  type={showTokens ? "text" : "password"}
-                  value={refreshToken}
-                  onChange={(e) => setRefreshToken(e.target.value)}
-                  placeholder="Enter your ShipHero refresh token"
-                  className="pr-10"
-                />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button
-                onClick={handleSaveTokens}
-                disabled={isSaving || !accessToken || !refreshToken}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isSaving ? "Saving..." : "Save Tokens"}
-              </Button>
-              
               <Button
                 onClick={handleRefreshToken}
                 disabled={isRefreshing || !refreshToken}
                 variant="outline"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                {isRefreshing ? "Refreshing..." : "Refresh Token"}
+                {isRefreshing ? "Refreshing..." : "Refresh Tokens"}
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTokenVisibility}
+              >
+                {showTokens ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-2" />
+                    Hide Tokens
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Show Tokens
+                  </>
+                )}
               </Button>
             </div>
             
@@ -249,6 +216,108 @@ export function ShipHeroTab() {
               </a>
             </Button>
           </div>
+
+          {showTokens && (
+            <div className="space-y-3">
+              <div className="grid gap-2">
+                <Label>Current Access Token</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="password"
+                    value={accessToken}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(accessToken, 'Access Token')}
+                  >
+                    {copiedToken === 'Access Token' ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Current Refresh Token</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="password"
+                    value={refreshToken}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(refreshToken, 'Refresh Token')}
+                  >
+                    {copiedToken === 'Refresh Token' ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {newTokens && (
+            <div className="space-y-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h4 className="font-medium text-green-800">New Tokens Generated!</h4>
+              <div className="grid gap-2">
+                <Label className="text-green-700">New Access Token</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="password"
+                    value={newTokens.access_token || ''}
+                    readOnly
+                    className="font-mono text-xs bg-white"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(newTokens.access_token || '', 'New Access Token')}
+                  >
+                    {copiedToken === 'New Access Token' ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              {newTokens.refresh_token && (
+                <div className="grid gap-2">
+                  <Label className="text-green-700">New Refresh Token</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="password"
+                      value={newTokens.refresh_token}
+                      readOnly
+                      className="font-mono text-xs bg-white"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard(newTokens.refresh_token || '', 'New Refresh Token')}
+                    >
+                      {copiedToken === 'New Refresh Token' ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

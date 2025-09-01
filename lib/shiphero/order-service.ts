@@ -1,5 +1,11 @@
 import { createShipHeroClient } from './client'
 import { createClient } from '@/lib/supabase/client'
+import { 
+  generateSalesOrderName, 
+  generatePurchaseOrderName, 
+  generateSalesOrderNumber, 
+  generatePurchaseOrderNumber 
+} from './naming-utils'
 
 export class ShipHeroOrderService {
   private shipHero
@@ -20,11 +26,12 @@ export class ShipHeroOrderService {
     errors: string[]
   }> {
     try {
-      // Get tour details with participants and swag allocations
+      // Get tour details with participants, swag allocations, and host
       const { data: tour, error: tourError } = await this.supabase
         .from('tours')
         .select(`
           id,
+          date,
           warehouse:warehouses(
             id,
             name,
@@ -35,6 +42,12 @@ export class ShipHeroOrderService {
             state,
             zip,
             country
+          ),
+          host:hosts(
+            id,
+            first_name,
+            last_name,
+            email
           ),
           participants:tour_participants(
             id,
@@ -114,12 +127,23 @@ export class ShipHeroOrderService {
       }
 
       // Create sales order for each participant
+      const tourDate = new Date(tour.date)
+      
       for (const [participantId, orderData] of participantOrders) {
         try {
           const participant = orderData.participant
           const lineItems = orderData.lineItems
 
           if (lineItems.length === 0) continue
+
+          // Generate custom order name and number
+          const orderName = generateSalesOrderName(
+            participant.first_name,
+            participant.last_name,
+            warehouse.name,
+            tourDate
+          )
+          const orderNumber = generateSalesOrderNumber()
 
           const salesOrderResult = await fetch('/api/shiphero/orders', {
             method: 'POST',
@@ -130,6 +154,8 @@ export class ShipHeroOrderService {
             body: JSON.stringify({
               type: 'sales_order',
               data: {
+                order_number: orderNumber,
+                order_name: orderName,
                 warehouse_id: warehouse.shiphero_warehouse_id,
                 email: participant.email,
                 first_name: participant.first_name,
@@ -195,7 +221,7 @@ export class ShipHeroOrderService {
     errors: string[]
   }> {
     try {
-      // Get tour with swag allocations
+      // Get tour with swag allocations and host
       const { data: tour, error: tourError } = await this.supabase
         .from('tours')
         .select(`
@@ -205,6 +231,12 @@ export class ShipHeroOrderService {
             id,
             name,
             shiphero_warehouse_id
+          ),
+          host:hosts(
+            id,
+            first_name,
+            last_name,
+            email
           ),
           swag_allocations:tour_swag_allocations(
             qty,
@@ -264,8 +296,20 @@ export class ShipHeroOrderService {
         price: "0.00" // Set appropriate cost
       }))
 
-      const tourDate = new Date(tour.date).toISOString().split('T')[0]
-      const poNumber = `TOUR-${tourDate}-${tourId.slice(-6)}`
+      const tourDate = new Date(tour.date)
+      const host = Array.isArray(tour.host) ? tour.host[0] : tour.host
+      
+      if (!host) {
+        return {
+          success: false,
+          message: 'Tour host not found',
+          errors: ['Missing tour host']
+        }
+      }
+
+      // Generate custom purchase order name and number
+      const poName = generatePurchaseOrderName(host.last_name, tourDate)
+      const poNumber = generatePurchaseOrderNumber()
 
       const purchaseOrderResult = await fetch('/api/shiphero/orders', {
         method: 'POST',
@@ -276,9 +320,10 @@ export class ShipHeroOrderService {
         body: JSON.stringify({
           type: 'purchase_order',
           data: {
+            po_number: poNumber,
+            po_name: poName,
             warehouse_id: warehouse.shiphero_warehouse_id,
             vendor_id: vendorId,
-            po_number: poNumber,
             line_items: lineItems
           }
         })
