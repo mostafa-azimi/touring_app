@@ -400,6 +400,14 @@ export function ShipHeroTab() {
                     )}
                   </div>
                   
+                  {/* Debug: Show raw warehouse data structure */}
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-blue-600 hover:text-blue-800">Debug: Raw warehouse data</summary>
+                    <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
+                      {JSON.stringify(testResults.data?.account?.data?.warehouses?.[0] || {}, null, 2)}
+                    </pre>
+                  </details>
+                  
                   {testResults.data?.account?.data?.warehouses && Array.isArray(testResults.data.account.data.warehouses) && testResults.data.account.data.warehouses.length > 0 && (
                     <div className="border rounded-lg overflow-hidden bg-white">
                       <Table>
@@ -426,7 +434,9 @@ export function ShipHeroTab() {
                             return (
                               <TableRow key={warehouse.id || index}>
                                 <TableCell className="font-mono text-xs">{String(warehouse.id || '-')}</TableCell>
-                                <TableCell className="font-medium">{String(warehouse.name || '-')}</TableCell>
+                                <TableCell className="font-medium">
+                                  {String(warehouse.name || warehouse.title || warehouse.display_name || '-')}
+                                </TableCell>
                                 <TableCell className="text-sm">
                                   {warehouse.address ? (
                                     <div>
