@@ -308,7 +308,7 @@ export class ShipHeroOrderService {
   /**
    * Create purchase order in ShipHero for all swag items needed for a tour
    */
-  async createPurchaseOrderForTour(tourId: string, vendorId?: string): Promise<{
+  async createPurchaseOrderForTour(tourId: string): Promise<{
     success: boolean
     message: string
     poNumber?: string
@@ -455,7 +455,7 @@ export class ShipHeroOrderService {
             shipping_price: "0.00",
             total_price: "0.00",
             warehouse_id: warehouse.shiphero_warehouse_id,
-            vendor_id: vendorId,
+            vendor_id: "1076735",
             fulfillment_status: "pending",
             line_items: lineItems
           }
