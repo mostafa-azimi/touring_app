@@ -168,6 +168,8 @@ export function WarehousesTab() {
     }
   }
 
+
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -361,18 +363,19 @@ export function WarehousesTab() {
         </Dialog>
       </div>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>City, State</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
+      <div className="border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table className="min-w-full">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[150px]">Name</TableHead>
+                <TableHead className="min-w-[80px]">Code</TableHead>
+                <TableHead className="min-w-[200px]">City, State</TableHead>
+                <TableHead className="min-w-[150px]">Contact</TableHead>
+                <TableHead className="min-w-[100px]">Created</TableHead>
+                <TableHead className="w-[140px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
@@ -414,8 +417,9 @@ export function WarehousesTab() {
                 </TableRow>
               ))
             )}
-          </TableBody>
-        </Table>
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   )
