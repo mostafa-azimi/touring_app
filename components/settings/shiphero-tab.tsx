@@ -166,8 +166,8 @@ export function ShipHeroTab() {
         throw new Error('No access token received from refresh token')
       }
       
-      // Now test the connection with the access token
-      const response = await fetch('/api/shiphero/warehouses', {
+      // Test connection by querying warehouses
+      const warehousesResponse = await fetch('/api/shiphero/warehouses', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -175,16 +175,42 @@ export function ShipHeroTab() {
         }
       })
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      if (!warehousesResponse.ok) {
+        throw new Error(`Warehouses query failed: ${warehousesResponse.status}`)
       }
       
-      const result = await response.json()
-      setTestResults(result)
+      const warehousesResult = await warehousesResponse.json()
+      
+      // Also query products with SWAG in SKU
+      const productsResponse = await fetch('/api/shiphero/products', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      let productsResult = null
+      if (productsResponse.ok) {
+        productsResult = await productsResponse.json()
+      } else {
+        console.log('Products query failed:', productsResponse.status, productsResponse.statusText)
+      }
+
+      // Combine results
+      const combinedResult = {
+        warehouses: warehousesResult,
+        products: productsResult
+      }
+      
+      setTestResults(combinedResult)
+      
+      const warehouseCount = warehousesResult.data?.account?.data?.warehouses?.length || 0
+      const productCount = productsResult?.data?.account?.data?.products?.edges?.length || 0
       
       toast({
         title: "Connection Test Successful",
-        description: `Found ${result.data?.account?.data?.warehouses?.length || 0} warehouses in ShipHero`,
+        description: `Found ${warehouseCount} warehouses and ${productCount} SWAG products in ShipHero`,
       })
     } catch (error: any) {
       setTestResults({ error: error.message })
