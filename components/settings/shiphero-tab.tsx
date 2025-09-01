@@ -67,16 +67,23 @@ export function ShipHeroTab() {
 
       if (response.ok) {
         const data = await response.json()
-        const newRefreshToken = data.refresh_token || refreshToken
+        const newAccessToken = data.access_token
+        const expiresIn = data.expires_in
         
-        setRefreshToken(newRefreshToken)
-        localStorage.setItem('shiphero_refresh_token', newRefreshToken)
-        setNewToken(newRefreshToken)
-        
-        toast({
-          title: "Token Refreshed",
-          description: "New refresh token generated",
-        })
+        if (newAccessToken) {
+          // Store the new access token temporarily for display
+          setNewToken(newAccessToken)
+          
+          // Calculate expiration date
+          const expirationDate = new Date(Date.now() + (expiresIn * 1000))
+          
+          toast({
+            title: "Token Refreshed Successfully",
+            description: `New access token generated. Expires: ${expirationDate.toLocaleString()}`,
+          })
+        } else {
+          throw new Error('No access token received from refresh')
+        }
       } else {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to refresh token')
@@ -200,7 +207,7 @@ export function ShipHeroTab() {
               variant="outline"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? "Refreshing..." : "Refresh Token"}
+              {isRefreshing ? "Refreshing..." : "Get New Access Token"}
             </Button>
             
             <Button
@@ -215,7 +222,10 @@ export function ShipHeroTab() {
 
           {newToken && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-medium text-green-800 mb-2">New Token Generated</h4>
+              <h4 className="font-medium text-green-800 mb-2">New Access Token Generated</h4>
+              <p className="text-sm text-green-700 mb-3">
+                This access token is valid for 28 days. The refresh token remains the same.
+              </p>
               <div className="flex items-center gap-2">
                 <Input
                   type="password"
