@@ -336,29 +336,49 @@ export function ViewToursPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Sheet>
-                            <SheetTrigger asChild>
-                              <Button variant="ghost" size="sm" onClick={() => setSelectedTour(tour)}>
-                                <Eye className="h-4 w-4" />
+                        <div className="flex flex-col gap-2">
+                          {/* Primary Action - Validate Tour */}
+                          {tour.status !== 'validated' && tour.status !== 'cancelled' && (
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              onClick={() => handleValidateTour(tour.id)}
+                              className="w-full bg-green-600 hover:bg-green-700"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Validate Tour
+                            </Button>
+                          )}
+                          
+                          {/* Secondary Actions */}
+                          <div className="flex items-center gap-1">
+                            <Sheet>
+                              <SheetTrigger asChild>
+                                <Button variant="ghost" size="sm" onClick={() => setSelectedTour(tour)} title="View Details">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </SheetTrigger>
+                              <SheetContent className="w-[600px] sm:max-w-[600px]">
+                                <TourDetailsSheet tour={tour} />
+                              </SheetContent>
+                            </Sheet>
+                            
+                            <Button variant="ghost" size="sm" title="Edit Tour">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            
+                            {tour.status !== 'cancelled' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                title="Cancel Tour" 
+                                onClick={() => handleCancelTour(tour.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X className="h-4 w-4" />
                               </Button>
-                            </SheetTrigger>
-                            <SheetContent className="w-[600px] sm:max-w-[600px]">
-                              <TourDetailsSheet tour={tour} />
-                            </SheetContent>
-                          </Sheet>
-                          
-                          <Button variant="ghost" size="sm" title="Edit Tour">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          
-                          <Button variant="ghost" size="sm" title="Validate Tour" onClick={() => handleValidateTour(tour.id)}>
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          
-                          <Button variant="ghost" size="sm" title="Cancel Tour" onClick={() => handleCancelTour(tour.id)}>
-                            <X className="h-4 w-4" />
-                          </Button>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -723,36 +743,75 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Primary Action - Validate Tour */}
+          {tour.status === 'validated' ? (
             <div className="space-y-2">
-              <h4 className="font-medium text-sm">Sales Orders</h4>
-              <p className="text-sm text-muted-foreground">
-                Create individual orders for each participant with their allocated swag items
-              </p>
-              <Button 
-                onClick={handleCreateSalesOrders}
-                disabled={isCreatingOrders || tour.participants.length === 0}
-                className="w-full"
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                {isCreatingOrders ? "Creating..." : `Create ${tour.participants.length} Sales Orders`}
-              </Button>
+              <div className="w-full bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                <h3 className="font-medium text-green-800">Tour Validated</h3>
+                <p className="text-sm text-green-600">All orders have been created successfully</p>
+              </div>
             </div>
-            
+          ) : tour.status === 'cancelled' ? (
             <div className="space-y-2">
-              <h4 className="font-medium text-sm">Purchase Order</h4>
-              <p className="text-sm text-muted-foreground">
-                Create a consolidated purchase order for all swag items needed
-              </p>
+              <div className="w-full bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                <X className="h-8 w-8 text-red-600 mx-auto mb-2" />
+                <h3 className="font-medium text-red-800">Tour Cancelled</h3>
+                <p className="text-sm text-red-600">This tour has been cancelled</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
               <Button 
-                onClick={handleCreatePurchaseOrder}
-                disabled={isCreatingPO || tour.swag_allocations.length === 0}
-                variant="outline"
-                className="w-full"
+                onClick={handleValidateTour}
+                disabled={isValidatingTour}
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                size="lg"
               >
-                <FileText className="h-4 w-4 mr-2" />
-                {isCreatingPO ? "Creating..." : "Create Purchase Order"}
+                <CheckCircle className="h-5 w-5 mr-2" />
+                {isValidatingTour ? "Validating Tour..." : "Validate Tour & Create All Orders"}
               </Button>
+              <p className="text-sm text-muted-foreground text-center">
+                This will create sales orders for all participants (including host) and one purchase order for inventory
+              </p>
+            </div>
+          )}
+
+          {/* Manual Order Creation (for testing/debugging) */}
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-muted-foreground">Manual Order Creation</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Sales Orders</h4>
+                <p className="text-sm text-muted-foreground">
+                  Create individual orders for each participant with their allocated swag items
+                </p>
+                <Button 
+                  onClick={handleCreateSalesOrders}
+                  disabled={isCreatingOrders || tour.participants.length === 0}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  {isCreatingOrders ? "Creating..." : `Create ${tour.participants.length + (tour.host ? 1 : 0)} Sales Orders`}
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Purchase Order</h4>
+                <p className="text-sm text-muted-foreground">
+                  Create a consolidated purchase order for all swag items needed
+                </p>
+                <Button 
+                  onClick={handleCreatePurchaseOrder}
+                  disabled={isCreatingPO || tour.swag_allocations.length === 0}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isCreatingPO ? "Creating..." : "Create Purchase Order"}
+                </Button>
+              </div>
             </div>
           </div>
           
