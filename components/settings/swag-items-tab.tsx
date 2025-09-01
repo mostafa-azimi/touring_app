@@ -25,7 +25,6 @@ interface SwagItem {
   name: string
   sku?: string
   vendor_id?: string
-  quantity: number
   created_at: string
 }
 
@@ -34,7 +33,7 @@ export function SwagItemsTab() {
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<SwagItem | null>(null)
-  const [formData, setFormData] = useState({ name: "", sku: "", vendor_id: "", quantity: "" })
+  const [formData, setFormData] = useState({ name: "", sku: "", vendor_id: "" })
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -68,7 +67,6 @@ export function SwagItemsTab() {
         name: formData.name,
         sku: formData.sku || null,
         vendor_id: formData.vendor_id || null,
-        quantity: Number.parseInt(formData.quantity),
       }
 
       // Debug: Log the form data being submitted
@@ -90,7 +88,7 @@ export function SwagItemsTab() {
         toast({ title: "Success", description: "Swag item created successfully" })
       }
 
-      setFormData({ name: "", sku: "", vendor_id: "", quantity: "" })
+      setFormData({ name: "", sku: "", vendor_id: "" })
       setEditingItem(null)
       setIsDialogOpen(false)
       fetchSwagItems()
@@ -110,8 +108,7 @@ export function SwagItemsTab() {
     setFormData({ 
       name: item.name, 
       sku: item.sku || "",
-      vendor_id: item.vendor_id || "",
-      quantity: item.quantity.toString() 
+      vendor_id: item.vendor_id || ""
     })
     setIsDialogOpen(true)
   }
@@ -134,7 +131,7 @@ export function SwagItemsTab() {
   }
 
   const resetForm = () => {
-    setFormData({ name: "", sku: "", vendor_id: "", quantity: "" })
+    setFormData({ name: "", sku: "", vendor_id: "" })
     setEditingItem(null)
   }
 
@@ -194,18 +191,7 @@ export function SwagItemsTab() {
                     />
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="quantity">Quantity *</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="0"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                    placeholder="100"
-                    required
-                  />
-                </div>
+
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={isLoading}>
@@ -224,21 +210,20 @@ export function SwagItemsTab() {
               <TableHead>Product Name</TableHead>
               <TableHead>SKU</TableHead>
               <TableHead>Vendor ID</TableHead>
-              <TableHead>Quantity</TableHead>
               <TableHead>Created</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className="w-[140px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={5} className="text-center py-8">
                   Loading swag items...
                 </TableCell>
               </TableRow>
             ) : swagItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                   No swag items found. Add your first swag item to get started.
                 </TableCell>
               </TableRow>
@@ -248,15 +233,16 @@ export function SwagItemsTab() {
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{item.sku || '-'}</TableCell>
                   <TableCell>{item.vendor_id || '-'}</TableCell>
-                  <TableCell>{item.quantity}</TableCell>
                   <TableCell>{new Date(item.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
-                        <Edit className="h-4 w-4" />
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}>
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id)}>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
                       </Button>
                     </div>
                   </TableCell>

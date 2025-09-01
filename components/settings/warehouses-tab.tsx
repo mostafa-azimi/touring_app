@@ -203,7 +203,7 @@ export function WarehousesTab() {
               Add Warehouse
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingWarehouse ? "Edit Warehouse" : "Add New Warehouse"}</DialogTitle>
               <DialogDescription>
@@ -211,7 +211,7 @@ export function WarehousesTab() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4 max-h-96 overflow-y-auto">
+              <div className="grid gap-4 py-4">
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
@@ -400,12 +400,14 @@ export function WarehousesTab() {
                   <TableCell>{warehouse.contact_person || '-'}</TableCell>
                   <TableCell>{new Date(warehouse.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(warehouse)}>
-                        <Edit className="h-4 w-4" />
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(warehouse)}>
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(warehouse.id)}>
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(warehouse.id)}>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
                       </Button>
                     </div>
                   </TableCell>

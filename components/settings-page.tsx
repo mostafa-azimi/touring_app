@@ -11,32 +11,31 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState("warehouses")
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Settings</CardTitle>
-        <CardDescription>Manage warehouses, hosts, and swag items</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="warehouses">Warehouses</TabsTrigger>
-            <TabsTrigger value="hosts">Hosts</TabsTrigger>
-            <TabsTrigger value="swag-items">Swag Items</TabsTrigger>
-          </TabsList>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <p className="text-muted-foreground">Manage warehouses, hosts, and swag items</p>
+      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsTrigger value="warehouses">Warehouses</TabsTrigger>
+          <TabsTrigger value="hosts">Hosts</TabsTrigger>
+          <TabsTrigger value="swag-items">Swag Items</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="warehouses" className="mt-6">
-            <WarehousesTab />
-          </TabsContent>
+        <TabsContent value="warehouses">
+          <WarehousesTab />
+        </TabsContent>
 
-          <TabsContent value="hosts" className="mt-6">
-            <HostsTab />
-          </TabsContent>
+        <TabsContent value="hosts">
+          <HostsTab />
+        </TabsContent>
 
-          <TabsContent value="swag-items" className="mt-6">
-            <SwagItemsTab />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+        <TabsContent value="swag-items">
+          <SwagItemsTab />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }
