@@ -246,19 +246,20 @@ export function ShipHeroTab() {
       // Generate order number
       const orderNumber = `ADHOC-${Date.now()}`
 
+      // Use tomorrow's date
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const orderDate = tomorrow.toISOString().split('T')[0] // YYYY-MM-DD format
+
       const orderData = {
         order_number: orderNumber,
         shop_name: "Warehouse Tours - Adhoc",
         fulfillment_status: "pending",
-        order_date: new Date().toISOString(),
+        order_date: orderDate,
         total_tax: "0.00",
         subtotal: "0.00",
         total_discounts: "0.00",
         total_price: "0.00",
-        email: host.email,
-        phone: "",
-        tags: warehouse.code ? [`Airport:${warehouse.code}`, "Adhoc Order"] : ["Adhoc Order"],
-        notes: adhocOrderData.notes,
         shipping_lines: {
           title: "Generic Shipping",
           price: "0.00",
@@ -273,9 +274,12 @@ export function ShipHeroTab() {
           address2: warehouse.address2 || '',
           city: warehouse.city,
           state: warehouse.state,
+          state_code: warehouse.state,
           zip: warehouse.zip,
           country: warehouse.country || 'US',
-          email: host.email
+          country_code: warehouse.country || 'US',
+          email: host.email,
+          phone: "5555555555"
         },
         billing_address: {
           first_name: host.first_name,
@@ -285,11 +289,24 @@ export function ShipHeroTab() {
           address2: warehouse.address2 || '',
           city: warehouse.city,
           state: warehouse.state,
+          state_code: warehouse.state,
           zip: warehouse.zip,
           country: warehouse.country || 'US',
-          email: host.email
+          country_code: warehouse.country || 'US',
+          email: host.email,
+          phone: "5555555555"
         },
-        line_items: lineItems
+        line_items: lineItems.map((item, index) => ({
+          sku: item.sku,
+          partner_line_item_id: `${orderNumber}-${index + 1}`,
+          quantity: item.quantity,
+          price: item.price,
+          product_name: item.sku,
+          fulfillment_status: "pending",
+          quantity_pending_fulfillment: item.quantity,
+          warehouse_id: warehouse.shiphero_warehouse_id
+        })),
+        required_ship_date: orderDate
       }
 
       console.log('Creating adhoc order with data:', JSON.stringify(orderData, null, 2))
@@ -315,9 +332,28 @@ export function ShipHeroTab() {
 
       const orderData = await orderResponse.json()
       
+      // Create ShipHero order link
+      const orderId = orderData.data?.order_create?.order?.id
+      const createdOrderNumber = orderData.data?.order_create?.order?.order_number || orderNumber
+      const shipheroLink = orderId ? `https://app.shiphero.com/orders/${orderId}` : null
+      
       toast({
         title: "Adhoc Order Created Successfully!",
-        description: `Order ${orderData.order?.order_number || orderNumber} created for ${host.first_name} ${host.last_name}`,
+        description: (
+          <div className="space-y-2">
+            <p>Order {createdOrderNumber} created for {host.first_name} {host.last_name}</p>
+            {shipheroLink && (
+              <a 
+                href={shipheroLink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                View Order in ShipHero →
+              </a>
+            )}
+          </div>
+        ),
       })
 
       // Reset form
