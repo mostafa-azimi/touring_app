@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Save, RefreshCw, Eye, EyeOff, Copy, Check, TestTube } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 
 export function ShipHeroTab() {
@@ -235,13 +236,65 @@ export function ShipHeroTab() {
 
           {testResults && (
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-blue-800 mb-2">Connection Test Results</h4>
-              <pre className="text-xs bg-white p-2 rounded border overflow-auto max-h-40">
-                {testResults.error ? 
-                  `Error: ${testResults.error}` : 
-                  JSON.stringify(testResults, null, 2)
-                }
-              </pre>
+              <h4 className="font-medium text-blue-800 mb-3">Connection Test Results</h4>
+              {testResults.error ? (
+                <div className="p-3 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
+                  <strong>Error:</strong> {testResults.error}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-sm text-blue-700">
+                    <strong>Status:</strong> Connected successfully
+                    {testResults.data?.account?.data?.warehouses && (
+                      <span className="ml-2">
+                        • <strong>{testResults.data.account.data.warehouses.length}</strong> warehouses found
+                      </span>
+                    )}
+                  </div>
+                  
+                  {testResults.data?.account?.data?.warehouses && testResults.data.account.data.warehouses.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden bg-white">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Code</TableHead>
+                            <TableHead>Address</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {testResults.data.account.data.warehouses.map((warehouse: any, index: number) => (
+                            <TableRow key={warehouse.id || index}>
+                              <TableCell className="font-mono text-xs">{warehouse.id}</TableCell>
+                              <TableCell className="font-medium">{warehouse.name}</TableCell>
+                              <TableCell className="font-mono text-xs">{warehouse.code || '-'}</TableCell>
+                              <TableCell className="text-sm">
+                                {warehouse.address ? (
+                                  <div>
+                                    <div>{warehouse.address}</div>
+                                    {warehouse.city && warehouse.state && (
+                                      <div className="text-muted-foreground">
+                                        {warehouse.city}, {warehouse.state} {warehouse.zip}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : '-'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  
+                  {testResults.data?.account?.data?.warehouses && testResults.data.account.data.warehouses.length === 0 && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
+                      No warehouses found in your ShipHero account
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
