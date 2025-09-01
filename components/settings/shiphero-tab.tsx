@@ -199,7 +199,8 @@ export function ShipHeroTab() {
   }
 
   const handleCreateAdhocOrder = async () => {
-    console.log('handleCreateAdhocOrder called with data:', adhocOrderData)
+    console.log('🚀🚀🚀 handleCreateAdhocOrder called with data:', adhocOrderData)
+    alert('Function called! Check console for details.')
     
     if (!adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0) {
       console.log('Validation failed:', {
