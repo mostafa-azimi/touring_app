@@ -5,15 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, RefreshCw, Eye, EyeOff, Copy, Check } from "lucide-react"
+import { Save, RefreshCw, Eye, EyeOff, Copy, Check, TestTube } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export function ShipHeroTab() {
   const [refreshToken, setRefreshToken] = useState("")
   const [showToken, setShowToken] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
   const [newToken, setNewToken] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [testResults, setTestResults] = useState<any>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -89,6 +91,67 @@ export function ShipHeroTab() {
     }
   }
 
+  const handleConnectionTest = async () => {
+    setIsTesting(true)
+    try {
+      if (!refreshToken) {
+        throw new Error('No refresh token available. Please enter your refresh token first.')
+      }
+      
+      // First, get an access token using the refresh token
+      const tokenResponse = await fetch('/api/shiphero/refresh-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refresh_token: refreshToken
+        })
+      })
+      
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to get access token from refresh token')
+      }
+      
+      const tokenData = await tokenResponse.json()
+      const accessToken = tokenData.access_token
+      
+      if (!accessToken) {
+        throw new Error('No access token received from refresh token')
+      }
+      
+      // Now test the connection with the access token
+      const response = await fetch('/api/shiphero/warehouses', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      setTestResults(result)
+      
+      toast({
+        title: "Connection Test Successful",
+        description: `Found ${result.data?.account?.data?.warehouses?.length || 0} warehouses in ShipHero`,
+      })
+    } catch (error: any) {
+      setTestResults({ error: error.message })
+      toast({
+        title: "Connection Test Failed",
+        description: error.message || "Failed to connect to ShipHero API",
+        variant: "destructive",
+      })
+    } finally {
+      setIsTesting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -138,6 +201,15 @@ export function ShipHeroTab() {
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               {isRefreshing ? "Refreshing..." : "Refresh Token"}
             </Button>
+            
+            <Button
+              onClick={handleConnectionTest}
+              disabled={isTesting || !refreshToken}
+              variant="outline"
+            >
+              <TestTube className={`h-4 w-4 mr-2 ${isTesting ? 'animate-pulse' : ''}`} />
+              {isTesting ? "Testing..." : "Test Connection"}
+            </Button>
           </div>
 
           {newToken && (
@@ -158,6 +230,18 @@ export function ShipHeroTab() {
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
+            </div>
+          )}
+
+          {testResults && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-medium text-blue-800 mb-2">Connection Test Results</h4>
+              <pre className="text-xs bg-white p-2 rounded border overflow-auto max-h-40">
+                {testResults.error ? 
+                  `Error: ${testResults.error}` : 
+                  JSON.stringify(testResults, null, 2)
+                }
+              </pre>
             </div>
           )}
         </CardContent>
