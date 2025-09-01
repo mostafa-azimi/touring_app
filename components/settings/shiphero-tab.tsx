@@ -67,6 +67,10 @@ export function ShipHeroTab() {
         hosts: hostsRes.data?.length || 0,
         swagItems: swagItemsRes.data?.length || 0
       })
+      
+      console.log('Warehouse data:', warehousesRes.data)
+      console.log('Host data:', hostsRes.data)
+      console.log('Swag items data:', swagItemsRes.data)
     } catch (error: any) {
       console.error('Error loading adhoc order data:', error)
       toast({
@@ -195,7 +199,14 @@ export function ShipHeroTab() {
   }
 
   const handleCreateAdhocOrder = async () => {
+    console.log('handleCreateAdhocOrder called with data:', adhocOrderData)
+    
     if (!adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0) {
+      console.log('Validation failed:', {
+        warehouseId: adhocOrderData.warehouseId,
+        hostId: adhocOrderData.hostId,
+        swagItemIds: adhocOrderData.swagItemIds
+      })
       toast({
         title: "Missing Information",
         description: "Please select a warehouse, host, and at least one swag item",
@@ -203,6 +214,8 @@ export function ShipHeroTab() {
       })
       return
     }
+    
+    console.log('Validation passed, proceeding with order creation')
 
     setIsCreatingOrder(true)
     setLastError(null) // Clear previous errors
