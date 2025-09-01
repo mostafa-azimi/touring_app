@@ -108,6 +108,34 @@ export class ShipHeroClient {
     return this.request(mutation, { data })
   }
 
+  // Warehouse operations (for connection testing)
+  async getWarehouses() {
+    const query = `
+      query {
+        warehouses {
+          data {
+            id
+            identifier
+            name
+            profile {
+              name
+              address {
+                name
+                address1
+                address2
+                city
+                state
+                zip
+                country
+              }
+            }
+          }
+        }
+      }
+    `
+    return this.request(query)
+  }
+
   // Purchase Order operations
   async createPurchaseOrder(orderData: {
     warehouse_id: string

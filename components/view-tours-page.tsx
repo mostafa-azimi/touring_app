@@ -308,6 +308,10 @@ export function ViewToursPage() {
 }
 
 function TourDetailsSheet({ tour }: { tour: Tour }) {
+  const [isCreatingOrders, setIsCreatingOrders] = useState(false)
+  const [isCreatingPO, setIsCreatingPO] = useState(false)
+  const { toast } = useToast()
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -323,6 +327,64 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
       minute: "2-digit",
       hour12: true,
     })
+  }
+
+  const handleCreateSalesOrders = async () => {
+    setIsCreatingOrders(true)
+    try {
+      const orderService = new ShipHeroOrderService()
+      const result = await orderService.createSalesOrdersForTour(tour.id)
+      
+      if (result.success) {
+        toast({
+          title: "Sales Orders Created",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Failed to Create Sales Orders",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create sales orders. Please check your ShipHero configuration.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingOrders(false)
+    }
+  }
+
+  const handleCreatePurchaseOrder = async () => {
+    setIsCreatingPO(true)
+    try {
+      const orderService = new ShipHeroOrderService()
+      const result = await orderService.createPurchaseOrderForTour(tour.id)
+      
+      if (result.success) {
+        toast({
+          title: "Purchase Order Created",
+          description: result.message,
+        })
+      } else {
+        toast({
+          title: "Failed to Create Purchase Order",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create purchase order. Please check your ShipHero configuration.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingPO(false)
+    }
   }
 
   return (
@@ -436,6 +498,57 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ShipHero Integration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            ShipHero Orders
+          </CardTitle>
+          <CardDescription>
+            Create sales orders for participants and purchase orders for inventory
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">Sales Orders</h4>
+              <p className="text-sm text-muted-foreground">
+                Create individual orders for each participant with their allocated swag items
+              </p>
+              <Button 
+                onClick={handleCreateSalesOrders}
+                disabled={isCreatingOrders || tour.participants.length === 0}
+                className="w-full"
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                {isCreatingOrders ? "Creating..." : `Create ${tour.participants.length} Sales Orders`}
+              </Button>
+            </div>
+            
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">Purchase Order</h4>
+              <p className="text-sm text-muted-foreground">
+                Create a consolidated purchase order for all swag items needed
+              </p>
+              <Button 
+                onClick={handleCreatePurchaseOrder}
+                disabled={isCreatingPO || tour.swag_allocations.length === 0}
+                variant="outline"
+                className="w-full"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                {isCreatingPO ? "Creating..." : "Create Purchase Order"}
+              </Button>
+            </div>
+          </div>
+          
+          <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg">
+            <p><strong>Note:</strong> Make sure you have configured your ShipHero tokens in Settings → ShipHero and that your warehouse has a ShipHero Warehouse ID.</p>
+          </div>
         </CardContent>
       </Card>
     </div>
