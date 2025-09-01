@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText } from "lucide-react"
+import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, Edit, X, CheckCircle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
@@ -17,6 +17,7 @@ interface Tour {
   date: string
   time: string
   notes: string | null
+  status?: string
   created_at: string
   warehouse: {
     id: string
@@ -94,6 +95,7 @@ export function ViewToursPage() {
           date,
           time,
           notes,
+          status,
           created_at,
           warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
           participants:tour_participants(id, name, email, company, title),
@@ -133,6 +135,82 @@ export function ViewToursPage() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleValidateTour = async (tourId: string) => {
+    try {
+      // Update tour status to validated
+      const { error: updateError } = await supabase
+        .from('tours')
+        .update({ status: 'validated' })
+        .eq('id', tourId)
+
+      if (updateError) {
+        throw updateError
+      }
+
+      // Create both sales orders and purchase order
+      const orderService = new ShipHeroOrderService()
+      const [salesResult, poResult] = await Promise.all([
+        orderService.createSalesOrdersForTour(tourId),
+        orderService.createPurchaseOrderForTour(tourId)
+      ])
+
+      if (salesResult.success && poResult.success) {
+        toast({
+          title: "Tour Validated Successfully!",
+          description: `Created ${salesResult.ordersCreated} sales orders and 1 purchase order`,
+        })
+        // Refresh tours to show updated status
+        fetchTours()
+      } else {
+        const errors = [...(salesResult.errors || []), ...(poResult.errors || [])]
+        toast({
+          title: "Tour Validated with Errors",
+          description: `Tour validated but some orders failed: ${errors.join(', ')}`,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error validating tour:', error)
+      toast({
+        title: "Error",
+        description: "Failed to validate tour",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleCancelTour = async (tourId: string) => {
+    if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      // Update tour status to cancelled
+      const { error: updateError } = await supabase
+        .from('tours')
+        .update({ status: 'cancelled' })
+        .eq('id', tourId)
+
+      if (updateError) {
+        throw updateError
+      }
+
+      toast({
+        title: "Tour Cancelled",
+        description: "The tour has been cancelled successfully",
+      })
+      // Refresh tours to show updated status
+      fetchTours()
+    } catch (error) {
+      console.error('Error cancelling tour:', error)
+      toast({
+        title: "Error",
+        description: "Failed to cancel tour",
+        variant: "destructive",
+      })
     }
   }
 
@@ -195,19 +273,20 @@ export function ViewToursPage() {
                   <TableHead>Warehouse</TableHead>
                   <TableHead>Participants</TableHead>
                   <TableHead>Swag Items</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[140px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       Loading tours...
                     </TableCell>
                   </TableRow>
                 ) : currentTours.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       {searchTerm ? "No tours match your search criteria." : "No tours scheduled yet."}
                     </TableCell>
                   </TableRow>
@@ -242,16 +321,38 @@ export function ViewToursPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Sheet>
-                          <SheetTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedTour(tour)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </SheetTrigger>
-                          <SheetContent className="w-[600px] sm:max-w-[600px]">
-                            <TourDetailsSheet tour={tour} />
-                          </SheetContent>
-                        </Sheet>
+                        <Badge 
+                          variant={tour.status === 'validated' ? 'default' : tour.status === 'cancelled' ? 'destructive' : 'secondary'}
+                          className="capitalize"
+                        >
+                          {tour.status || 'draft'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Sheet>
+                            <SheetTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => setSelectedTour(tour)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </SheetTrigger>
+                            <SheetContent className="w-[600px] sm:max-w-[600px]">
+                              <TourDetailsSheet tour={tour} />
+                            </SheetContent>
+                          </Sheet>
+                          
+                          <Button variant="ghost" size="sm" title="Edit Tour">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button variant="ghost" size="sm" title="Validate Tour" onClick={() => handleValidateTour(tour.id)}>
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button variant="ghost" size="sm" title="Cancel Tour" onClick={() => handleCancelTour(tour.id)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -310,6 +411,8 @@ export function ViewToursPage() {
 function TourDetailsSheet({ tour }: { tour: Tour }) {
   const [isCreatingOrders, setIsCreatingOrders] = useState(false)
   const [isCreatingPO, setIsCreatingPO] = useState(false)
+  const [isValidatingTour, setIsValidatingTour] = useState(false)
+  const [isCancellingTour, setIsCancellingTour] = useState(false)
   const { toast } = useToast()
 
   const formatDate = (dateString: string) => {
@@ -384,6 +487,88 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
       })
     } finally {
       setIsCreatingPO(false)
+    }
+  }
+
+  const handleValidateTour = async () => {
+    setIsValidatingTour(true)
+    try {
+      const supabase = createClient()
+      
+      // Update tour status to validated
+      const { error: updateError } = await supabase
+        .from('tours')
+        .update({ status: 'validated' })
+        .eq('id', tour.id)
+
+      if (updateError) {
+        throw updateError
+      }
+
+      // Create both sales orders and purchase order
+      const orderService = new ShipHeroOrderService()
+      const [salesResult, poResult] = await Promise.all([
+        orderService.createSalesOrdersForTour(tour.id),
+        orderService.createPurchaseOrderForTour(tour.id)
+      ])
+
+      if (salesResult.success && poResult.success) {
+        toast({
+          title: "Tour Validated Successfully!",
+          description: `Created ${salesResult.ordersCreated} sales orders and 1 purchase order`,
+        })
+      } else {
+        const errors = [...(salesResult.errors || []), ...(poResult.errors || [])]
+        toast({
+          title: "Tour Validated with Errors",
+          description: `Tour validated but some orders failed: ${errors.join(', ')}`,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error validating tour:', error)
+      toast({
+        title: "Error",
+        description: "Failed to validate tour",
+        variant: "destructive",
+      })
+    } finally {
+      setIsValidatingTour(false)
+    }
+  }
+
+  const handleCancelTour = async () => {
+    if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
+      return
+    }
+
+    setIsCancellingTour(true)
+    try {
+      const supabase = createClient()
+      
+      // Update tour status to cancelled
+      const { error: updateError } = await supabase
+        .from('tours')
+        .update({ status: 'cancelled' })
+        .eq('id', tour.id)
+
+      if (updateError) {
+        throw updateError
+      }
+
+      toast({
+        title: "Tour Cancelled",
+        description: "The tour has been cancelled successfully",
+      })
+    } catch (error) {
+      console.error('Error cancelling tour:', error)
+      toast({
+        title: "Error",
+        description: "Failed to cancel tour",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCancellingTour(false)
     }
   }
 

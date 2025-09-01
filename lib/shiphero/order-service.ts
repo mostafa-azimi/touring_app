@@ -97,33 +97,53 @@ export class ShipHeroOrderService {
       }
 
       const participants = Array.isArray(tour.participants) ? tour.participants : []
-      const swagAllocations = Array.isArray(tour.swag_allocations) ? tour.swag_allocations : []
 
       let ordersCreated = 0
       const errors: string[] = []
 
-      // Group swag allocations by participant
+      // Get all swag items for the tour (not participant-specific allocations)
+      const { data: tourSwagItems, error: swagError } = await this.supabase
+        .from('tour_swag_items')
+        .select(`
+          qty,
+          swag_item:swag_items(
+            id,
+            name,
+            sku
+          )
+        `)
+        .eq('tour_id', tourId)
+
+      if (swagError) {
+        return {
+          success: false,
+          message: 'Failed to fetch swag items',
+          ordersCreated: 0,
+          errors: [swagError.message]
+        }
+      }
+
+      // Create orders for each participant with ALL swag items
       const participantOrders = new Map()
       
-      for (const allocation of swagAllocations) {
-        const participant = Array.isArray(allocation.participant) ? allocation.participant[0] : allocation.participant
-        const swagItem = Array.isArray(allocation.swag_item) ? allocation.swag_item[0] : allocation.swag_item
-        
-        if (!participant || !swagItem || !swagItem.sku) continue
+      for (const participant of participants) {
+        participantOrders.set(participant.id, {
+          participant,
+          lineItems: []
+        })
 
-        const participantId = participant.id
-        if (!participantOrders.has(participantId)) {
-          participantOrders.set(participantId, {
-            participant,
-            lineItems: []
+        // Add ALL swag items to each participant
+        for (const tourSwagItem of tourSwagItems || []) {
+          const swagItem = Array.isArray(tourSwagItem.swag_item) ? tourSwagItem.swag_item[0] : tourSwagItem.swag_item
+          
+          if (!swagItem || !swagItem.sku) continue
+
+          participantOrders.get(participant.id).lineItems.push({
+            sku: swagItem.sku,
+            quantity: tourSwagItem.qty,
+            price: "0.00" // Free swag
           })
         }
-
-        participantOrders.get(participantId).lineItems.push({
-          sku: swagItem.sku,
-          quantity: allocation.qty,
-          price: "0.00" // Free swag
-        })
       }
 
       // Create sales order for each participant
@@ -267,18 +287,53 @@ export class ShipHeroOrderService {
         }
       }
 
-      const swagAllocations = Array.isArray(tour.swag_allocations) ? tour.swag_allocations : []
+      // Get all swag items for the tour
+      const { data: tourSwagItems, error: swagError } = await this.supabase
+        .from('tour_swag_items')
+        .select(`
+          qty,
+          swag_item:swag_items(
+            id,
+            name,
+            sku
+          )
+        `)
+        .eq('tour_id', tourId)
 
-      // Aggregate quantities by SKU
+      if (swagError) {
+        return {
+          success: false,
+          message: 'Failed to fetch swag items',
+          errors: [swagError.message]
+        }
+      }
+
+      // Get participant count to calculate total quantities needed
+      const { data: participants, error: participantsError } = await this.supabase
+        .from('tour_participants')
+        .select('id')
+        .eq('tour_id', tourId)
+
+      if (participantsError) {
+        return {
+          success: false,
+          message: 'Failed to fetch participants',
+          errors: [participantsError.message]
+        }
+      }
+
+      const participantCount = participants?.length || 0
+
+      // Calculate total quantities needed (qty per item × number of participants)
       const skuTotals = new Map()
       
-      for (const allocation of swagAllocations) {
-        const swagItem = Array.isArray(allocation.swag_item) ? allocation.swag_item[0] : allocation.swag_item
+      for (const tourSwagItem of tourSwagItems || []) {
+        const swagItem = Array.isArray(tourSwagItem.swag_item) ? tourSwagItem.swag_item[0] : tourSwagItem.swag_item
         if (!swagItem?.sku) continue
 
         const sku = swagItem.sku
-        const currentQty = skuTotals.get(sku) || 0
-        skuTotals.set(sku, currentQty + allocation.qty)
+        const totalQty = tourSwagItem.qty * participantCount
+        skuTotals.set(sku, totalQty)
       }
 
       if (skuTotals.size === 0) {
