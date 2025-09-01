@@ -206,14 +206,35 @@ export class ShipHeroOrderService {
               type: 'sales_order',
               data: {
                 order_number: orderNumber,
-                order_name: orderName,
-                warehouse_id: warehouse.shiphero_warehouse_id,
+                shop_name: "Warehouse Tours",
+                fulfillment_status: "pending",
+                order_date: tourDate.toISOString(),
+                total_tax: "0.00",
+                subtotal: "0.00",
+                total_discounts: "0.00",
+                total_price: "0.00",
                 email: participant.email,
-                first_name: participant.first_name,
-                last_name: participant.last_name,
-                company: participant.company,
-                notes: warehouse.code ? `Airport Code: ${warehouse.code}` : undefined,
-                address: {
+                phone: "",
+                tags: warehouse.code ? [`Airport:${warehouse.code}`] : [],
+                shipping_lines: {
+                  title: "Standard Shipping",
+                  price: "0.00",
+                  carrier: "UPS",
+                  method: "Ground"
+                },
+                shipping_address: {
+                  first_name: participant.first_name,
+                  last_name: participant.last_name,
+                  company: participant.company || '',
+                  address1: warehouse.address,
+                  address2: warehouse.address2 || '',
+                  city: warehouse.city,
+                  state: warehouse.state,
+                  zip: warehouse.zip,
+                  country: warehouse.country || 'US',
+                  email: participant.email
+                },
+                billing_address: {
                   first_name: participant.first_name,
                   last_name: participant.last_name,
                   company: participant.company || '',
@@ -235,7 +256,7 @@ export class ShipHeroOrderService {
           if (salesOrderData.order_create?.order) {
             ordersCreated++
             const order = salesOrderData.order_create.order
-            console.log(`Created sales order for ${participant.first_name} ${participant.last_name}: ${order.order_number}`)
+            console.log(`Created sales order for ${participant.first_name} ${participant.last_name}: ${order.order_number} (ID: ${order.id})`)
             
             // Store ShipHero order details in database
             const shipheroOrderUrl = `https://app.shiphero.com/orders/${order.id}`
@@ -251,6 +272,8 @@ export class ShipHeroOrderService {
             if (updateError) {
               console.error('Failed to update participant with ShipHero order ID:', updateError)
               errors.push(`Order created but failed to save tracking info for ${participant.first_name} ${participant.last_name}`)
+            } else {
+              console.log(`Successfully stored order tracking info for ${participant.first_name} ${participant.last_name}`)
             }
           } else {
             const errorMsg = salesOrderData.errors?.[0]?.message || 'Unknown error'
@@ -427,9 +450,13 @@ export class ShipHeroOrderService {
           type: 'purchase_order',
           data: {
             po_number: poNumber,
-            po_name: poName,
+            po_date: tourDate.toISOString(),
+            subtotal: "0.00",
+            shipping_price: "0.00",
+            total_price: "0.00",
             warehouse_id: warehouse.shiphero_warehouse_id,
             vendor_id: vendorId,
+            fulfillment_status: "pending",
             line_items: lineItems
           }
         })
@@ -439,7 +466,7 @@ export class ShipHeroOrderService {
 
       if (purchaseOrderData.purchase_order_create?.purchase_order) {
         const purchaseOrder = purchaseOrderData.purchase_order_create.purchase_order
-        console.log(`Created purchase order: ${purchaseOrder.po_number}`)
+        console.log(`Created purchase order: ${purchaseOrder.po_number} (ID: ${purchaseOrder.id})`)
         
         // Store ShipHero purchase order details in database
         const shipheroPOUrl = `https://app.shiphero.com/purchase-orders/${purchaseOrder.id}`
@@ -462,6 +489,7 @@ export class ShipHeroOrderService {
           }
         }
         
+        console.log(`Successfully stored purchase order tracking info for tour ${tourId}`)
         return {
           success: true,
           message: `Created purchase order ${purchaseOrder.po_number}`,

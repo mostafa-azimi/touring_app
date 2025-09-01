@@ -22,10 +22,14 @@ export async function POST(request: NextRequest) {
             complexity
             order {
               id
+              legacy_id
               order_number
               shop_name
               email
               total_price
+              fulfillment_status
+              order_date
+              tags
             }
           }
         }
@@ -33,16 +37,19 @@ export async function POST(request: NextRequest) {
       variables = { data }
     } else if (type === 'purchase_order') {
       query = `
-        mutation CreatePurchaseOrder($data: PurchaseOrderCreateInput!) {
+        mutation CreatePurchaseOrder($data: CreatePurchaseOrderInput!) {
           purchase_order_create(data: $data) {
             request_id
             complexity
             purchase_order {
               id
+              legacy_id
               po_number
               warehouse_id
               subtotal
               total_price
+              status
+              po_date
             }
           }
         }
