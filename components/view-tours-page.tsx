@@ -102,7 +102,22 @@ export function ViewToursPage() {
         .order("time", { ascending: false })
 
       if (error) throw error
-      setTours(data || [])
+      // Fix: Supabase returns warehouse, participants, swag_allocations as arrays due to the select syntax.
+      // We need to flatten those to objects/arrays as expected by the Tour type.
+      setTours(
+        (data || []).map((tour: any) => ({
+          ...tour,
+          warehouse: Array.isArray(tour.warehouse) ? tour.warehouse[0] : tour.warehouse,
+          participants: Array.isArray(tour.participants) ? tour.participants : [],
+          swag_allocations: Array.isArray(tour.swag_allocations)
+            ? tour.swag_allocations.map((alloc: any) => ({
+                ...alloc,
+                participant: Array.isArray(alloc.participant) ? alloc.participant[0] : alloc.participant,
+                swag_item: Array.isArray(alloc.swag_item) ? alloc.swag_item[0] : alloc.swag_item,
+              }))
+            : [],
+        }))
+      )
     } catch (error) {
       toast({
         title: "Error",
