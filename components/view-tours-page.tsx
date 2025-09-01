@@ -19,6 +19,9 @@ interface Tour {
   notes: string | null
   status?: string
   created_at: string
+  shiphero_purchase_order_id?: string
+  shiphero_purchase_order_number?: string
+  shiphero_purchase_order_url?: string
   warehouse: {
     id: string
     name: string
@@ -42,6 +45,9 @@ interface Tour {
     email: string
     company: string | null
     title: string | null
+    shiphero_sales_order_id?: string
+    shiphero_sales_order_number?: string
+    shiphero_sales_order_url?: string
   }>
   swag_allocations: Array<{
     id: string
@@ -103,9 +109,12 @@ export function ViewToursPage() {
           notes,
           status,
           created_at,
+          shiphero_purchase_order_id,
+          shiphero_purchase_order_number,
+          shiphero_purchase_order_url,
           warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
           host:hosts(id, first_name, last_name, email),
-          participants:tour_participants(id, name, email, company, title),
+          participants:tour_participants(id, name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url),
           swag_allocations:tour_swag_allocations(
             id,
             quantity,
@@ -313,6 +322,18 @@ export function ViewToursPage() {
                             <MapPin className="h-3 w-3" />
                             {tour.warehouse.address}
                           </div>
+                          {tour.shiphero_purchase_order_url && (
+                            <div className="mt-1">
+                              <a 
+                                href={tour.shiphero_purchase_order_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 text-xs underline"
+                              >
+                                PO: {tour.shiphero_purchase_order_number || 'View Order'}
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -691,6 +712,18 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">{participant.email}</p>
+                    {participant.shiphero_sales_order_url && (
+                      <div className="mt-1">
+                        <a 
+                          href={participant.shiphero_sales_order_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-xs underline"
+                        >
+                          SO: {participant.shiphero_sales_order_number || 'View Order'}
+                        </a>
+                      </div>
+                    )}
                     {participant.company && (
                       <p className="text-sm text-muted-foreground">{participant.company}</p>
                     )}

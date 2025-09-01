@@ -232,9 +232,28 @@ export class ShipHeroOrderService {
 
           if (salesOrderData.order_create?.order) {
             ordersCreated++
-            console.log(`Created sales order for ${participant.first_name} ${participant.last_name}: ${salesOrderData.order_create.order.order_number}`)
+            const order = salesOrderData.order_create.order
+            console.log(`Created sales order for ${participant.first_name} ${participant.last_name}: ${order.order_number}`)
+            
+            // Store ShipHero order details in database
+            const shipheroOrderUrl = `https://app.shiphero.com/orders/${order.id}`
+            const { error: updateError } = await this.supabase
+              .from('tour_participants')
+              .update({
+                shiphero_sales_order_id: order.id,
+                shiphero_sales_order_number: order.order_number,
+                shiphero_sales_order_url: shipheroOrderUrl
+              })
+              .eq('id', participantId)
+            
+            if (updateError) {
+              console.error('Failed to update participant with ShipHero order ID:', updateError)
+              errors.push(`Order created but failed to save tracking info for ${participant.first_name} ${participant.last_name}`)
+            }
           } else {
-            errors.push(`Failed to create order for ${participant.first_name} ${participant.last_name}`)
+            const errorMsg = salesOrderData.errors?.[0]?.message || 'Unknown error'
+            errors.push(`Failed to create order for ${participant.first_name} ${participant.last_name}: ${errorMsg}`)
+            console.error('Sales order creation failed:', salesOrderData)
           }
 
         } catch (error) {
@@ -417,17 +436,43 @@ export class ShipHeroOrderService {
       const purchaseOrderData = await purchaseOrderResult.json()
 
       if (purchaseOrderData.purchase_order_create?.purchase_order) {
+        const purchaseOrder = purchaseOrderData.purchase_order_create.purchase_order
+        console.log(`Created purchase order: ${purchaseOrder.po_number}`)
+        
+        // Store ShipHero purchase order details in database
+        const shipheroPOUrl = `https://app.shiphero.com/purchase-orders/${purchaseOrder.id}`
+        const { error: updateError } = await this.supabase
+          .from('tours')
+          .update({
+            shiphero_purchase_order_id: purchaseOrder.id,
+            shiphero_purchase_order_number: purchaseOrder.po_number,
+            shiphero_purchase_order_url: shipheroPOUrl
+          })
+          .eq('id', tourId)
+        
+        if (updateError) {
+          console.error('Failed to update tour with ShipHero purchase order ID:', updateError)
+          return {
+            success: true,
+            message: `Created purchase order ${purchaseOrder.po_number} but failed to save tracking info`,
+            poNumber: purchaseOrder.po_number,
+            errors: ['Order created but failed to save tracking info']
+          }
+        }
+        
         return {
           success: true,
-          message: `Created purchase order ${purchaseOrderData.purchase_order_create.purchase_order.po_number}`,
-          poNumber: purchaseOrderData.purchase_order_create.purchase_order.po_number,
+          message: `Created purchase order ${purchaseOrder.po_number}`,
+          poNumber: purchaseOrder.po_number,
           errors: []
         }
       } else {
+        const errorMsg = purchaseOrderData.errors?.[0]?.message || 'Unknown error'
+        console.error('Purchase order creation failed:', purchaseOrderData)
         return {
           success: false,
-          message: 'Failed to create purchase order',
-          errors: ['Purchase order creation failed']
+          message: `Failed to create purchase order: ${errorMsg}`,
+          errors: [`Purchase order creation failed: ${errorMsg}`]
         }
       }
 
