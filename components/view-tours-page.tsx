@@ -30,6 +30,12 @@ interface Tour {
     zip?: string
     country?: string
   }
+  host?: {
+    id: string
+    first_name: string
+    last_name: string
+    email: string
+  }
   participants: Array<{
     id: string
     name: string
@@ -98,6 +104,7 @@ export function ViewToursPage() {
           status,
           created_at,
           warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
+          host:hosts(id, first_name, last_name, email),
           participants:tour_participants(id, name, email, company, title),
           swag_allocations:tour_swag_allocations(
             id,
@@ -614,6 +621,13 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
               )}
             </div>
           </div>
+          {tour.host && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Host</p>
+              <p className="font-medium">{tour.host.first_name} {tour.host.last_name}</p>
+              <p className="text-sm text-muted-foreground">{tour.host.email}</p>
+            </div>
+          )}
           {tour.notes && (
             <div>
               <p className="text-sm font-medium text-muted-foreground">Notes</p>
@@ -628,14 +642,25 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Participants ({tour.participants.length})
+            Participants ({tour.participants.length + (tour.host ? 1 : 0)})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {tour.participants.length === 0 ? (
+          {tour.participants.length === 0 && !tour.host ? (
             <p className="text-sm text-muted-foreground">No participants registered</p>
           ) : (
             <div className="space-y-3">
+              {/* Show host first if exists */}
+              {tour.host && (
+                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="grid gap-1">
+                    <p className="font-medium">{tour.host.first_name} {tour.host.last_name}</p>
+                    <p className="text-sm text-muted-foreground">{tour.host.email}</p>
+                  </div>
+                  <Badge variant="default" className="bg-blue-600">Host</Badge>
+                </div>
+              )}
+              {/* Show regular participants */}
               {tour.participants.map((participant) => (
                 <div key={participant.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div className="grid gap-1">

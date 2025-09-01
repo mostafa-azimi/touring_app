@@ -97,6 +97,7 @@ export class ShipHeroOrderService {
       }
 
       const participants = Array.isArray(tour.participants) ? tour.participants : []
+      const host = Array.isArray(tour.host) ? tour.host[0] : tour.host
 
       let ordersCreated = 0
       const errors: string[] = []
@@ -123,9 +124,10 @@ export class ShipHeroOrderService {
         }
       }
 
-      // Create orders for each participant with ALL swag items
+      // Create orders for each participant AND the host with ALL swag items
       const participantOrders = new Map()
       
+      // Add all participants
       for (const participant of participants) {
         participantOrders.set(participant.id, {
           participant,
@@ -139,6 +141,34 @@ export class ShipHeroOrderService {
           if (!swagItem || !swagItem.sku) continue
 
           participantOrders.get(participant.id).lineItems.push({
+            sku: swagItem.sku,
+            quantity: tourSwagItem.qty,
+            price: "0.00" // Free swag
+          })
+        }
+      }
+
+      // Add host as a participant if host exists
+      if (host) {
+        participantOrders.set(`host-${host.id}`, {
+          participant: {
+            id: `host-${host.id}`,
+            first_name: host.first_name,
+            last_name: host.last_name,
+            email: host.email,
+            company: null,
+            title: null
+          },
+          lineItems: []
+        })
+
+        // Add ALL swag items to the host
+        for (const tourSwagItem of tourSwagItems || []) {
+          const swagItem = Array.isArray(tourSwagItem.swag_item) ? tourSwagItem.swag_item[0] : tourSwagItem.swag_item
+          
+          if (!swagItem || !swagItem.sku) continue
+
+          participantOrders.get(`host-${host.id}`).lineItems.push({
             sku: swagItem.sku,
             quantity: tourSwagItem.qty,
             price: "0.00" // Free swag
@@ -308,7 +338,7 @@ export class ShipHeroOrderService {
         }
       }
 
-      // Get participant count to calculate total quantities needed
+      // Get participant count to calculate total quantities needed (including host)
       const { data: participants, error: participantsError } = await this.supabase
         .from('tour_participants')
         .select('id')
@@ -322,7 +352,7 @@ export class ShipHeroOrderService {
         }
       }
 
-      const participantCount = participants?.length || 0
+      const participantCount = (participants?.length || 0) + 1 // +1 for the host
 
       // Calculate total quantities needed (qty per item × number of participants)
       const skuTotals = new Map()
