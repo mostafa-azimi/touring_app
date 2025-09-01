@@ -200,23 +200,67 @@ export function ShipHeroTab() {
 
   const handleCreateAdhocOrder = async () => {
     console.log('🚀🚀🚀 handleCreateAdhocOrder called with data:', adhocOrderData)
-    alert('Function called! Check console for details.')
     
-    if (!adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0) {
-      console.log('Validation failed:', {
-        warehouseId: adhocOrderData.warehouseId,
-        hostId: adhocOrderData.hostId,
-        swagItemIds: adhocOrderData.swagItemIds
-      })
-      toast({
-        title: "Missing Information",
-        description: "Please select a warehouse, host, and at least one swag item",
-        variant: "destructive",
-      })
-      return
+    // Let's test with hardcoded values first to see if the API works
+    const testOrder = {
+      order_number: `TEST-${Date.now()}`,
+      shop_name: "Warehouse Tours - Test",
+      fulfillment_status: "pending",
+      order_date: new Date().toISOString().split('T')[0],
+      total_tax: "0.00",
+      subtotal: "0.00",
+      total_discounts: "0.00",
+      total_price: "0.00",
+      shipping_lines: {
+        title: "Generic Shipping",
+        price: "0.00",
+        carrier: "Generic Carrier",
+        method: "Generic Label"
+      },
+      shipping_address: {
+        first_name: "Test",
+        last_name: "User",
+        company: "Test Company",
+        address1: "123 Test St",
+        address2: "",
+        city: "Test City",
+        state: "CA",
+        state_code: "CA",
+        zip: "90210",
+        country: "US",
+        country_code: "US",
+        email: "test@example.com",
+        phone: "5555555555"
+      },
+      billing_address: {
+        first_name: "Test",
+        last_name: "User",
+        company: "Test Company",
+        address1: "123 Test St",
+        address2: "",
+        city: "Test City",
+        state: "CA",
+        state_code: "CA",
+        zip: "90210",
+        country: "US",
+        country_code: "US",
+        email: "test@example.com",
+        phone: "5555555555"
+      },
+      line_items: [{
+        sku: "TEST-SKU-123",
+        partner_line_item_id: `TEST-${Date.now()}-1`,
+        quantity: 1,
+        price: "0.00",
+        product_name: "Test Product",
+        fulfillment_status: "pending",
+        quantity_pending_fulfillment: 1,
+        warehouse_id: "V2FyZWhvdXNlOjExOTM0Mw==" // This is from your warehouse data
+      }],
+      required_ship_date: new Date().toISOString().split('T')[0]
     }
     
-    console.log('Validation passed, proceeding with order creation')
+    console.log('🧪 Testing with hardcoded order data:', JSON.stringify(testOrder, null, 2))
 
     setIsCreatingOrder(true)
     setLastError(null) // Clear previous errors
@@ -341,10 +385,10 @@ export function ShipHeroTab() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`
           },
-          body: JSON.stringify({
-            type: 'sales_order',
-            data: orderData
-          })
+                  body: JSON.stringify({
+          type: 'sales_order',
+          data: testOrder
+        })
         })
         console.log('Order response status:', orderResponse.status, orderResponse.statusText)
       } catch (fetchError) {
