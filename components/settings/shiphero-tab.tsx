@@ -219,7 +219,7 @@ export function ShipHeroTab() {
                     )}
                   </div>
                   
-                  {testResults.data?.account?.data?.warehouses && testResults.data.account.data.warehouses.length > 0 && (
+                  {testResults.data?.account?.data?.warehouses && Array.isArray(testResults.data.account.data.warehouses) && testResults.data.account.data.warehouses.length > 0 && (
                     <div className="border rounded-lg overflow-hidden bg-white">
                       <Table>
                         <TableHeader>
@@ -231,25 +231,38 @@ export function ShipHeroTab() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {testResults.data.account.data.warehouses.map((warehouse: any, index: number) => (
-                            <TableRow key={warehouse.id || index}>
-                              <TableCell className="font-mono text-xs">{warehouse.id}</TableCell>
-                              <TableCell className="font-medium">{warehouse.name}</TableCell>
-                              <TableCell className="font-mono text-xs">{warehouse.code || '-'}</TableCell>
-                              <TableCell className="text-sm">
-                                {warehouse.address ? (
-                                  <div>
-                                    <div>{warehouse.address}</div>
-                                    {warehouse.city && warehouse.state && (
-                                      <div className="text-muted-foreground">
-                                        {warehouse.city}, {warehouse.state} {warehouse.zip}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : '-'}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                          {testResults.data.account.data.warehouses.map((warehouse: any, index: number) => {
+                            // Ensure warehouse is an object and has the expected structure
+                            if (!warehouse || typeof warehouse !== 'object') {
+                              return (
+                                <TableRow key={index}>
+                                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                    Invalid warehouse data
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            }
+                            
+                            return (
+                              <TableRow key={warehouse.id || index}>
+                                <TableCell className="font-mono text-xs">{String(warehouse.id || '-')}</TableCell>
+                                <TableCell className="font-medium">{String(warehouse.name || '-')}</TableCell>
+                                <TableCell className="font-mono text-xs">{String(warehouse.code || '-')}</TableCell>
+                                <TableCell className="text-sm">
+                                  {warehouse.address ? (
+                                    <div>
+                                      <div>{String(warehouse.address)}</div>
+                                      {warehouse.city && warehouse.state && (
+                                        <div className="text-muted-foreground">
+                                          {String(warehouse.city)}, {String(warehouse.state)} {String(warehouse.zip || '')}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : '-'}
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
                         </TableBody>
                       </Table>
                     </div>
