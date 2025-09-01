@@ -95,7 +95,7 @@ export function ShipHeroTab() {
         <CardHeader>
           <CardTitle>ShipHero API</CardTitle>
           <CardDescription>
-            Manage your ShipHero refresh token for order creation
+            Enter and manage your ShipHero refresh token
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -107,8 +107,12 @@ export function ShipHeroTab() {
                 type={showToken ? "text" : "password"}
                 placeholder="Enter your ShipHero refresh token..."
                 value={refreshToken}
-                onChange={(e) => setRefreshToken(e.target.value)}
+                onChange={(e) => {
+                  console.log('Input changed:', e.target.value)
+                  setRefreshToken(e.target.value)
+                }}
                 className="font-mono text-xs"
+                autoComplete="off"
               />
               <Button
                 variant="outline"
