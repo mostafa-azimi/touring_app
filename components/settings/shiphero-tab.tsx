@@ -246,6 +246,54 @@ export function ShipHeroTab() {
       // Generate order number
       const orderNumber = `ADHOC-${Date.now()}`
 
+      const orderData = {
+        order_number: orderNumber,
+        shop_name: "Warehouse Tours - Adhoc",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString(),
+        total_tax: "0.00",
+        subtotal: "0.00",
+        total_discounts: "0.00",
+        total_price: "0.00",
+        email: host.email,
+        phone: "",
+        tags: warehouse.code ? [`Airport:${warehouse.code}`, "Adhoc Order"] : ["Adhoc Order"],
+        notes: adhocOrderData.notes,
+        shipping_lines: {
+          title: "Generic Shipping",
+          price: "0.00",
+          carrier: "Generic Carrier",
+          method: "Generic Label"
+        },
+        shipping_address: {
+          first_name: warehouse.name,
+          last_name: "Warehouse",
+          company: warehouse.name,
+          address1: warehouse.address,
+          address2: warehouse.address2 || '',
+          city: warehouse.city,
+          state: warehouse.state,
+          zip: warehouse.zip,
+          country: warehouse.country || 'US',
+          email: host.email
+        },
+        billing_address: {
+          first_name: host.first_name,
+          last_name: host.last_name,
+          company: '',
+          address1: warehouse.address,
+          address2: warehouse.address2 || '',
+          city: warehouse.city,
+          state: warehouse.state,
+          zip: warehouse.zip,
+          country: warehouse.country || 'US',
+          email: host.email
+        },
+        line_items: lineItems
+      }
+
+      console.log('Creating adhoc order with data:', JSON.stringify(orderData, null, 2))
+
       // Create sales order
       const orderResponse = await fetch('/api/shiphero/orders', {
         method: 'POST',
@@ -255,57 +303,14 @@ export function ShipHeroTab() {
         },
         body: JSON.stringify({
           type: 'sales_order',
-          data: {
-            order_number: orderNumber,
-            shop_name: "Warehouse Tours - Adhoc",
-            fulfillment_status: "pending",
-            order_date: new Date().toISOString(),
-            total_tax: "0.00",
-            subtotal: "0.00",
-            total_discounts: "0.00",
-            total_price: "0.00",
-            email: host.email,
-            phone: "",
-            tags: warehouse.code ? [`Airport:${warehouse.code}`, "Adhoc Order"] : ["Adhoc Order"],
-            notes: adhocOrderData.notes,
-            shipping_lines: {
-              title: "Generic Shipping",
-              price: "0.00",
-              carrier: "Generic Carrier",
-              method: "Generic Label"
-            },
-            shipping_address: {
-              first_name: warehouse.name,
-              last_name: "Warehouse",
-              company: warehouse.name,
-              address1: warehouse.address,
-              address2: warehouse.address2 || '',
-              city: warehouse.city,
-              state: warehouse.state,
-              zip: warehouse.zip,
-              country: warehouse.country || 'US',
-              email: host.email
-            },
-            billing_address: {
-              first_name: host.first_name,
-              last_name: host.last_name,
-              company: '',
-              address1: warehouse.address,
-              address2: warehouse.address2 || '',
-              city: warehouse.city,
-              state: warehouse.state,
-              zip: warehouse.zip,
-              country: warehouse.country || 'US',
-              email: host.email
-            },
-            line_items: lineItems
-          }
+          data: orderData
         })
       })
 
       if (!orderResponse.ok) {
         const errorData = await orderResponse.json()
-        throw new Error(errorData.error || 'Failed to create order')
+        console.error('Order creation error:', errorData)
+        throw new Error(errorData.error || errorData.details || 'Failed to create order')
       }
 
       const orderData = await orderResponse.json()

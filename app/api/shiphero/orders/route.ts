@@ -11,6 +11,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { type, data } = body
 
+    console.log('ShipHero Orders API - Request:', {
+      type,
+      data: JSON.stringify(data, null, 2)
+    })
+
     let query: string
     let variables: any
 
@@ -59,6 +64,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid order type' }, { status: 400 })
     }
 
+    console.log('ShipHero Orders API - GraphQL Query:', query)
+    console.log('ShipHero Orders API - Variables:', JSON.stringify(variables, null, 2))
+
     const response = await fetch('https://public-api.shiphero.com/graphql', {
       method: 'POST',
       headers: {
@@ -68,8 +76,11 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ query, variables })
     })
 
+    console.log('ShipHero Orders API - Response Status:', response.status, response.statusText)
+
     if (!response.ok) {
       const errorText = await response.text()
+      console.log('ShipHero Orders API - Error Response:', errorText)
       return NextResponse.json(
         { error: `ShipHero API error: ${response.status} ${response.statusText}`, details: errorText },
         { status: response.status }
@@ -77,6 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json()
+    console.log('ShipHero Orders API - Success Response:', JSON.stringify(result, null, 2))
     return NextResponse.json(result)
 
   } catch (error: any) {
