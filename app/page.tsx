@@ -5,7 +5,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-foreground">Warehouse Tours</h1>
+          <h1 className="text-2xl font-bold text-foreground">Warehouse Tours (Preview)</h1>
         </div>
       </header>
 
