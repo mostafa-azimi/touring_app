@@ -223,6 +223,7 @@ export function ShipHeroTab() {
                 <Label>Current Access Token</Label>
                 <div className="flex items-center gap-2">
                   <Input
+                    id="access-token"
                     type="password"
                     value={accessToken}
                     readOnly
@@ -246,6 +247,7 @@ export function ShipHeroTab() {
                 <Label>Current Refresh Token</Label>
                 <div className="flex items-center gap-2">
                   <Input
+                    id="refresh-token"
                     type="password"
                     value={refreshToken}
                     readOnly
@@ -274,6 +276,7 @@ export function ShipHeroTab() {
                 <Label className="text-green-700">New Access Token</Label>
                 <div className="flex items-center gap-2">
                   <Input
+                    id="new-access-token"
                     type="password"
                     value={newTokens.access_token || ''}
                     readOnly
@@ -297,6 +300,7 @@ export function ShipHeroTab() {
                   <Label className="text-green-700">New Refresh Token</Label>
                   <div className="flex items-center gap-2">
                     <Input
+                      id="new-refresh-token"
                       type="password"
                       value={newTokens.refresh_token}
                       readOnly
