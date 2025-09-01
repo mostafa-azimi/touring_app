@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
 export function ShipHeroTab() {
   const [refreshToken, setRefreshToken] = useState("")
@@ -37,25 +38,39 @@ export function ShipHeroTab() {
 
   const loadAdhocOrderData = async () => {
     try {
-      // Load warehouses, hosts, and swag items from Supabase
+      const supabase = createClient()
+      
+      // Load warehouses, hosts, and swag items directly from Supabase
       const [warehousesRes, hostsRes, swagItemsRes] = await Promise.all([
-        fetch('/api/supabase/warehouses'),
-        fetch('/api/supabase/hosts'),
-        fetch('/api/supabase/swag-items')
+        supabase.from('warehouses').select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id').order('name'),
+        supabase.from('team_members').select('id, first_name, last_name, email').order('first_name'),
+        supabase.from('swag_items').select('id, name, sku, vendor_id').order('name')
       ])
 
-      const warehousesData = await warehousesRes.json()
-      const hostsData = await hostsRes.json()
-      const swagItemsData = await swagItemsRes.json()
+      if (warehousesRes.error) {
+        throw new Error(`Warehouses error: ${warehousesRes.error.message}`)
+      }
+      if (hostsRes.error) {
+        throw new Error(`Hosts error: ${hostsRes.error.message}`)
+      }
+      if (swagItemsRes.error) {
+        throw new Error(`Swag items error: ${swagItemsRes.error.message}`)
+      }
 
-      setWarehouses(warehousesData.data || [])
-      setHosts(hostsData.data || [])
-      setSwagItems(swagItemsData.data || [])
-    } catch (error) {
+      setWarehouses(warehousesRes.data || [])
+      setHosts(hostsRes.data || [])
+      setSwagItems(swagItemsRes.data || [])
+      
+      console.log('Loaded data:', {
+        warehouses: warehousesRes.data?.length || 0,
+        hosts: hostsRes.data?.length || 0,
+        swagItems: swagItemsRes.data?.length || 0
+      })
+    } catch (error: any) {
       console.error('Error loading adhoc order data:', error)
       toast({
         title: "Error",
-        description: "Failed to load data for adhoc order",
+        description: `Failed to load data: ${error.message}`,
         variant: "destructive",
       })
     }
