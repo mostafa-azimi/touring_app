@@ -90,11 +90,13 @@ export function WarehousesTab() {
       console.log("Submitting warehouse data:", formData)
       
       if (editingWarehouse) {
-        const { error } = await supabase.from("warehouses").update(formData).eq("id", editingWarehouse.id)
+        const { data, error } = await supabase.from("warehouses").update(formData).eq("id", editingWarehouse.id).select()
+        console.log("Update result:", { data, error })
         if (error) throw error
         toast({ title: "Success", description: "Warehouse updated successfully" })
       } else {
-        const { error } = await supabase.from("warehouses").insert([formData])
+        const { data, error } = await supabase.from("warehouses").insert([formData]).select()
+        console.log("Insert result:", { data, error })
         if (error) {
           console.error("Warehouse insert error:", error)
           throw error
