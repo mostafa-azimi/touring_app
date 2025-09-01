@@ -312,19 +312,31 @@ export function ShipHeroTab() {
       }
 
       console.log('Creating adhoc order with data:', JSON.stringify(orderData, null, 2))
+      console.log('Selected warehouse:', warehouse)
+      console.log('Selected host:', host)
+      console.log('Selected swag items:', selectedSwagItems)
 
       // Create sales order
-      const orderResponse = await fetch('/api/shiphero/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-          type: 'sales_order',
-          data: orderData
+      console.log('Making request to /api/shiphero/orders with access token:', accessToken ? 'Present' : 'Missing')
+      
+      let orderResponse
+      try {
+        orderResponse = await fetch('/api/shiphero/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({
+            type: 'sales_order',
+            data: orderData
+          })
         })
-      })
+        console.log('Order response status:', orderResponse.status, orderResponse.statusText)
+      } catch (fetchError) {
+        console.error('Fetch error:', fetchError)
+        throw new Error(`Network error: ${fetchError.message}`)
+      }
 
       if (!orderResponse.ok) {
         const errorData = await orderResponse.json()
