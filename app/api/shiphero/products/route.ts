@@ -8,14 +8,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access token required' }, { status: 401 })
     }
 
-    // Query products with SWAG in the SKU
+    // Query all products (let's see what's available)
     const query = `
       query {
         account {
           request_id
           complexity
           data {
-            products(first: 100, filter: { sku: { contains: "SWAG" } }) {
+            products(first: 50) {
               edges {
                 node {
                   id
