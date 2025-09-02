@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { RefreshCw, TestTube, Plus, ShoppingCart } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -26,6 +27,7 @@ export function ShipHeroTab() {
     isExpired: boolean;
   } | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
   const [showAdhocOrder, setShowAdhocOrder] = useState(false)
@@ -201,11 +203,8 @@ export function ShipHeroTab() {
           // Calculate and set countdown (should be 28 days)
           calculateCountdown(expirationDate.toISOString())
           
-          toast({
-            title: "✅ New Access Token Generated",
-            description: `Token will be valid for 28 days (expires: ${expirationDate.toLocaleDateString()})`,
-            duration: 6000,
-          })
+          // Show success modal
+          setShowSuccessModal(true)
         } else {
           throw new Error('No access token received from refresh')
         }
@@ -1407,6 +1406,61 @@ export function ShipHeroTab() {
           
         </CardContent>
       </Card>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-green-600 text-2xl">🎉</span>
+              Access Token Generated Successfully!
+            </DialogTitle>
+            <DialogDescription className="space-y-3">
+              <p>Your new ShipHero access token has been generated and is now active.</p>
+              
+              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-green-600 font-medium">✅ Token Details:</span>
+                </div>
+                <ul className="text-sm space-y-1 text-green-700 dark:text-green-300">
+                  <li>• <strong>Validity:</strong> 28 days from now</li>
+                  <li>• <strong>Expires:</strong> {tokenExpiresAt ? new Date(tokenExpiresAt).toLocaleDateString('en-US', { 
+                    weekday: 'long',
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : 'Unknown'}</li>
+                  <li>• <strong>Status:</strong> Active & ready for use</li>
+                </ul>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-blue-600 font-medium">⏰ Live Countdown:</span>
+                </div>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  The countdown timer has been reset and is now actively tracking your token expiration in real-time!
+                </p>
+              </div>
+
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                You can now use all ShipHero features. Remember to generate a new token before this one expires!
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-end gap-2 mt-4">
+            <Button 
+              onClick={() => setShowSuccessModal(false)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Awesome! Let's Go 🚀
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
