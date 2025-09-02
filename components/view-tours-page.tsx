@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, Edit, X, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
@@ -485,19 +485,7 @@ export function ViewToursPage() {
                               </SheetContent>
                             </Sheet>
                             
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              title="Edit Tour"
-                              onClick={() => {
-                                toast({
-                                  title: "Edit Tour",
-                                  description: "Tour editing functionality will be added in a future update",
-                                })
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
+
                             
                             {tour.status !== 'cancelled' && (
                               <Button 
