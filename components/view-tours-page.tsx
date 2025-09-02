@@ -155,49 +155,7 @@ export function ViewToursPage() {
     }
   }
 
-  const handleValidateTour = async (tourId: string) => {
-    try {
-      // Update tour status to validated
-      const { error: updateError } = await supabase
-        .from('tours')
-        .update({ status: 'validated' })
-        .eq('id', tourId)
-
-      if (updateError) {
-        throw updateError
-      }
-
-      // Create both sales orders and purchase order
-      const orderService = new ShipHeroOrderService()
-      const [salesResult, poResult] = await Promise.all([
-        orderService.createSalesOrdersForTour(tourId),
-        orderService.createPurchaseOrderForTour(tourId)
-      ])
-
-      if (salesResult.success && poResult.success) {
-        toast({
-          title: "Tour Validated Successfully!",
-          description: `Created ${salesResult.ordersCreated} sales orders and 1 purchase order`,
-        })
-        // Refresh tours to show updated status
-        fetchTours()
-      } else {
-        const errors = [...(salesResult.errors || []), ...(poResult.errors || [])]
-        toast({
-          title: "Tour Validated with Errors",
-          description: `Tour validated but some orders failed: ${errors.join(', ')}`,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error('Error validating tour:', error)
-      toast({
-        title: "Error",
-        description: "Failed to validate tour",
-        variant: "destructive",
-      })
-    }
-  }
+  // REMOVED: handleValidateTour function - tours now go directly to finalize
 
   const handleCancelTour = async (tourId: string) => {
     if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
@@ -406,20 +364,7 @@ export function ViewToursPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-2">
-                          {/* Primary Action - Validate Tour */}
-                          {tour.status !== 'validated' && tour.status !== 'cancelled' && (
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              onClick={() => handleValidateTour(tour.id)}
-                              className="w-full bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Validate Tour
-                            </Button>
-                          )}
-
-                          {/* Finalize Tour Action */}
+                          {/* Primary Action - Finalize Tour */}
                           {tour.status === 'scheduled' && (
                             <Button 
                               variant="default" 

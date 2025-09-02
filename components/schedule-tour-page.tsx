@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, X, Calendar, MapPin, Users, Package, Gift } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { allocateSwagToTour, getSwagAllocationPreview } from "@/lib/actions/swag-allocation"
+// Removed swag allocation imports - swag items will be added manually, not allocated automatically
 
 interface Warehouse {
   id: string
@@ -66,14 +66,6 @@ export function ScheduleTourPage() {
     fetchHosts()
   }, [])
 
-  useEffect(() => {
-    if (participants.length > 0) {
-      updateSwagPreview()
-    } else {
-      setSwagPreview([])
-    }
-  }, [participants.length])
-
   const fetchWarehouses = async () => {
     try {
       const { data, error } = await supabase.from("warehouses").select("id, name, code, address, address2, city, state, zip, country").order("name")
@@ -101,13 +93,6 @@ export function ScheduleTourPage() {
         description: "Failed to fetch hosts",
         variant: "destructive",
       })
-    }
-  }
-
-  const updateSwagPreview = async () => {
-    const result = await getSwagAllocationPreview(participants.length)
-    if (result.success) {
-      setSwagPreview(result.preview)
     }
   }
 
@@ -205,21 +190,10 @@ export function ScheduleTourPage() {
 
       if (participantError) throw participantError
 
-      const participantIds = insertedParticipants.map((p) => p.id)
-      const swagResult = await allocateSwagToTour(tourData.id, participantIds)
-
-      if (swagResult.success) {
-        toast({
-          title: "Success",
-          description: `Tour scheduled successfully with ${participants.length} participant${participants.length > 1 ? "s" : ""}. ${swagResult.message}`,
-        })
-      } else {
-        toast({
-          title: "Partial Success",
-          description: `Tour scheduled successfully, but swag allocation failed: ${swagResult.message}`,
-          variant: "destructive",
-        })
-      }
+      toast({
+        title: "Success",
+        description: `Tour scheduled successfully with ${participants.length} participant${participants.length > 1 ? "s" : ""}!`,
+      })
 
             // Reset form
       setFormData({ warehouse_id: "", host_id: "", date: "", time: "", notes: "" })
@@ -516,52 +490,7 @@ export function ScheduleTourPage() {
               )}
             </div>
 
-            {swagPreview.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Gift className="h-5 w-5" />
-                    <h3 className="text-lg font-semibold">Swag Allocation Preview</h3>
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <Package className="h-3 w-3" />
-                      Auto-assigned
-                    </Badge>
-                  </div>
 
-                  <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                    <CardHeader>
-                      <CardTitle className="text-base text-green-800 dark:text-green-200">
-                        Automatic Swag Distribution
-                      </CardTitle>
-                      <CardDescription className="text-green-700 dark:text-green-300">
-                        The following swag items will be automatically distributed to participants when the tour is
-                        created
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {swagPreview.map((item, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-white/50 rounded-lg">
-                            <div>
-                              <p className="font-medium">{item.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.itemsPerParticipant} per participant
-                                {item.participantsGettingExtra > 0 &&
-                                  ` (+1 extra for ${item.participantsGettingExtra} participant${item.participantsGettingExtra > 1 ? "s" : ""})`}
-                              </p>
-                            </div>
-                            <Badge variant="outline">
-                              {item.totalToAllocate} / {item.totalAvailable} available
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </>
-            )}
 
             <Separator />
 

@@ -18,12 +18,18 @@ export class ShipHeroOrderService {
 
   /**
    * Get a fresh access token using the stored refresh token
+   * This method works the same way as the adhoc order functionality
    */
   private async getAccessToken(): Promise<string> {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('ShipHero order service must be used in browser environment. Please configure access tokens in Settings → ShipHero tab.')
+    }
+
     const refreshToken = localStorage.getItem('shiphero_refresh_token')
     
     if (!refreshToken) {
-      throw new Error('ShipHero access token and refresh token are required. Please configure them in Settings → ShipHero tab.')
+      throw new Error('ShipHero refresh token is required. Please configure it in Settings → ShipHero tab.')
     }
 
     const tokenResponse = await fetch('/api/shiphero/refresh-token', {
