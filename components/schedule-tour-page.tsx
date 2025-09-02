@@ -401,7 +401,7 @@ export function ScheduleTourPage() {
                   value={formData.warehouse_id}
                   onValueChange={(value) => setFormData({ ...formData, warehouse_id: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="warehouse">
                     <SelectValue placeholder="Select a warehouse" />
                   </SelectTrigger>
                   <SelectContent>
@@ -434,7 +434,7 @@ export function ScheduleTourPage() {
                   value={formData.host_id}
                   onValueChange={(value) => setFormData({ ...formData, host_id: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="host">
                     <SelectValue placeholder="Select tour host" />
                   </SelectTrigger>
                   <SelectContent>

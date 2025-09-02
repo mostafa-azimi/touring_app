@@ -990,7 +990,7 @@ export function ShipHeroTab() {
                     value={adhocOrderData.warehouseId}
                     onValueChange={(value) => setAdhocOrderData({ ...adhocOrderData, warehouseId: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="warehouse-select">
                       <SelectValue placeholder="Select warehouse" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1009,7 +1009,7 @@ export function ShipHeroTab() {
                     value={adhocOrderData.hostId}
                     onValueChange={(value) => setAdhocOrderData({ ...adhocOrderData, hostId: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="host-select">
                       <SelectValue placeholder="Select host" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1172,7 +1172,7 @@ export function ShipHeroTab() {
                     value={adhocPOData.warehouseId}
                     onValueChange={(value) => setAdhocPOData({ ...adhocPOData, warehouseId: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="po-warehouse-select">
                       <SelectValue placeholder="Select warehouse" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1191,7 +1191,7 @@ export function ShipHeroTab() {
                     value={adhocPOData.hostId}
                     onValueChange={(value) => setAdhocPOData({ ...adhocPOData, hostId: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="po-host-select">
                       <SelectValue placeholder="Select host" />
                     </SelectTrigger>
                     <SelectContent>
