@@ -21,8 +21,68 @@ export async function POST(request: NextRequest) {
 
     if (type === 'sales_order') {
       query = `
-        mutation CreateOrder($data: OrderCreateInput!) {
-          order_create(data: $data) {
+        mutation {
+          order_create(
+            data: {
+              order_number: "${data.order_number}"
+              shop_name: "${data.shop_name}"
+              fulfillment_status: "${data.fulfillment_status}"
+              order_date: "${data.order_date}"
+              total_tax: "${data.total_tax}"
+              subtotal: "${data.subtotal}"
+              total_discounts: "${data.total_discounts}"
+              total_price: "${data.total_price}"
+              shipping_lines: {
+                title: "${data.shipping_lines.title}"
+                price: "${data.shipping_lines.price}"
+                carrier: "${data.shipping_lines.carrier}"
+                method: "${data.shipping_lines.method}"
+              }
+              shipping_address: {
+                first_name: "${data.shipping_address.first_name}"
+                last_name: "${data.shipping_address.last_name}"
+                company: "${data.shipping_address.company}"
+                address1: "${data.shipping_address.address1}"
+                address2: "${data.shipping_address.address2}"
+                city: "${data.shipping_address.city}"
+                state: "${data.shipping_address.state}"
+                state_code: "${data.shipping_address.state_code}"
+                zip: "${data.shipping_address.zip}"
+                country: "${data.shipping_address.country}"
+                country_code: "${data.shipping_address.country_code}"
+                email: "${data.shipping_address.email}"
+                phone: "${data.shipping_address.phone}"
+              }
+              billing_address: {
+                first_name: "${data.billing_address.first_name}"
+                last_name: "${data.billing_address.last_name}"
+                company: "${data.billing_address.company}"
+                address1: "${data.billing_address.address1}"
+                address2: "${data.billing_address.address2}"
+                city: "${data.billing_address.city}"
+                state: "${data.billing_address.state}"
+                state_code: "${data.billing_address.state_code}"
+                zip: "${data.billing_address.zip}"
+                country: "${data.billing_address.country}"
+                country_code: "${data.billing_address.country_code}"
+                email: "${data.billing_address.email}"
+                phone: "${data.billing_address.phone}"
+              }
+              line_items: [
+                ${data.line_items.map((item: any) => `{
+                  sku: "${item.sku}"
+                  partner_line_item_id: "${item.partner_line_item_id}"
+                  quantity: ${item.quantity}
+                  price: "${item.price}"
+                  product_name: "${item.product_name}"
+                  fulfillment_status: "${item.fulfillment_status}"
+                  quantity_pending_fulfillment: ${item.quantity_pending_fulfillment}
+                  warehouse_id: "${item.warehouse_id}"
+                }`).join(',')}
+              ]
+              required_ship_date: "${data.required_ship_date}"
+            }
+          ) {
             request_id
             complexity
             order {
@@ -39,7 +99,7 @@ export async function POST(request: NextRequest) {
           }
         }
       `
-      variables = { data }
+      variables = {}
     } else if (type === 'purchase_order') {
       query = `
         mutation CreatePurchaseOrder($data: CreatePurchaseOrderInput!) {
