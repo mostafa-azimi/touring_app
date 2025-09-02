@@ -414,7 +414,7 @@ export function ShipHeroTab() {
       const orderId = orderResult.data?.order_create?.order?.id
       const legacyId = orderResult.data?.order_create?.order?.legacy_id
       const createdOrderNumber = orderResult.data?.order_create?.order?.order_number || orderNumber
-      const shipheroLink = orderId ? `https://app.shiphero.com/orders/${orderId}` : null
+      const shipheroLink = legacyId ? `https://app.shiphero.com/dashboard/orders/details/${legacyId}` : null
       
       console.log('📦 Order created successfully!', {
         orderId,
@@ -431,13 +431,13 @@ export function ShipHeroTab() {
               <p className="font-semibold text-green-800">Order Details:</p>
               <p><strong>Order Number:</strong> {createdOrderNumber}</p>
               <p><strong>Host:</strong> {host.first_name} {host.last_name}</p>
-              {orderId && (
+              {legacyId && (
                 <p className="text-lg font-bold text-green-700">
-                  <strong>ShipHero Order ID:</strong> {orderId}
+                  <strong>ShipHero Order ID:</strong> {legacyId}
                 </p>
               )}
-              {legacyId && (
-                <p><strong>Legacy ID:</strong> {legacyId}</p>
+              {orderId && (
+                <p className="text-xs text-gray-600"><strong>Internal ID:</strong> {orderId}</p>
               )}
             </div>
             {shipheroLink ? (
@@ -453,7 +453,7 @@ export function ShipHeroTab() {
               <div className="p-2 bg-amber-50 border border-amber-200 rounded">
                 <p className="text-amber-700">
                   ⚠️ ShipHero link not available
-                  {orderId ? ` (Order ID: ${orderId})` : ' (check console for details)'}
+                  {legacyId ? ` (Order ID: ${legacyId})` : ' (check console for details)'}
                 </p>
               </div>
             )}
