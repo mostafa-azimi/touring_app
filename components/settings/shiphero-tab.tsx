@@ -20,10 +20,18 @@ export function ShipHeroTab() {
   const [testResults, setTestResults] = useState<any>(null)
   const [showAdhocOrder, setShowAdhocOrder] = useState(false)
   const [isCreatingOrder, setIsCreatingOrder] = useState(false)
+  const [showAdhocPO, setShowAdhocPO] = useState(false)
+  const [isCreatingPO, setIsCreatingPO] = useState(false)
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [hosts, setHosts] = useState<any[]>([])
   const [swagItems, setSwagItems] = useState<any[]>([])
   const [adhocOrderData, setAdhocOrderData] = useState({
+    warehouseId: '',
+    hostId: '',
+    swagItemIds: [] as string[],
+    notes: ''
+  })
+  const [adhocPOData, setAdhocPOData] = useState({
     warehouseId: '',
     hostId: '',
     swagItemIds: [] as string[],
@@ -496,6 +504,191 @@ export function ShipHeroTab() {
     }
   }
 
+  const handleCreateAdhocPO = async () => {
+    console.log('🚀🚀🚀 handleCreateAdhocPO called with data:', adhocPOData)
+    
+    if (!adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.swagItemIds.length === 0) {
+      console.log('PO Validation failed:', {
+        warehouseId: adhocPOData.warehouseId,
+        hostId: adhocPOData.hostId,
+        swagItemIds: adhocPOData.swagItemIds
+      })
+      toast({
+        title: "Missing Information",
+        description: "Please select a warehouse, host, and at least one swag item",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsCreatingPO(true)
+    setLastError(null)
+    try {
+      // Get access token first
+      const tokenResponse = await fetch('/api/shiphero/refresh-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refresh_token: refreshToken
+        })
+      })
+
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to get access token')
+      }
+
+      const tokenData = await tokenResponse.json()
+      const accessToken = tokenData.access_token
+
+      if (!accessToken) {
+        throw new Error('No access token received')
+      }
+
+      // Find selected data
+      const warehouse = warehouses.find(w => w.id === adhocPOData.warehouseId)
+      const host = hosts.find(h => h.id === adhocPOData.hostId)
+      const selectedSwagItems = swagItems.filter(s => adhocPOData.swagItemIds.includes(s.id))
+
+      if (!warehouse || !host || selectedSwagItems.length === 0) {
+        throw new Error('Selected data not found')
+      }
+
+      // Create line items for PO
+      const lineItems = selectedSwagItems.map(swagItem => ({
+        sku: swagItem.sku || swagItem.name,
+        quantity: 1,
+        expected_weight_in_lbs: "1.00",
+        vendor_id: "1076735",
+        quantity_received: 0,
+        quantity_rejected: 0,
+        price: "0.00",
+        product_name: swagItem.name,
+        fulfillment_status: "pending",
+        sell_ahead: 0
+      }))
+
+      // Generate PO number
+      const poNumber = `ADHOC-PO-${Date.now()}`
+      
+      // Use tomorrow's date
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const poDate = tomorrow.toISOString().split('T')[0]
+
+      const poData = {
+        po_date: poDate,
+        po_number: poNumber,
+        subtotal: "0.00",
+        shipping_price: "0.00",
+        total_price: "0.00",
+        warehouse_id: warehouse.shiphero_warehouse_id,
+        line_items: lineItems,
+        fulfillment_status: "pending",
+        discount: "0.00",
+        vendor_id: "1076735"
+      }
+
+      console.log('Creating adhoc PO with data:', JSON.stringify(poData, null, 2))
+
+      // Create purchase order
+      const poResponse = await fetch('/api/shiphero/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          type: 'purchase_order',
+          data: poData
+        })
+      })
+
+      if (!poResponse.ok) {
+        const errorData = await poResponse.json()
+        console.error('PO creation error:', errorData)
+        throw new Error(errorData.error || errorData.details || 'Failed to create purchase order')
+      }
+
+      const poResult = await poResponse.json()
+      console.log('🎉 ShipHero PO creation response:', JSON.stringify(poResult, null, 2))
+      
+      const poId = poResult.data?.purchase_order_create?.purchase_order?.id
+      const poLegacyId = poResult.data?.purchase_order_create?.purchase_order?.legacy_id
+      const createdPONumber = poResult.data?.purchase_order_create?.purchase_order?.po_number || poNumber
+      const shipheroPOLink = poLegacyId ? `https://app.shiphero.com/dashboard/purchase-orders/details/${poLegacyId}` : null
+      
+      console.log('📦 PO created successfully!', {
+        poId,
+        poLegacyId,
+        createdPONumber,
+        shipheroPOLink
+      })
+      
+      toast({
+        title: "🎉 Adhoc Purchase Order Created Successfully!",
+        description: (
+          <div className="space-y-3">
+            <div className="p-3 bg-purple-50 border border-purple-200 rounded">
+              <p className="font-semibold text-purple-800">Purchase Order Details:</p>
+              <p><strong>PO Number:</strong> {createdPONumber}</p>
+              <p><strong>Host:</strong> {host.first_name} {host.last_name}</p>
+              {poLegacyId && (
+                <p className="text-lg font-bold text-purple-700">
+                  <strong>ShipHero PO ID:</strong> {poLegacyId}
+                </p>
+              )}
+              {poId && (
+                <p className="text-xs text-gray-600"><strong>Internal ID:</strong> {poId}</p>
+              )}
+            </div>
+            {shipheroPOLink ? (
+              <a 
+                href={shipheroPOLink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-block px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+              >
+                📦 View PO in ShipHero →
+              </a>
+            ) : (
+              <div className="p-2 bg-amber-50 border border-amber-200 rounded">
+                <p className="text-amber-700">
+                  ⚠️ ShipHero PO link not available
+                  {poLegacyId ? ` (PO ID: ${poLegacyId})` : ' (check console for details)'}
+                </p>
+              </div>
+            )}
+          </div>
+        ),
+      })
+
+      // Reset form
+      setAdhocPOData({
+        warehouseId: '',
+        hostId: '',
+        swagItemIds: [],
+        notes: ''
+      })
+      setShowAdhocPO(false)
+
+    } catch (error: any) {
+      console.error('Adhoc PO creation error:', error)
+      
+      const errorMessage = error.message || "Failed to create adhoc purchase order"
+      setLastError(errorMessage)
+      
+      toast({
+        title: "Purchase Order Creation Failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingPO(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -788,6 +981,131 @@ export function ShipHeroTab() {
               >
                 <Plus className="h-4 w-4 mr-2" />
                 {isCreatingOrder ? "Creating Order..." : "Create Sales Order"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Adhoc Purchase Order Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Create Adhoc Purchase Order</CardTitle>
+          <CardDescription>
+            Create a test purchase order using existing warehouse, host, and swag item data
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={async () => {
+              if (!showAdhocPO) {
+                await loadAdhocOrderData()
+              }
+              setShowAdhocPO(!showAdhocPO)
+            }}
+            variant="outline"
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            {showAdhocPO ? "Hide" : "Create Adhoc Purchase Order"}
+          </Button>
+
+          {showAdhocPO && (
+            <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+              {lastError && (
+                <div className="p-3 bg-red-100 border border-red-300 rounded-lg">
+                  <h5 className="font-medium text-red-800 mb-2">❌ Last Error:</h5>
+                  <p className="text-red-700 text-sm">{lastError}</p>
+                  <button 
+                    onClick={() => setLastError(null)}
+                    className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
+                  >
+                    Clear Error
+                  </button>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="po-warehouse-select">Warehouse *</Label>
+                  <Select
+                    value={adhocPOData.warehouseId}
+                    onValueChange={(value) => setAdhocPOData({ ...adhocPOData, warehouseId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select warehouse" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {warehouses.map((warehouse) => (
+                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                          {warehouse.name} ({warehouse.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="po-host-select">Host *</Label>
+                  <Select
+                    value={adhocPOData.hostId}
+                    onValueChange={(value) => setAdhocPOData({ ...adhocPOData, hostId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select host" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hosts.map((host) => (
+                        <SelectItem key={host.id} value={host.id}>
+                          {host.first_name} {host.last_name} ({host.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Swag Items *</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {swagItems.map((swagItem) => (
+                    <div key={swagItem.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`po-swag-${swagItem.id}`}
+                        checked={adhocPOData.swagItemIds.includes(swagItem.id)}
+                        onChange={(e) => {
+                          const newIds = e.target.checked
+                            ? [...adhocPOData.swagItemIds, swagItem.id]
+                            : adhocPOData.swagItemIds.filter(id => id !== swagItem.id)
+                          setAdhocPOData({ ...adhocPOData, swagItemIds: newIds })
+                        }}
+                        className="rounded"
+                      />
+                      <Label htmlFor={`po-swag-${swagItem.id}`} className="text-sm">
+                        {swagItem.name} ({swagItem.sku})
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="po-notes">Notes</Label>
+                <Textarea
+                  id="po-notes"
+                  placeholder="Optional notes for the purchase order..."
+                  value={adhocPOData.notes}
+                  onChange={(e) => setAdhocPOData({ ...adhocPOData, notes: e.target.value })}
+                />
+              </div>
+
+              <Button
+                onClick={handleCreateAdhocPO}
+                disabled={isCreatingPO || !adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.swagItemIds.length === 0}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {isCreatingPO ? "Creating Purchase Order..." : "Create Purchase Order"}
               </Button>
             </div>
           )}
