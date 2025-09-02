@@ -30,7 +30,8 @@ interface Warehouse {
 
 interface Participant {
   id: string
-  name: string // Display name (will be split into first/last for database)
+  first_name: string
+  last_name: string
   email: string
   company: string
   title: string
@@ -57,7 +58,7 @@ export function ScheduleTourPage() {
     time: "",
     notes: "",
   })
-  const [newParticipant, setNewParticipant] = useState({ name: "", email: "", company: "", title: "" })
+  const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -97,10 +98,10 @@ export function ScheduleTourPage() {
   }
 
   const addParticipant = () => {
-    if (!newParticipant.name.trim() || !newParticipant.email.trim()) {
+    if (!newParticipant.first_name.trim() || !newParticipant.last_name.trim() || !newParticipant.email.trim()) {
       toast({
         title: "Error",
-        description: "Please enter both name and email for the participant",
+        description: "Please enter first name, last name, and email for the participant",
         variant: "destructive",
       })
       return
@@ -118,14 +119,15 @@ export function ScheduleTourPage() {
 
     const participant: Participant = {
       id: crypto.randomUUID(),
-      name: newParticipant.name.trim(),
+      first_name: newParticipant.first_name.trim(),
+      last_name: newParticipant.last_name.trim(),
       email: newParticipant.email.trim().toLowerCase(),
       company: newParticipant.company.trim(),
       title: newParticipant.title.trim(),
     }
 
     setParticipants([...participants, participant])
-    setNewParticipant({ name: "", email: "", company: "", title: "" })
+    setNewParticipant({ first_name: "", last_name: "", email: "", company: "", title: "" })
   }
 
   const removeParticipant = (id: string) => {
@@ -174,22 +176,16 @@ export function ScheduleTourPage() {
 
       if (tourError) throw tourError
 
-      // Add participants - split name into first_name, last_name for database
-      const participantInserts = participants.map((participant) => {
-        const nameParts = participant.name.split(' ')
-        const firstName = nameParts[0] || ''
-        const lastName = nameParts.slice(1).join(' ') || ''
-        
-        return {
-          tour_id: tourData.id,
-          name: participant.name, // Keep name field for backward compatibility
-          first_name: firstName,
-          last_name: lastName,
-          email: participant.email,
-          company: participant.company,
-          title: participant.title,
-        }
-      })
+      // Add participants - no need to parse names anymore
+      const participantInserts = participants.map((participant) => ({
+        tour_id: tourData.id,
+        name: `${participant.first_name} ${participant.last_name}`, // Keep name field for backward compatibility
+        first_name: participant.first_name,
+        last_name: participant.last_name,
+        email: participant.email,
+        company: participant.company,
+        title: participant.title,
+      }))
 
       const { data: insertedParticipants, error: participantError } = await supabase
         .from("tour_participants")
@@ -401,12 +397,21 @@ export function ScheduleTourPage() {
                   <div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="grid gap-2">
-                        <Label htmlFor="participant-name">Name</Label>
+                        <Label htmlFor="participant-first-name">First Name</Label>
                         <Input
-                          id="participant-name"
-                          value={newParticipant.name}
-                          onChange={(e) => setNewParticipant({ ...newParticipant, name: e.target.value })}
-                          placeholder="John Smith"
+                          id="participant-first-name"
+                          value={newParticipant.first_name}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, first_name: e.target.value })}
+                          placeholder="John"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="participant-last-name">Last Name</Label>
+                        <Input
+                          id="participant-last-name"
+                          value={newParticipant.last_name}
+                          onChange={(e) => setNewParticipant({ ...newParticipant, last_name: e.target.value })}
+                          placeholder="Smith"
                         />
                       </div>
                       <div className="grid gap-2">
@@ -463,7 +468,7 @@ export function ScheduleTourPage() {
                         >
                           <div className="grid gap-1">
                             <div className="flex items-center gap-2">
-                              <p className="font-medium">{participant.name}</p>
+                              <p className="font-medium">{participant.first_name} {participant.last_name}</p>
                               {participant.title && (
                                 <span className="text-sm text-muted-foreground">- {participant.title}</span>
                               )}
