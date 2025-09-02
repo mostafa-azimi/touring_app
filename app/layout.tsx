@@ -5,9 +5,8 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Warehouse Tours (Preview)',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'Warehouse Tours',
+  description: 'Manage warehouse tours, participants, and swag distribution with ShipHero integration',
 }
 
 export default function RootLayout({

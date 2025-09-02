@@ -1,0 +1,25 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Based on the forklift icon provided -->
+  <g fill="#1F2937">
+    <!-- Main forklift body -->
+    <path d="M6 6c-2.2 0-4 1.8-4 4v8h2v2c0 2.2 1.8 4 4 4s4-1.8 4-4v-2h8v2c0 2.2 1.8 4 4 4s4-1.8 4-4v-2h2V10c0-2.2-1.8-4-4-4h-4V4c0-1.1-.9-2-2-2s-2 .9-2 2v18h-8z"/>
+    
+    <!-- Forklift cabin -->
+    <rect x="4" y="8" width="8" height="6" rx="1" fill="#1F2937"/>
+    
+    <!-- Forklift mast -->
+    <rect x="24" y="2" width="2" height="20" rx="1" fill="#1F2937"/>
+    
+    <!-- Forklift forks -->
+    <rect x="26" y="8" width="4" height="1" fill="#1F2937"/>
+    <rect x="26" y="12" width="4" height="1" fill="#1F2937"/>
+    
+    <!-- Wheels -->
+    <circle cx="8" cy="22" r="3" fill="#1F2937"/>
+    <circle cx="20" cy="22" r="3" fill="#1F2937"/>
+    
+    <!-- Wheel centers (holes) -->
+    <circle cx="8" cy="22" r="1.2" fill="white"/>
+    <circle cx="20" cy="22" r="1.2" fill="white"/>
+  </g>
+</svg>

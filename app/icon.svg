@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <g fill="#374151">
+    <!-- Forklift body -->
+    <rect x="2" y="12" width="12" height="8" rx="1"/>
+    
+    <!-- Forklift mast -->
+    <rect x="24" y="2" width="2" height="20" rx="0.5"/>
+    
+    <!-- Forklift forks -->
+    <rect x="26" y="8" width="4" height="1" rx="0.2"/>
+    <rect x="26" y="12" width="4" height="1" rx="0.2"/>
+    
+    <!-- Load backrest -->
+    <rect x="22" y="6" width="2" height="8" rx="0.5"/>
+    
+    <!-- Driver cabin -->
+    <rect x="4" y="10" width="6" height="4" rx="0.5" fill="#4F46E5"/>
+    
+    <!-- Window -->
+    <rect x="5" y="11" width="4" height="2" rx="0.2" fill="#E5E7EB"/>
+    
+    <!-- Wheels -->
+    <circle cx="6" cy="24" r="3"/>
+    <circle cx="18" cy="24" r="3"/>
+    
+    <!-- Wheel centers -->
+    <circle cx="6" cy="24" r="1.2" fill="white"/>
+    <circle cx="18" cy="24" r="1.2" fill="white"/>
+    
+    <!-- Extended forks for warehouse theme -->
+    <rect x="26" y="10" width="3" height="0.5" fill="#6B7280"/>
+  </g>
+</svg>
