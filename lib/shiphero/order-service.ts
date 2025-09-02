@@ -345,20 +345,44 @@ export class ShipHeroOrderService {
             
             // Store ShipHero order details in database
             const shipheroOrderUrl = `https://app.shiphero.com/orders/${order.id}`
-            const { error: updateError } = await this.supabase
-              .from('tour_participants')
-              .update({
-                shiphero_sales_order_id: order.id,
-                shiphero_sales_order_number: order.order_number,
-                shiphero_sales_order_url: shipheroOrderUrl
-              })
-              .eq('id', participantId)
             
-            if (updateError) {
-              console.error('Failed to update participant with ShipHero order ID:', updateError)
-              errors.push(`Order created but failed to save tracking info for ${participant.first_name} ${participant.last_name}`)
+            // Check if this is a host order (participantId starts with "host-")
+            if (participantId.startsWith('host-')) {
+              // For host orders, update the tours table instead of tour_participants
+              const actualHostId = participantId.replace('host-', '')
+              const { error: updateError } = await this.supabase
+                .from('tours')
+                .update({
+                  host_shiphero_sales_order_id: order.id,
+                  host_shiphero_sales_order_number: order.order_number,
+                  host_shiphero_sales_order_url: shipheroOrderUrl
+                })
+                .eq('id', tourId)
+                .eq('host_id', actualHostId)
+              
+              if (updateError) {
+                console.error('Failed to update tour with host ShipHero order ID:', updateError)
+                errors.push(`Host order created but failed to save tracking info for ${participant.first_name} ${participant.last_name}`)
+              } else {
+                console.log(`Successfully stored host order tracking info for ${participant.first_name} ${participant.last_name}`)
+              }
             } else {
-              console.log(`Successfully stored order tracking info for ${participant.first_name} ${participant.last_name}`)
+              // For regular participants, update tour_participants table
+              const { error: updateError } = await this.supabase
+                .from('tour_participants')
+                .update({
+                  shiphero_sales_order_id: order.id,
+                  shiphero_sales_order_number: order.order_number,
+                  shiphero_sales_order_url: shipheroOrderUrl
+                })
+                .eq('id', participantId)
+              
+              if (updateError) {
+                console.error('Failed to update participant with ShipHero order ID:', updateError)
+                errors.push(`Order created but failed to save tracking info for ${participant.first_name} ${participant.last_name}`)
+              } else {
+                console.log(`Successfully stored order tracking info for ${participant.first_name} ${participant.last_name}`)
+              }
             }
           } else {
             const errorMsg = salesOrderData.errors?.[0]?.message || 'Unknown error'
