@@ -319,6 +319,7 @@ export function ViewToursPage() {
           const processedTour = {
             ...updatedTourData,
             warehouse: Array.isArray(updatedTourData.warehouse) ? updatedTourData.warehouse[0] : updatedTourData.warehouse,
+            host: Array.isArray(updatedTourData.host) ? updatedTourData.host[0] : updatedTourData.host,
             participants: Array.isArray(updatedTourData.participants) ? updatedTourData.participants : [],
           }
           setSelectedTour(processedTour)

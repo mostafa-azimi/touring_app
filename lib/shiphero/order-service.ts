@@ -805,7 +805,7 @@ export class ShipHeroOrderService {
       }
 
       // Generate purchase order name using standard convention
-      const poName = generatePurchaseOrderName(host.last_name, warehouseCode, purchaseOrderDate)
+      const poName = generatePurchaseOrderName(host.last_name, warehouse.code, purchaseOrderDate)
 
       const accessToken = await this.getAccessToken()
       const purchaseOrderResult = await fetch('/api/shiphero/orders', {
