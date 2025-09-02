@@ -392,51 +392,6 @@ export function ScheduleTourPage() {
           <CardDescription>Create a new warehouse tour and manage participants</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* CSV Upload Section */}
-          <div className="mb-6 p-4 bg-muted/50 rounded-lg space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                <span className="font-medium">Bulk Upload</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadTemplate}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Template
-                </Button>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCSVUpload}
-                    disabled={isUploadingCSV}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    disabled={isUploadingCSV}
-                    className={isUploadingCSV ? "cursor-wait" : ""}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    {isUploadingCSV ? "Uploading..." : "Upload CSV"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Upload a CSV file to create multiple tours at once. Download the template to see the required format.
-            </p>
-          </div>
-
-          <Separator className="my-6" />
-
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Tour Details Section - 2x2 Grid Layout */}
             <div className="grid gap-6 md:grid-cols-2">
@@ -716,6 +671,54 @@ export function ScheduleTourPage() {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* CSV Bulk Upload Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            Bulk Upload
+          </CardTitle>
+          <CardDescription>Upload multiple tours at once using CSV format</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={downloadTemplate}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Template
+              </Button>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVUpload}
+                  disabled={isUploadingCSV}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  disabled={isUploadingCSV}
+                  className={isUploadingCSV ? "cursor-wait" : ""}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isUploadingCSV ? "Uploading..." : "Upload CSV"}
+                </Button>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Upload a CSV file to create multiple tours at once. Download the template to see the required format and structure.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
