@@ -119,6 +119,10 @@ export function ViewToursPage() {
           aValue = a.warehouse.name.toLowerCase()
           bValue = b.warehouse.name.toLowerCase()
           break
+        case 'host':
+          aValue = a.host ? `${a.host.first_name} ${a.host.last_name}`.toLowerCase() : ''
+          bValue = b.host ? `${b.host.first_name} ${b.host.last_name}`.toLowerCase() : ''
+          break
         case 'participants':
           aValue = a.participants.length
           bValue = b.participants.length
@@ -386,6 +390,7 @@ export function ViewToursPage() {
                 <TableRow>
                   <SortableHeader field="date">Date & Time</SortableHeader>
                   <SortableHeader field="warehouse">Warehouse</SortableHeader>
+                  <SortableHeader field="host">Host</SortableHeader>
                   <SortableHeader field="participants">Participants</SortableHeader>
                   <TableHead>Swag Items</TableHead>
                   <SortableHeader field="status">Status</SortableHeader>
@@ -395,13 +400,13 @@ export function ViewToursPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       Loading tours...
                     </TableCell>
                   </TableRow>
                 ) : currentTours.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {searchTerm ? "No tours match your search criteria." : "No tours scheduled yet."}
                     </TableCell>
                   </TableRow>
@@ -432,6 +437,18 @@ export function ViewToursPage() {
                                 PO: {tour.shiphero_purchase_order_number || 'View Order'}
                               </a>
                             </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          {tour.host ? (
+                            <>
+                              <div className="font-medium">{tour.host.first_name} {tour.host.last_name}</div>
+                              <div className="text-sm text-muted-foreground">{tour.host.email}</div>
+                            </>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">No host assigned</div>
                           )}
                         </div>
                       </TableCell>
