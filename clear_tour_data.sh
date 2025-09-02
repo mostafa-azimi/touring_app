@@ -13,9 +13,9 @@ if ! command -v supabase &> /dev/null; then
     exit 1
 fi
 
-# Run the migration
+# Run the migration with include-all flag to apply new migrations
 echo "📋 Running data cleanup migration..."
-supabase db push
+supabase db push --include-all
 
 if [ $? -eq 0 ]; then
     echo ""

@@ -698,11 +698,44 @@ export function ShipHeroTab() {
           <CardDescription>
             {refreshToken ? 
               "Connected to ShipHero API. Generate a new access token or test your connection." : 
-              "No refresh token found. Please contact support to configure API access."
+              "Enter your ShipHero refresh token below to enable API access and tour finalization."
             }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Refresh Token Input Section */}
+          <div className="space-y-3">
+            <div className="grid gap-2">
+              <Label htmlFor="refreshToken">ShipHero Refresh Token</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="refreshToken"
+                  type="password"
+                  placeholder="Paste your ShipHero refresh token here"
+                  value={refreshToken}
+                  onChange={(e) => setRefreshToken(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => {
+                    localStorage.setItem('shiphero_refresh_token', refreshToken)
+                    toast({
+                      title: "Refresh Token Saved",
+                      description: "Your ShipHero refresh token has been saved securely.",
+                    })
+                  }}
+                  disabled={!refreshToken.trim()}
+                  variant="outline"
+                >
+                  Save Token
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Enter your ShipHero refresh token to enable API access. This token is stored locally and securely in your browser.
+              </p>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2">
             <Button
               onClick={handleRefreshToken}
