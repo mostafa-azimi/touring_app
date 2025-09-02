@@ -354,9 +354,15 @@ export class ShipHeroOrderService {
             ordersCreated++
             const order = salesOrderData.data.order_create.order
             console.log(`Created sales order for ${participant.first_name} ${participant.last_name}: ${order.order_number} (ID: ${order.id})`)
+            console.log('🔍 SO Response data:', {
+              id: order.id,
+              legacy_id: order.legacy_id,
+              order_number: order.order_number
+            })
             
             // Store ShipHero order details in database
-            const shipheroOrderUrl = `https://app.shiphero.com/orders/${order.id}`
+            const shipheroOrderUrl = `https://app.shiphero.com/dashboard/orders/details/${order.legacy_id}`
+            console.log('🔗 Generated SO URL:', shipheroOrderUrl)
             
             // Check if this is a host order (participantId starts with "host-")
             if (participantId.startsWith('host-')) {
