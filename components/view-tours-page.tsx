@@ -63,6 +63,7 @@ export function ViewToursPage() {
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
+  const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -169,7 +170,9 @@ export function ViewToursPage() {
 
   const handleFinalizeTour = async (tourId: string) => {
     setIsFinalizingTour(true)
+    setFinalizingTourId(tourId)
     try {
+      console.log(`Finalizing tour with ID: ${tourId}`)
       // Order service handles token management internally
       const orderService = new ShipHeroOrderService()
       
@@ -212,6 +215,7 @@ export function ViewToursPage() {
       })
     } finally {
       setIsFinalizingTour(false)
+      setFinalizingTourId(null)
     }
   }
 
@@ -349,7 +353,7 @@ export function ViewToursPage() {
                               variant="default" 
                               size="sm" 
                               onClick={() => handleFinalizeTour(tour.id)}
-                              disabled={isFinalizingTour}
+                              disabled={isFinalizingTour && (finalizingTourId === tour.id || finalizingTourId === null)}
                               className="w-full bg-blue-600 hover:bg-blue-700"
                             >
                               <ShoppingCart className="h-4 w-4 mr-2" />

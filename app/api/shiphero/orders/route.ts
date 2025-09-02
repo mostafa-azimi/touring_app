@@ -72,11 +72,11 @@ export async function POST(request: NextRequest) {
                 ${data.line_items.map((item: any) => `{
                   sku: "${item.sku}"
                   partner_line_item_id: "${item.partner_line_item_id}"
-                  quantity: ${item.quantity}
+                  quantity: ${Number(item.quantity) || 1}
                   price: "${item.price}"
                   product_name: "${item.product_name}"
                   fulfillment_status: "${item.fulfillment_status}"
-                  quantity_pending_fulfillment: ${item.quantity_pending_fulfillment}
+                  quantity_pending_fulfillment: ${Number(item.quantity_pending_fulfillment) || 1}
                   warehouse_id: "${item.warehouse_id}"
                 }`).join(',')}
               ]
@@ -117,15 +117,15 @@ export async function POST(request: NextRequest) {
               line_items: [
                 ${data.line_items.map((item: any) => `{
                   sku: "${item.sku}"
-                  quantity: ${item.quantity}
+                  quantity: ${Number(item.quantity) || 1}
                   expected_weight_in_lbs: "${item.expected_weight_in_lbs}"
                   vendor_id: "${item.vendor_id}"
-                  quantity_received: ${item.quantity_received}
-                  quantity_rejected: ${item.quantity_rejected}
+                  quantity_received: ${Number(item.quantity_received) || 0}
+                  quantity_rejected: ${Number(item.quantity_rejected) || 0}
                   price: "${item.price}"
                   product_name: "${item.product_name}"
                   fulfillment_status: "${item.fulfillment_status}"
-                  sell_ahead: ${item.sell_ahead}
+                  sell_ahead: ${Number(item.sell_ahead) || 0}
                 }`).join(',')}
               ]
             }
