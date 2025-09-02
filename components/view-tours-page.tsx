@@ -71,6 +71,7 @@ export function ViewToursPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -230,6 +231,53 @@ export function ViewToursPage() {
     }
   }
 
+  const handleFinalizeTour = async (tourId: string) => {
+    setIsFinalizingTour(true)
+    try {
+      const orderService = new ShipHeroOrderService()
+      
+      // Create sales orders for all participants + host
+      const salesResult = await orderService.createSalesOrdersForTour(tourId)
+      
+      if (!salesResult.success) {
+        throw new Error(`Sales orders failed: ${salesResult.message}`)
+      }
+
+      // Create aggregated purchase order
+      const poResult = await orderService.createPurchaseOrderForTour(tourId)
+      
+      if (!poResult.success) {
+        throw new Error(`Purchase order failed: ${poResult.message}`)
+      }
+
+      // Update tour status to finalized
+      const { error: updateError } = await supabase
+        .from('tours')
+        .update({ status: 'finalized' })
+        .eq('id', tourId)
+
+      if (updateError) throw updateError
+
+      toast({
+        title: "🎉 Tour Finalized Successfully!",
+        description: `Created ${salesResult.ordersCreated} sales orders and 1 purchase order. Tour is now finalized.`,
+      })
+
+      // Refresh tours list
+      fetchTours()
+
+    } catch (error: any) {
+      console.error('Tour finalization error:', error)
+      toast({
+        title: "Tour Finalization Failed",
+        description: error.message || "Failed to finalize tour. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsFinalizingTour(false)
+    }
+  }
+
   // Pagination logic
   const totalPages = Math.ceil(filteredTours.length / ITEMS_PER_PAGE)
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
@@ -368,6 +416,20 @@ export function ViewToursPage() {
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Validate Tour
+                            </Button>
+                          )}
+
+                          {/* Finalize Tour Action */}
+                          {tour.status === 'scheduled' && (
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              onClick={() => handleFinalizeTour(tour.id)}
+                              disabled={isFinalizingTour}
+                              className="w-full bg-blue-600 hover:bg-blue-700"
+                            >
+                              <ShoppingCart className="h-4 w-4 mr-2" />
+                              {isFinalizingTour ? 'Finalizing...' : 'Finalize Tour'}
                             </Button>
                           )}
                           
