@@ -362,6 +362,13 @@ export class ShipHeroOrderService {
             })
             
             // Store ShipHero order details in database
+            // Ensure we have a valid legacy_id before creating URL
+            if (!order.legacy_id) {
+              console.error('❌ Missing legacy_id in order response:', order)
+              errors.push(`Sales order created but missing legacy_id for ${participant.first_name} ${participant.last_name}`)
+              continue
+            }
+            
             const shipheroOrderUrl = `https://app.shiphero.com/dashboard/orders/details/${order.legacy_id}`
             console.log('🔗 Generated SO URL:', shipheroOrderUrl)
             
