@@ -15,8 +15,8 @@ export function generateSalesOrderName(
   airportCode?: string,
   date: Date = new Date()
 ): string {
-  const firstLetter = participantFirstName.charAt(0).toLowerCase()
-  const firstThreeLastName = participantLastName.substring(0, 3).toLowerCase()
+  const firstLetter = participantFirstName.charAt(0).toUpperCase()
+  const firstThreeLastName = participantLastName.substring(0, 3).toUpperCase()
   
   // Format date as mm/dd/yy
   const mm = date.getMonth() + 1
