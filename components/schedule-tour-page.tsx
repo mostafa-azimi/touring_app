@@ -366,9 +366,6 @@ export function ScheduleTourPage() {
               </div>
             </div>
 
-
-            </div>
-
             <Separator />
 
             {/* Participants Section */}
