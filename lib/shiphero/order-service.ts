@@ -530,11 +530,10 @@ export class ShipHeroOrderService {
         }
       }
 
-      // Generate custom purchase order name and number
-      // Use warehouse.name (sanitized) if available, since warehouse.code does not exist on the type
-      const warehouseCode = warehouse.name ? warehouse.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '';
+      // Generate custom purchase order name using the same format as our naming convention
+      // Use the actual airport/warehouse code, not just sanitized name
+      const warehouseCode = (warehouse as any).code || warehouse.name?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 3) || '';
       const poName = generatePurchaseOrderName(host.last_name, warehouseCode, tourDate)
-      const poNumber = generatePurchaseOrderNumber()
 
       const accessToken = await this.getAccessToken()
       const purchaseOrderResult = await fetch('/api/shiphero/orders', {
@@ -547,7 +546,7 @@ export class ShipHeroOrderService {
           type: 'purchase_order',
           data: {
             po_date: tourDate.toISOString().split('T')[0], // Use date format like "2025-09-23"
-            po_number: poNumber,
+            po_number: poName, // Use our custom naming convention instead of generic number
             subtotal: "0.00",
             shipping_price: "0.00",
             total_price: "0.00",

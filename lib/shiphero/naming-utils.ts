@@ -28,10 +28,8 @@ export function generateSalesOrderName(
   const warehouseCode = airportCode ? airportCode.toUpperCase().substring(0, 3) : 
     warehouseName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 3)
   
-  // Add unique suffix to avoid duplicates (4 chars: timestamp + random)
-  const timestamp = Date.now().toString().slice(-2)
-  const random = Math.random().toString(36).substring(2, 4).toUpperCase()
-  const uniqueSuffix = `${timestamp}${random}`
+  // Add unique suffix to avoid duplicates (4-digit random number)
+  const uniqueSuffix = Math.floor(1000 + Math.random() * 9000).toString()
   
   // Build order name ensuring it's under 32 characters
   const baseName = `${firstLetter}${firstThreeLastName}_${dateStr}_${warehouseCode}`
@@ -64,10 +62,8 @@ export function generatePurchaseOrderName(
   // Use first 3 chars of warehouse code
   const shortWarehouseCode = warehouseCode.toUpperCase().substring(0, 3)
   
-  // Add unique suffix to avoid duplicates (4 chars: timestamp + random)
-  const timestamp = Date.now().toString().slice(-2)
-  const random = Math.random().toString(36).substring(2, 4).toUpperCase()
-  const uniqueSuffix = `${timestamp}${random}`
+  // Add unique suffix to avoid duplicates (4-digit random number)
+  const uniqueSuffix = Math.floor(1000 + Math.random() * 9000).toString()
   
   // Build PO name ensuring it's under 32 characters
   const baseName = `${shortWarehouseCode}_${dateStr}_${formattedLastName}`
