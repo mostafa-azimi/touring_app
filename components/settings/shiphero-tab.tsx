@@ -62,9 +62,9 @@ export function ShipHeroTab() {
     setRefreshToken(savedToken)
     setTokenExpiresAt(savedExpiresAt)
     
-    // Calculate initial days remaining
+    // Calculate initial countdown
     if (savedExpiresAt) {
-      calculateDaysRemaining(savedExpiresAt)
+      calculateCountdown(savedExpiresAt)
     }
 
     // Load data when component mounts
@@ -198,8 +198,8 @@ export function ShipHeroTab() {
           localStorage.setItem('shiphero_token_expires_at', expirationDate.toISOString())
           setTokenExpiresAt(expirationDate.toISOString())
           
-          // Calculate and set days remaining (should be 28)
-          calculateDaysRemaining(expirationDate.toISOString())
+          // Calculate and set countdown (should be 28 days)
+          calculateCountdown(expirationDate.toISOString())
           
           toast({
             title: "✅ New Access Token Generated",
