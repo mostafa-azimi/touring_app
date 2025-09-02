@@ -57,6 +57,28 @@ export class ShipHeroOrderService {
     return accessToken
   }
 
+  private getStateCode(state: string): string {
+    const stateMap: Record<string, string> = {
+      'Georgia': 'GA',
+      'California': 'CA',
+      'New York': 'NY',
+      'Texas': 'TX',
+      'Florida': 'FL',
+      // Add more as needed
+    }
+    return stateMap[state] || state
+  }
+
+  private getCountryCode(country: string): string {
+    const countryMap: Record<string, string> = {
+      'United States': 'US',
+      'Canada': 'CA',
+      'United Kingdom': 'GB',
+      // Add more as needed
+    }
+    return countryMap[country] || country
+  }
+
   /**
    * Create sales orders in ShipHero for each participant in a tour
    */
@@ -263,14 +285,11 @@ export class ShipHeroOrderService {
                 order_number: orderName,
                 shop_name: "Warehouse Tours",
                 fulfillment_status: "pending",
-                order_date: tourDate.toISOString(),
+                order_date: tourDate.toISOString().split('T')[0], // Use date format like "2025-09-23"
                 total_tax: "0.00",
                 subtotal: "0.00",
                 total_discounts: "0.00",
                 total_price: "0.00",
-                email: participant.email,
-                phone: "",
-                tags: (warehouse as any).code ? [`Airport:${(warehouse as any).code}`] : [],
                 shipping_lines: {
                   title: "Generic Shipping",
                   price: "0.00",
@@ -284,10 +303,13 @@ export class ShipHeroOrderService {
                   address1: warehouse.address,
                   address2: warehouse.address2 || '',
                   city: warehouse.city,
-                  state: warehouse.state,
+                  state: this.getStateCode(warehouse.state),
+                  state_code: this.getStateCode(warehouse.state),
                   zip: warehouse.zip,
-                  country: warehouse.country || 'US',
-                  email: participant.email
+                  country: this.getCountryCode(warehouse.country || 'United States'),
+                  country_code: this.getCountryCode(warehouse.country || 'United States'),
+                  email: participant.email,
+                  phone: "5555555555"
                 },
                 billing_address: {
                   first_name: participant.first_name,
@@ -296,21 +318,25 @@ export class ShipHeroOrderService {
                   address1: warehouse.address,
                   address2: warehouse.address2 || '',
                   city: warehouse.city,
-                  state: warehouse.state,
+                  state: this.getStateCode(warehouse.state),
+                  state_code: this.getStateCode(warehouse.state),
                   zip: warehouse.zip,
-                  country: warehouse.country || 'US',
-                  email: participant.email
+                  country: this.getCountryCode(warehouse.country || 'United States'),
+                  country_code: this.getCountryCode(warehouse.country || 'United States'),
+                  email: participant.email,
+                  phone: "5555555555"
                 },
-                line_items: lineItems
+                line_items: lineItems,
+                required_ship_date: tourDate.toISOString().split('T')[0] // Use date format like "2025-09-23"
               }
             })
           })
 
           const salesOrderData = await salesOrderResult.json()
 
-          if (salesOrderData.order_create?.order) {
+          if (salesOrderData.data?.order_create?.order) {
             ordersCreated++
-            const order = salesOrderData.order_create.order
+            const order = salesOrderData.data.order_create.order
             console.log(`Created sales order for ${participant.first_name} ${participant.last_name}: ${order.order_number} (ID: ${order.id})`)
             
             // Store ShipHero order details in database
