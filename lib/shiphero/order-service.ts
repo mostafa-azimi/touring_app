@@ -268,6 +268,13 @@ export class ShipHeroOrderService {
 
           // Generate custom order name and number (same as adhoc orders)
           const tourDate = new Date(tour.date)
+          
+          console.log('🏢 Warehouse data for order creation:', {
+            name: warehouse.name,
+            code: warehouse.code,
+            participantName: `${participant.first_name} ${participant.last_name}`
+          })
+          
           const orderName = generateSalesOrderName(
             participant.first_name,
             participant.last_name,
@@ -275,6 +282,9 @@ export class ShipHeroOrderService {
             warehouse.code || "",
             tourDate
           )
+          
+          console.log('📦 Generated order name:', orderName)
+          console.log('🏷️ Order tags:', [warehouse.code || ""].filter(Boolean))
 
           const accessToken = await this.getAccessToken()
           const salesOrderResult = await fetch('/api/shiphero/orders', {
