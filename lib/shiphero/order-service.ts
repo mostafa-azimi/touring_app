@@ -568,7 +568,7 @@ export class ShipHeroOrderService {
         quantity_rejected: 0,
         price: "0.00",
         product_name: itemData.name,
-        fulfillment_status: "ShipHero Tours",
+        fulfillment_status: "pending",
         sell_ahead: 0
       }))
 
@@ -610,7 +610,7 @@ export class ShipHeroOrderService {
             total_price: "0.00",
             warehouse_id: warehouse.shiphero_warehouse_id,
             line_items: lineItems,
-            fulfillment_status: "ShipHero Tours",
+            fulfillment_status: "pending",
             discount: "0.00",
             vendor_id: "1076735"
           }
