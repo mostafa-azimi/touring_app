@@ -209,7 +209,7 @@ export class ShipHeroOrderService {
             price: "0.00", // Free swag
             warehouse_id: warehouse.shiphero_warehouse_id, // Required field
             product_name: swagItem.name || swagItem.sku,
-            fulfillment_status: "pending",
+            fulfillment_status: "Tour_Orders",
             quantity_pending_fulfillment: 1
           })
         }
@@ -251,7 +251,7 @@ export class ShipHeroOrderService {
             price: "0.00", // Free swag
             warehouse_id: warehouse.shiphero_warehouse_id, // Required field
             product_name: swagItem.name || swagItem.sku,
-            fulfillment_status: "pending",
+            fulfillment_status: "Tour_Orders",
             quantity_pending_fulfillment: 1
           })
         }
@@ -299,7 +299,7 @@ export class ShipHeroOrderService {
               data: {
                 order_number: orderName,
                 shop_name: "Warehouse Tours",
-                fulfillment_status: "pending",
+                fulfillment_status: "Tour_Orders",
                 order_date: tourDate.toISOString().split('T')[0], // Use date format like "2025-09-23"
                 total_tax: "0.00",
                 subtotal: "0.00",
@@ -559,7 +559,7 @@ export class ShipHeroOrderService {
         quantity_rejected: 0,
         price: "0.00",
         product_name: itemData.name,
-        fulfillment_status: "pending",
+                        fulfillment_status: "Tour_Orders",
         sell_ahead: 0
       }))
 
@@ -596,7 +596,7 @@ export class ShipHeroOrderService {
             total_price: "0.00",
             warehouse_id: warehouse.shiphero_warehouse_id,
             line_items: lineItems,
-            fulfillment_status: "pending",
+            fulfillment_status: "Tour_Orders",
             discount: "0.00",
             vendor_id: "1076735"
           }
