@@ -590,22 +590,27 @@ export function ShipHeroTab() {
                 <div className="space-y-3">
                   <div className="text-sm text-blue-700">
                     <strong>Status:</strong> Connected successfully
-                    {testResults.data?.account?.data?.warehouses && (
+                    {testResults.warehouses?.data?.account?.data?.warehouses && (
                       <span className="ml-2">
-                        • <strong>{testResults.data.account.data.warehouses.length}</strong> warehouses found
+                        • <strong>{testResults.warehouses.data.account.data.warehouses.length}</strong> warehouses found
+                      </span>
+                    )}
+                    {testResults.products?.data?.account?.data?.products?.edges && (
+                      <span className="ml-2">
+                        • <strong>{testResults.products.data.account.data.products.edges.length}</strong> products found
                       </span>
                     )}
                   </div>
                   
-                  {/* Debug: Show raw warehouse data structure */}
+                  {/* Debug: Show raw data structure */}
                   <details className="text-xs">
-                    <summary className="cursor-pointer text-blue-600 hover:text-blue-800">Debug: All warehouse data</summary>
+                    <summary className="cursor-pointer text-blue-600 hover:text-blue-800">Debug: All data (warehouses & products)</summary>
                     <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
-                      {JSON.stringify(testResults.data?.account?.data?.warehouses || [], null, 2)}
+                      {JSON.stringify(testResults, null, 2)}
                     </pre>
                   </details>
                   
-                  {testResults.data?.account?.data?.warehouses && Array.isArray(testResults.data.account.data.warehouses) && testResults.data.account.data.warehouses.length > 0 && (
+                  {testResults.warehouses?.data?.account?.data?.warehouses && Array.isArray(testResults.warehouses.data.account.data.warehouses) && testResults.warehouses.data.account.data.warehouses.length > 0 && (
                     <div className="border rounded-lg overflow-hidden bg-white">
                       <Table>
                         <TableHeader>
@@ -616,7 +621,7 @@ export function ShipHeroTab() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {testResults.data.account.data.warehouses.map((warehouse: any, index: number) => {
+                          {testResults.warehouses.data.account.data.warehouses.map((warehouse: any, index: number) => {
                             // Ensure warehouse is an object and has the expected structure
                             if (!warehouse || typeof warehouse !== 'object') {
                               return (
