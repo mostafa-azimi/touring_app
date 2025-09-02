@@ -45,6 +45,11 @@ interface SwagPreview {
   totalToAllocate: number
 }
 
+// Generate a 6-digit numeric tour ID
+function generateTourNumericId(): number {
+  return Math.floor(100000 + Math.random() * 900000)
+}
+
 export function ScheduleTourPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [hosts, setHosts] = useState<any[]>([])
@@ -168,6 +173,7 @@ export function ScheduleTourPage() {
             date: formData.date,
             time: formData.time,
             status: 'scheduled',
+            tour_numeric_id: generateTourNumericId(),
           },
         ])
         .select()
@@ -312,7 +318,8 @@ export function ScheduleTourPage() {
               host_id: host.id,
               date: tourData.tour_date,
               time: tourData.tour_time,
-              status: 'scheduled'
+              status: 'scheduled',
+              tour_numeric_id: generateTourNumericId()
             }])
             .select()
             .single()

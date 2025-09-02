@@ -95,6 +95,7 @@ export class ShipHeroOrderService {
         .select(`
           id,
           date,
+          tour_numeric_id,
           warehouse:warehouses(
             id,
             name,
@@ -343,7 +344,7 @@ export class ShipHeroOrderService {
                 },
                 line_items: lineItems,
                 required_ship_date: tourDate.toISOString().split('T')[0], // Use date format like "2025-09-23"
-                tags: [warehouse.code || ""].filter(Boolean) // Add airport code as tag
+                tags: ["Tour", "Warehouse Tours", `Tour_${tour.tour_numeric_id}`, warehouse.code || ""].filter(Boolean) // Add tour and airport code as tags
               }
             })
           })
@@ -454,6 +455,7 @@ export class ShipHeroOrderService {
         .select(`
           id,
           date,
+          tour_numeric_id,
           warehouse:warehouses(
             id,
             name,
@@ -564,6 +566,10 @@ export class ShipHeroOrderService {
       }))
 
       const tourDate = new Date(tour.date)
+      // Set purchase order date to day before tour date
+      const purchaseOrderDate = new Date(tourDate)
+      purchaseOrderDate.setDate(purchaseOrderDate.getDate() - 1)
+      
       const host = Array.isArray(tour.host) ? tour.host[0] : tour.host
       
       if (!host) {
@@ -577,7 +583,7 @@ export class ShipHeroOrderService {
       // Generate custom purchase order name using the same format as our naming convention
       // Use the actual airport/warehouse code, not just sanitized name
       const warehouseCode = warehouse.code || warehouse.name?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 3) || '';
-      const poName = generatePurchaseOrderName(host.last_name, warehouseCode, tourDate)
+      const poName = generatePurchaseOrderName(host.last_name, warehouseCode, purchaseOrderDate)
 
       const accessToken = await this.getAccessToken()
       const purchaseOrderResult = await fetch('/api/shiphero/orders', {
@@ -589,7 +595,7 @@ export class ShipHeroOrderService {
         body: JSON.stringify({
           type: 'purchase_order',
           data: {
-            po_date: tourDate.toISOString().split('T')[0], // Use date format like "2025-09-23"
+            po_date: purchaseOrderDate.toISOString().split('T')[0], // Use day before tour date
             po_number: poName, // Use our custom naming convention instead of generic number
             subtotal: "0.00",
             shipping_price: "0.00",

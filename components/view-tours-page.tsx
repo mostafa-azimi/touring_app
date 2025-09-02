@@ -19,6 +19,7 @@ interface Tour {
 
   status?: string
   created_at: string
+  tour_numeric_id?: number
   shiphero_purchase_order_id?: string
   shiphero_purchase_order_number?: string
   shiphero_purchase_order_url?: string
@@ -156,6 +157,7 @@ export function ViewToursPage() {
           time,
           status,
           created_at,
+          tour_numeric_id,
           shiphero_purchase_order_id,
           shiphero_purchase_order_number,
           shiphero_purchase_order_url,
@@ -299,6 +301,7 @@ export function ViewToursPage() {
             time,
             status,
             created_at,
+            tour_numeric_id,
             shiphero_purchase_order_id,
             shiphero_purchase_order_number,
             shiphero_purchase_order_url,
