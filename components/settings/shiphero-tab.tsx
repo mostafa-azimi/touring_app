@@ -455,11 +455,11 @@ export function ShipHeroTab() {
         throw new Error(errorMessage)
       }
 
-      const orderData = await orderResponse.json()
+      const orderResult = await orderResponse.json()
       
       // Create ShipHero order link
-      const orderId = orderData.data?.order_create?.order?.id
-      const createdOrderNumber = orderData.data?.order_create?.order?.order_number || orderNumber
+      const orderId = orderResult.data?.order_create?.order?.id
+      const createdOrderNumber = orderResult.data?.order_create?.order?.order_number || orderNumber
       const shipheroLink = orderId ? `https://app.shiphero.com/orders/${orderId}` : null
       
       toast({
