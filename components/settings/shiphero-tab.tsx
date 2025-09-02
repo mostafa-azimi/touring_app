@@ -46,9 +46,7 @@ export function ShipHeroTab() {
   const [lastError, setLastError] = useState<string | null>(null)
   const [lastOrderResponse, setLastOrderResponse] = useState<any>(null)
   const [lastPOResponse, setLastPOResponse] = useState<any>(null)
-  const [tours, setTours] = useState<any[]>([])
-  const [selectedTourId, setSelectedTourId] = useState('')
-  const [isCreatingStandalonePO, setIsCreatingStandalonePO] = useState(false)
+
   const { toast } = useToast()
 
   useEffect(() => {
@@ -64,7 +62,6 @@ export function ShipHeroTab() {
 
     // Load data when component mounts
     loadAdhocOrderData()
-    loadTours()
   }, [])
 
   // Update countdown every hour
@@ -91,62 +88,7 @@ export function ShipHeroTab() {
     setDaysRemaining(Math.max(0, diffDays))
   }
 
-  const loadTours = async () => {
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('tours')
-        .select(`
-          id,
-          date,
-          time,
-          status,
-          warehouse:warehouses(name),
-          participants:tour_participants(id)
-        `)
-        .neq('status', 'cancelled')
-        .order('date', { ascending: false })
-        .limit(20)
 
-      if (error) throw error
-      setTours(data || [])
-    } catch (error) {
-      console.error('Error loading tours:', error)
-    }
-  }
-
-  const handleCreateStandalonePO = async () => {
-    if (!selectedTourId) return
-
-    setIsCreatingStandalonePO(true)
-    try {
-      const orderService = new ShipHeroOrderService()
-      const result = await orderService.createStandalonePurchaseOrder(selectedTourId)
-
-      if (result.success) {
-        toast({
-          title: "Purchase Order Created Successfully!",
-          description: result.message,
-        })
-        // Reset selection
-        setSelectedTourId('')
-      } else {
-        toast({
-          title: "Failed to Create Purchase Order",
-          description: result.message,
-          variant: "destructive",
-        })
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create purchase order",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreatingStandalonePO(false)
-    }
-  }
 
   const loadAdhocOrderData = async () => {
     try {
@@ -1389,40 +1331,7 @@ export function ShipHeroTab() {
               )}
             </div>
           )}
-          
-          {/* Standalone Purchase Order Section */}
-          <div className="border-t pt-6 mt-6">
-            <h3 className="text-lg font-semibold mb-4">Standalone Purchase Order</h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="tour-select">Select Tour for Purchase Order</Label>
-                <Select value={selectedTourId} onValueChange={setSelectedTourId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a tour..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tours.map((tour) => (
-                      <SelectItem key={tour.id} value={tour.id}>
-                        {tour.warehouse?.name} - {tour.date} at {tour.time} ({tour.participants?.length || 0} participants)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <Button 
-                onClick={handleCreateStandalonePO}
-                disabled={!selectedTourId || isCreatingStandalonePO}
-                className="w-full"
-              >
-                {isCreatingStandalonePO ? "Creating Purchase Order..." : "Create Purchase Order with ShipHero Tours Status"}
-              </Button>
-              
-              <p className="text-sm text-muted-foreground">
-                This will create a purchase order with "ShipHero Tours" as the fulfillment status, using the tour date minus one day as the PO date.
-              </p>
-            </div>
-          </div>
+
           
         </CardContent>
       </Card>
