@@ -98,6 +98,7 @@ export class ShipHeroOrderService {
           warehouse:warehouses(
             id,
             name,
+            code,
             shiphero_warehouse_id,
             address,
             address2,
@@ -198,7 +199,7 @@ export class ShipHeroOrderService {
             participant.first_name,
             participant.last_name,
             warehouse.name || "",
-            (warehouse as any).code || "",
+            warehouse.code || "",
             tourDate
           )
           participantOrders.get(participant.id).lineItems.push({
@@ -240,7 +241,7 @@ export class ShipHeroOrderService {
             host.first_name,
             host.last_name,
             warehouse.name || "",
-            (warehouse as any).code || "",
+            warehouse.code || "",
             tourDate
           )
           participantOrders.get(`host-${host.id}`).lineItems.push({
@@ -271,7 +272,7 @@ export class ShipHeroOrderService {
             participant.first_name,
             participant.last_name,
             warehouse.name || "",
-            (warehouse as any).code || "",
+            warehouse.code || "",
             tourDate
           )
 
@@ -331,7 +332,7 @@ export class ShipHeroOrderService {
                 },
                 line_items: lineItems,
                 required_ship_date: tourDate.toISOString().split('T')[0], // Use date format like "2025-09-23"
-                tags: [(warehouse as any).code || ""].filter(Boolean) // Add airport code as tag
+                tags: [warehouse.code || ""].filter(Boolean) // Add airport code as tag
               }
             })
           })
@@ -439,6 +440,7 @@ export class ShipHeroOrderService {
           warehouse:warehouses(
             id,
             name,
+            code,
             shiphero_warehouse_id
           ),
           host:team_members(
@@ -557,7 +559,7 @@ export class ShipHeroOrderService {
 
       // Generate custom purchase order name using the same format as our naming convention
       // Use the actual airport/warehouse code, not just sanitized name
-      const warehouseCode = (warehouse as any).code || warehouse.name?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 3) || '';
+      const warehouseCode = warehouse.code || warehouse.name?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 3) || '';
       const poName = generatePurchaseOrderName(host.last_name, warehouseCode, tourDate)
 
       const accessToken = await this.getAccessToken()
