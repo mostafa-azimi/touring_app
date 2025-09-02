@@ -225,6 +225,7 @@ export function ShipHeroTab() {
   }
 
   const handleCreateAdhocOrder = async () => {
+    alert('Button clicked! Function called!')
     console.log('🚀🚀🚀 handleCreateAdhocOrder called with data:', adhocOrderData)
     
     // Let's test with hardcoded values first to see if the API works
@@ -281,7 +282,7 @@ export function ShipHeroTab() {
         product_name: "Test Product",
         fulfillment_status: "pending",
         quantity_pending_fulfillment: 1,
-        warehouse_id: "V2FyZWhvdXNlOjExOTM0Mw==" // This is from your warehouse data
+        warehouse_id: "V2FyZWhvdXNlOjExOTM0Mw=="
       }],
       required_ship_date: new Date().toISOString().split('T')[0]
     }
@@ -797,7 +798,7 @@ export function ShipHeroTab() {
 
               <Button
                 onClick={handleCreateAdhocOrder}
-                disabled={isCreatingOrder || !adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0}
+                disabled={isCreatingOrder}
                 className="w-full"
               >
                 <Plus className="h-4 w-4 mr-2" />
