@@ -197,8 +197,9 @@ export class ShipHeroOrderService {
           const orderName = generateSalesOrderName(
             participant.first_name,
             participant.last_name,
+            warehouse.name || "",
             (warehouse as any).code || "",
-            tourDate.toISOString()
+            tourDate
           )
           participantOrders.get(participant.id).lineItems.push({
             sku: swagItem.sku,
@@ -238,8 +239,9 @@ export class ShipHeroOrderService {
           const orderName = generateSalesOrderName(
             host.first_name,
             host.last_name,
+            warehouse.name || "",
             (warehouse as any).code || "",
-            tourDate.toISOString()
+            tourDate
           )
           participantOrders.get(`host-${host.id}`).lineItems.push({
             sku: swagItem.sku,
@@ -268,8 +270,9 @@ export class ShipHeroOrderService {
           const orderName = generateSalesOrderName(
             participant.first_name,
             participant.last_name,
+            warehouse.name || "",
             (warehouse as any).code || "",
-            tourDate.toISOString()
+            tourDate
           )
 
           const accessToken = await this.getAccessToken()
