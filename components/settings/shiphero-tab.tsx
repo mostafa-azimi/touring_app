@@ -15,7 +15,8 @@ import { generateSalesOrderName, generatePurchaseOrderName } from "@/lib/shipher
 
 export function ShipHeroTab() {
   const [refreshToken, setRefreshToken] = useState("")
-
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null)
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
@@ -48,8 +49,39 @@ export function ShipHeroTab() {
 
   useEffect(() => {
     const savedToken = localStorage.getItem('shiphero_refresh_token') || ''
+    const savedExpiresAt = localStorage.getItem('shiphero_token_expires_at')
     setRefreshToken(savedToken)
+    setTokenExpiresAt(savedExpiresAt)
+    
+    // Calculate initial days remaining
+    if (savedExpiresAt) {
+      calculateDaysRemaining(savedExpiresAt)
+    }
   }, [])
+
+  // Update countdown every hour
+  useEffect(() => {
+    if (!tokenExpiresAt) return
+
+    const updateCountdown = () => {
+      calculateDaysRemaining(tokenExpiresAt)
+    }
+
+    // Update immediately
+    updateCountdown()
+
+    // Update every hour
+    const interval = setInterval(updateCountdown, 60 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [tokenExpiresAt])
+
+  const calculateDaysRemaining = (expiresAt: string) => {
+    const expirationDate = new Date(expiresAt)
+    const now = new Date()
+    const diffTime = expirationDate.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    setDaysRemaining(Math.max(0, diffDays))
+  }
 
   const loadAdhocOrderData = async () => {
     try {
@@ -120,6 +152,13 @@ export function ShipHeroTab() {
         if (newAccessToken) {
           // Calculate expiration date
           const expirationDate = new Date(Date.now() + (expiresIn * 1000))
+          
+          // Store expiration date in localStorage
+          localStorage.setItem('shiphero_token_expires_at', expirationDate.toISOString())
+          setTokenExpiresAt(expirationDate.toISOString())
+          
+          // Calculate and set days remaining (should be 28)
+          calculateDaysRemaining(expirationDate.toISOString())
           
           toast({
             title: "✅ New Access Token Generated",
@@ -719,9 +758,13 @@ export function ShipHeroTab() {
                 <Button
                   onClick={() => {
                     localStorage.setItem('shiphero_refresh_token', refreshToken)
+                    // Clear expiration data when manually saving a new refresh token
+                    localStorage.removeItem('shiphero_token_expires_at')
+                    setTokenExpiresAt(null)
+                    setDaysRemaining(null)
                     toast({
                       title: "Refresh Token Saved",
-                      description: "Your ShipHero refresh token has been saved securely.",
+                      description: "Your ShipHero refresh token has been saved securely. Generate a new access token to start the 28-day countdown.",
                     })
                   }}
                   disabled={!refreshToken.trim()}
@@ -764,10 +807,23 @@ export function ShipHeroTab() {
                 <span className="text-green-600">✅</span>
                 <span>API credentials are configured and stored securely</span>
               </p>
-              <p className="flex items-center gap-2">
-                <span className="text-blue-600">💡</span>
-                <span>Access tokens last 28 days. Generate a new one before expiration</span>
-              </p>
+              {daysRemaining !== null ? (
+                <p className="flex items-center gap-2">
+                  <span className={`text-lg ${daysRemaining <= 3 ? 'text-red-600' : daysRemaining <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                    ⏰
+                  </span>
+                  <span className={daysRemaining <= 3 ? 'text-red-600 font-medium' : daysRemaining <= 7 ? 'text-yellow-600' : 'text-green-600'}>
+                    {daysRemaining === 0 ? 'Token expires today! Generate a new one immediately.' :
+                     daysRemaining === 1 ? 'Token expires in 1 day. Generate a new one soon.' :
+                     `Token expires in ${daysRemaining} days`}
+                  </span>
+                </p>
+              ) : (
+                <p className="flex items-center gap-2">
+                  <span className="text-blue-600">💡</span>
+                  <span>Generate a new access token to start the 28-day countdown</span>
+                </p>
+              )}
             </div>
           )}
 
