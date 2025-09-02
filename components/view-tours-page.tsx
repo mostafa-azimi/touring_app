@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
+import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
@@ -696,9 +696,6 @@ export function ViewToursPage() {
 }
 
 function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?: () => Promise<void> }) {
-  const [isCreatingOrders, setIsCreatingOrders] = useState(false)
-  const [isCreatingPO, setIsCreatingPO] = useState(false)
-  const [isValidatingTour, setIsValidatingTour] = useState(false)
   const [isCancellingTour, setIsCancellingTour] = useState(false)
   const { toast } = useToast()
 
@@ -719,123 +716,7 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
     })
   }
 
-  const handleCreateSalesOrders = async () => {
-    setIsCreatingOrders(true)
-    try {
-      const orderService = new ShipHeroOrderService()
-      const result = await orderService.createSalesOrdersForTour(tour.id)
-      
-      if (result.success) {
-        toast({
-          title: "Sales Orders Created",
-          description: result.message,
-        })
-        // Refresh tour data to show updated order links
-        if (onTourUpdated) {
-          await onTourUpdated()
-        }
-      } else {
-        toast({
-          title: "Failed to Create Sales Orders",
-          description: result.message,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create sales orders. Please check your ShipHero configuration.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreatingOrders(false)
-    }
-  }
 
-  const handleCreatePurchaseOrder = async () => {
-    setIsCreatingPO(true)
-    try {
-      const orderService = new ShipHeroOrderService()
-      const result = await orderService.createPurchaseOrderForTour(tour.id)
-      
-      if (result.success) {
-        toast({
-          title: "Purchase Order Created",
-          description: result.message,
-        })
-        // Refresh tour data to show updated order links
-        if (onTourUpdated) {
-          await onTourUpdated()
-        }
-      } else {
-        toast({
-          title: "Failed to Create Purchase Order",
-          description: result.message,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create purchase order. Please check your ShipHero configuration.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreatingPO(false)
-    }
-  }
-
-  const handleValidateTour = async () => {
-    setIsValidatingTour(true)
-    try {
-      const supabase = createClient()
-      
-      // Update tour status to validated
-      const { error: updateError } = await supabase
-        .from('tours')
-        .update({ status: 'validated' })
-        .eq('id', tour.id)
-
-      if (updateError) {
-        throw updateError
-      }
-
-      // Create both sales orders and purchase order
-      const orderService = new ShipHeroOrderService()
-      const [salesResult, poResult] = await Promise.all([
-        orderService.createSalesOrdersForTour(tour.id),
-        orderService.createPurchaseOrderForTour(tour.id)
-      ])
-
-      if (salesResult.success && poResult.success) {
-        toast({
-          title: "Tour Validated Successfully!",
-          description: `Created ${salesResult.ordersCreated} sales orders and 1 purchase order`,
-        })
-      } else {
-        const errors = [...(salesResult.errors || []), ...(poResult.errors || [])]
-        toast({
-          title: "Tour Validated with Errors",
-          description: `Tour validated but some orders failed: ${errors.join(', ')}`,
-          variant: "destructive",
-        })
-      }
-      
-      // Refresh tour data to show updated order links
-      if (onTourUpdated) {
-        await onTourUpdated()
-      }
-    } catch (error) {
-      console.error('Error validating tour:', error)
-      toast({
-        title: "Error",
-        description: "Failed to validate tour",
-        variant: "destructive",
-      })
-    } finally {
-      setIsValidatingTour(false)
-    }
-  }
 
   const handleCancelTour = async () => {
     if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
@@ -1040,95 +921,7 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
         </Card>
       )}
 
-      {/* ShipHero Integration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            ShipHero Orders
-          </CardTitle>
-          <CardDescription>
-            Create sales orders for participants and purchase orders for inventory
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Primary Action - Validate Tour */}
-          {tour.status === 'validated' ? (
-            <div className="space-y-2">
-              <div className="w-full bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <h3 className="font-medium text-green-800">Tour Validated</h3>
-                <p className="text-sm text-green-600">All orders have been created successfully</p>
-              </div>
-            </div>
-          ) : tour.status === 'cancelled' ? (
-            <div className="space-y-2">
-              <div className="w-full bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                <X className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                <h3 className="font-medium text-red-800">Tour Cancelled</h3>
-                <p className="text-sm text-red-600">This tour has been cancelled</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Button 
-                onClick={handleValidateTour}
-                disabled={isValidatingTour}
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-                size="lg"
-              >
-                <CheckCircle className="h-5 w-5 mr-2" />
-                {isValidatingTour ? "Validating Tour..." : "Validate Tour & Create All Orders"}
-              </Button>
-              <p className="text-sm text-muted-foreground text-center">
-                This will create sales orders for all participants (including host) and one purchase order for inventory
-              </p>
-            </div>
-          )}
 
-          {/* Manual Order Creation (for testing/debugging) */}
-          <div className="space-y-3">
-            <div className="text-sm font-medium text-muted-foreground">Manual Order Creation</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Sales Orders</h4>
-                <p className="text-sm text-muted-foreground">
-                  Create individual orders for each participant with their allocated swag items
-                </p>
-                <Button 
-                  onClick={handleCreateSalesOrders}
-                  disabled={isCreatingOrders || tour.participants.length === 0}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  {isCreatingOrders ? "Creating..." : `Create ${tour.participants.length + (tour.host ? 1 : 0)} Sales Orders`}
-                </Button>
-              </div>
-              
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Purchase Order</h4>
-                <p className="text-sm text-muted-foreground">
-                  Create a consolidated purchase order for all swag items needed
-                </p>
-                <Button 
-                  onClick={handleCreatePurchaseOrder}
-                  disabled={isCreatingPO}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  {isCreatingPO ? "Creating..." : "Create Purchase Order"}
-                </Button>
-              </div>
-            </div>
-          </div>
-          
-          <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg">
-            <p><strong>Note:</strong> Make sure you have configured your ShipHero tokens in Settings → ShipHero and that your warehouse has a ShipHero Warehouse ID.</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
