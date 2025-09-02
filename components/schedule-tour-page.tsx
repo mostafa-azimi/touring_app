@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
@@ -56,7 +56,6 @@ export function ScheduleTourPage() {
     host_id: "",
     date: "",
     time: "",
-    notes: "",
   })
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const { toast } = useToast()
@@ -167,7 +166,6 @@ export function ScheduleTourPage() {
             host_id: formData.host_id,
             date: formData.date,
             time: formData.time,
-            notes: formData.notes || null,
             status: 'scheduled',
           },
         ])
@@ -200,7 +198,7 @@ export function ScheduleTourPage() {
       })
 
             // Reset form
-      setFormData({ warehouse_id: "", host_id: "", date: "", time: "", notes: "" })
+      setFormData({ warehouse_id: "", host_id: "", date: "", time: "" })
       setParticipants([])
       setSwagPreview([])
     } catch (error) {
@@ -369,16 +367,7 @@ export function ScheduleTourPage() {
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Any special instructions or notes for the tour..."
-                  className="min-h-[120px]"
-                />
-              </div>
+
             </div>
 
             <Separator />

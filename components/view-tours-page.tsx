@@ -16,7 +16,7 @@ interface Tour {
   id: string
   date: string
   time: string
-  notes: string | null
+
   status?: string
   created_at: string
   shiphero_purchase_order_id?: string
@@ -147,7 +147,6 @@ export function ViewToursPage() {
           id,
           date,
           time,
-          notes,
           status,
           created_at,
           shiphero_purchase_order_id,
@@ -769,12 +768,7 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
               <p className="text-sm text-muted-foreground">{tour.host.email}</p>
             </div>
           )}
-          {tour.notes && (
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Notes</p>
-              <p className="text-sm">{tour.notes}</p>
-            </div>
-          )}
+
         </CardContent>
       </Card>
 
