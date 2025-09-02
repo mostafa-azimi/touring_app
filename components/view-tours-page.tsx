@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, Edit, X, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, Edit, X, CheckCircle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
@@ -64,9 +64,8 @@ export function ViewToursPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
+  const [cancellingTourId, setCancellingTourId] = useState<string | null>(null)
   const [showFinalized, setShowFinalized] = useState(false)
-  const [sortField, setSortField] = useState<string>('date')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -92,50 +91,6 @@ export function ViewToursPage() {
     }
     setCurrentPage(1) // Reset to first page when searching
   }, [searchTerm, tours])
-
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      // Toggle direction if same field
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    } else {
-      // New field, start with ascending
-      setSortField(field)
-      setSortDirection('asc')
-    }
-  }
-
-  const sortTours = (tours: Tour[]) => {
-    return [...tours].sort((a, b) => {
-      let aValue: any
-      let bValue: any
-
-      switch (sortField) {
-        case 'date':
-          aValue = new Date(`${a.date} ${a.time}`)
-          bValue = new Date(`${b.date} ${b.time}`)
-          break
-        case 'warehouse':
-          aValue = a.warehouse.name.toLowerCase()
-          bValue = b.warehouse.name.toLowerCase()
-          break
-        case 'participants':
-          aValue = a.participants.length
-          bValue = b.participants.length
-          break
-        case 'status':
-          aValue = (a.status || '').toLowerCase()
-          bValue = (b.status || '').toLowerCase()
-          break
-        default:
-          aValue = a.date
-          bValue = b.date
-      }
-
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
-      return 0
-    })
-  }
 
   const fetchTours = async () => {
     try {
@@ -191,9 +146,22 @@ export function ViewToursPage() {
   // REMOVED: handleValidateTour function - tours now go directly to finalize
 
   const handleCancelTour = async (tourId: string) => {
+    if (cancellingTourId === tourId) return // Prevent double-clicks
+    
     if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
       return
     }
+
+    setCancellingTourId(tourId)
+
+    // Optimistically update UI first for immediate feedback
+    setTours(prevTours => 
+      prevTours.map(tour => 
+        tour.id === tourId 
+          ? { ...tour, status: 'cancelled' } 
+          : tour
+      )
+    )
 
     try {
       // Update tour status to cancelled
@@ -210,15 +178,25 @@ export function ViewToursPage() {
         title: "Tour Cancelled",
         description: "The tour has been cancelled successfully",
       })
-      // Refresh tours to show updated status
-      fetchTours()
     } catch (error) {
       console.error('Error cancelling tour:', error)
+      
+      // Revert optimistic update on error
+      setTours(prevTours => 
+        prevTours.map(tour => 
+          tour.id === tourId 
+            ? { ...tour, status: 'scheduled' } // Revert to original status
+            : tour
+        )
+      )
+      
       toast({
         title: "Error",
         description: "Failed to cancel tour",
         variant: "destructive",
       })
+    } finally {
+      setCancellingTourId(null)
     }
   }
 
@@ -252,13 +230,19 @@ export function ViewToursPage() {
 
       if (updateError) throw updateError
 
+      // Update local state instead of refetching all tours
+      setTours(prevTours => 
+        prevTours.map(tour => 
+          tour.id === tourId 
+            ? { ...tour, status: 'finalized' } 
+            : tour
+        )
+      )
+
       toast({
         title: "🎉 Tour Finalized Successfully!",
         description: `Created ${salesResult.ordersCreated} sales orders and 1 purchase order. Tour is now finalized.`,
       })
-
-      // Refresh tours list
-      fetchTours()
 
     } catch (error: any) {
       console.error('Tour finalization error:', error)
@@ -273,12 +257,11 @@ export function ViewToursPage() {
     }
   }
 
-  // Pagination logic with sorting
-  const sortedTours = sortTours(filteredTours)
-  const totalPages = Math.ceil(sortedTours.length / ITEMS_PER_PAGE)
+  // Pagination logic
+  const totalPages = Math.ceil(filteredTours.length / ITEMS_PER_PAGE)
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
   const endIndex = startIndex + ITEMS_PER_PAGE
-  const currentTours = sortedTours.slice(startIndex, endIndex)
+  const currentTours = filteredTours.slice(startIndex, endIndex)
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -295,25 +278,6 @@ export function ViewToursPage() {
       minute: "2-digit",
       hour12: true,
     })
-  }
-
-  const SortableHeader = ({ field, children }: { field: string; children: React.ReactNode }) => {
-    const isActive = sortField === field
-    const Icon = isActive 
-      ? (sortDirection === 'asc' ? ArrowUp : ArrowDown)
-      : ArrowUpDown
-
-    return (
-      <TableHead 
-        className="cursor-pointer hover:bg-muted/50 select-none"
-        onClick={() => handleSort(field)}
-      >
-        <div className="flex items-center gap-2">
-          {children}
-          <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-        </div>
-      </TableHead>
-    )
   }
 
   return (
@@ -355,11 +319,11 @@ export function ViewToursPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableHeader field="date">Date & Time</SortableHeader>
-                  <SortableHeader field="warehouse">Warehouse</SortableHeader>
-                  <SortableHeader field="participants">Participants</SortableHeader>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Warehouse</TableHead>
+                  <TableHead>Participants</TableHead>
                   <TableHead>Swag Items</TableHead>
-                  <SortableHeader field="status">Status</SortableHeader>
+                  <TableHead>Status</TableHead>
                   <TableHead className="w-[140px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -475,9 +439,10 @@ export function ViewToursPage() {
                                 size="sm" 
                                 title="Cancel Tour" 
                                 onClick={() => handleCancelTour(tour.id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                disabled={cancellingTourId === tour.id}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50"
                               >
-                                <X className="h-4 w-4" />
+                                <X className={`h-4 w-4 ${cancellingTourId === tour.id ? 'animate-spin' : ''}`} />
                               </Button>
                             )}
                           </div>
