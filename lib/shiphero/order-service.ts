@@ -17,6 +17,40 @@ export class ShipHeroOrderService {
   }
 
   /**
+   * Get a fresh access token using the stored refresh token
+   */
+  private async getAccessToken(): Promise<string> {
+    const refreshToken = localStorage.getItem('shiphero_refresh_token')
+    
+    if (!refreshToken) {
+      throw new Error('ShipHero access token and refresh token are required. Please configure them in Settings → ShipHero tab.')
+    }
+
+    const tokenResponse = await fetch('/api/shiphero/refresh-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken
+      })
+    })
+
+    if (!tokenResponse.ok) {
+      throw new Error('Failed to get ShipHero access token. Please check your refresh token in Settings.')
+    }
+
+    const tokenData = await tokenResponse.json()
+    const accessToken = tokenData.access_token
+
+    if (!accessToken) {
+      throw new Error('No access token received from ShipHero. Please check your refresh token.')
+    }
+
+    return accessToken
+  }
+
+  /**
    * Create sales orders in ShipHero for each participant in a tour
    */
   async createSalesOrdersForTour(tourId: string): Promise<{
@@ -195,11 +229,12 @@ export class ShipHeroOrderService {
           )
           const orderNumber = generateSalesOrderNumber()
 
+          const accessToken = await this.getAccessToken()
           const salesOrderResult = await fetch('/api/shiphero/orders', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('shiphero_access_token')}`
+              'Authorization': `Bearer ${accessToken}`
             },
             body: JSON.stringify({
               type: 'sales_order',
@@ -443,11 +478,12 @@ export class ShipHeroOrderService {
       const poName = generatePurchaseOrderName(host.last_name, warehouseCode, tourDate)
       const poNumber = generatePurchaseOrderNumber()
 
+      const accessToken = await this.getAccessToken()
       const purchaseOrderResult = await fetch('/api/shiphero/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('shiphero_access_token')}`
+          'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
           type: 'purchase_order',
