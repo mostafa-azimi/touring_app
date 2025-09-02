@@ -285,14 +285,42 @@ export function ViewToursPage() {
 
       if (updateError) throw updateError
 
-      // Update local state instead of refetching all tours
-      setTours(prevTours => 
-        prevTours.map(tour => 
-          tour.id === tourId 
-            ? { ...tour, status: 'finalized' } 
-            : tour
-        )
-      )
+      // Refresh tours to get updated order information
+      await fetchTours()
+      
+      // Update selected tour if it's currently open by fetching fresh data
+      if (selectedTour && selectedTour.id === tourId) {
+        // Fetch the updated tour data directly
+        const { data: updatedTourData } = await supabase
+          .from("tours")
+          .select(`
+            id,
+            date,
+            time,
+            status,
+            created_at,
+            shiphero_purchase_order_id,
+            shiphero_purchase_order_number,
+            shiphero_purchase_order_url,
+            host_shiphero_sales_order_id,
+            host_shiphero_sales_order_number,
+            host_shiphero_sales_order_url,
+            warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
+            host:team_members(id, first_name, last_name, email),
+            participants:tour_participants(id, first_name, last_name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
+          `)
+          .eq('id', tourId)
+          .single()
+        
+        if (updatedTourData) {
+          const processedTour = {
+            ...updatedTourData,
+            warehouse: Array.isArray(updatedTourData.warehouse) ? updatedTourData.warehouse[0] : updatedTourData.warehouse,
+            participants: Array.isArray(updatedTourData.participants) ? updatedTourData.participants : [],
+          }
+          setSelectedTour(processedTour)
+        }
+      }
 
       toast({
         title: "🎉 Tour Finalized Successfully!",
@@ -592,7 +620,7 @@ export function ViewToursPage() {
                                 </Button>
                               </SheetTrigger>
                               <SheetContent className="w-[600px] sm:max-w-[600px] overflow-y-auto">
-                                <TourDetailsSheet tour={tour} />
+                                <TourDetailsSheet tour={selectedTour || tour} onTourUpdated={fetchTours} />
                               </SheetContent>
                             </Sheet>
                             
@@ -667,7 +695,7 @@ export function ViewToursPage() {
   )
 }
 
-function TourDetailsSheet({ tour }: { tour: Tour }) {
+function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?: () => Promise<void> }) {
   const [isCreatingOrders, setIsCreatingOrders] = useState(false)
   const [isCreatingPO, setIsCreatingPO] = useState(false)
   const [isValidatingTour, setIsValidatingTour] = useState(false)
@@ -702,6 +730,10 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
           title: "Sales Orders Created",
           description: result.message,
         })
+        // Refresh tour data to show updated order links
+        if (onTourUpdated) {
+          await onTourUpdated()
+        }
       } else {
         toast({
           title: "Failed to Create Sales Orders",
@@ -731,6 +763,10 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
           title: "Purchase Order Created",
           description: result.message,
         })
+        // Refresh tour data to show updated order links
+        if (onTourUpdated) {
+          await onTourUpdated()
+        }
       } else {
         toast({
           title: "Failed to Create Purchase Order",
@@ -783,6 +819,11 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
           description: `Tour validated but some orders failed: ${errors.join(', ')}`,
           variant: "destructive",
         })
+      }
+      
+      // Refresh tour data to show updated order links
+      if (onTourUpdated) {
+        await onTourUpdated()
       }
     } catch (error) {
       console.error('Error validating tour:', error)
