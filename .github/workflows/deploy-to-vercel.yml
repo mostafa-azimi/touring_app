@@ -1,0 +1,27 @@
+name: Auto-deploy to Vercel Preview Branch
+
+on:
+  push:
+    branches: [ dev ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    
+    - name: Merge dev into test/vercel-preview
+      run: |
+        git checkout test/vercel-preview
+        git merge dev --no-edit
+        git push origin test/vercel-preview
