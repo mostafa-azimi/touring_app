@@ -601,9 +601,15 @@ export class ShipHeroOrderService {
       if (purchaseOrderData.data?.purchase_order_create?.purchase_order) {
         const purchaseOrder = purchaseOrderData.data.purchase_order_create.purchase_order
         console.log(`Created purchase order: ${purchaseOrder.po_number} (ID: ${purchaseOrder.id})`)
+        console.log('🔍 PO Response data:', {
+          id: purchaseOrder.id,
+          legacy_id: purchaseOrder.legacy_id,
+          po_number: purchaseOrder.po_number
+        })
         
         // Store ShipHero purchase order details in database
         const shipheroPOUrl = `https://app.shiphero.com/dashboard/purchase-orders/details/${purchaseOrder.legacy_id}`
+        console.log('🔗 Generated PO URL:', shipheroPOUrl)
         const { error: updateError } = await this.supabase
           .from('tours')
           .update({
