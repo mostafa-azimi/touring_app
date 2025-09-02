@@ -284,7 +284,8 @@ export class ShipHeroOrderService {
           )
           
           console.log('📦 Generated order name:', orderName)
-          console.log('🏷️ Order tags:', [warehouse.code || ""].filter(Boolean))
+          console.log('🏷️ Order tags being sent:', [warehouse.code || ""].filter(Boolean))
+          console.log('🏢 Warehouse code value:', warehouse.code)
 
           const accessToken = await this.getAccessToken()
           const salesOrderResult = await fetch('/api/shiphero/orders', {
