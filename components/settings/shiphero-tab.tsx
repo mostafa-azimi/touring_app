@@ -35,6 +35,7 @@ export function ShipHeroTab() {
     warehouseId: '',
     hostId: '',
     swagItemIds: [] as string[],
+    swagQuantities: {} as Record<string, number>,
     notes: ''
   })
   const [lastError, setLastError] = useState<string | null>(null)
@@ -558,7 +559,7 @@ export function ShipHeroTab() {
       // Create line items for PO
       const lineItems = selectedSwagItems.map(swagItem => ({
         sku: swagItem.sku || swagItem.name,
-        quantity: 1,
+        quantity: adhocPOData.swagQuantities[swagItem.id] || 1,
         expected_weight_in_lbs: "1.00",
         vendor_id: "1076735",
         quantity_received: 0,
@@ -669,6 +670,7 @@ export function ShipHeroTab() {
         warehouseId: '',
         hostId: '',
         swagItemIds: [],
+        swagQuantities: {},
         notes: ''
       })
       setShowAdhocPO(false)
@@ -1066,24 +1068,62 @@ export function ShipHeroTab() {
 
               <div className="grid gap-2">
                 <Label>Swag Items *</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3">
                   {swagItems.map((swagItem) => (
-                    <div key={swagItem.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`po-swag-${swagItem.id}`}
-                        checked={adhocPOData.swagItemIds.includes(swagItem.id)}
-                        onChange={(e) => {
-                          const newIds = e.target.checked
-                            ? [...adhocPOData.swagItemIds, swagItem.id]
-                            : adhocPOData.swagItemIds.filter(id => id !== swagItem.id)
-                          setAdhocPOData({ ...adhocPOData, swagItemIds: newIds })
-                        }}
-                        className="rounded"
-                      />
-                      <Label htmlFor={`po-swag-${swagItem.id}`} className="text-sm">
-                        {swagItem.name} ({swagItem.sku})
-                      </Label>
+                    <div key={swagItem.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`po-swag-${swagItem.id}`}
+                          checked={adhocPOData.swagItemIds.includes(swagItem.id)}
+                          onChange={(e) => {
+                            const newIds = e.target.checked
+                              ? [...adhocPOData.swagItemIds, swagItem.id]
+                              : adhocPOData.swagItemIds.filter(id => id !== swagItem.id)
+                            
+                            // Reset quantity when unchecking
+                            const newQuantities = { ...adhocPOData.swagQuantities }
+                            if (!e.target.checked) {
+                              delete newQuantities[swagItem.id]
+                            } else {
+                              newQuantities[swagItem.id] = 1 // Default to 1
+                            }
+                            
+                            setAdhocPOData({ 
+                              ...adhocPOData, 
+                              swagItemIds: newIds,
+                              swagQuantities: newQuantities
+                            })
+                          }}
+                          className="rounded"
+                        />
+                        <Label htmlFor={`po-swag-${swagItem.id}`} className="text-sm font-medium">
+                          {swagItem.name} ({swagItem.sku})
+                        </Label>
+                      </div>
+                      
+                      {adhocPOData.swagItemIds.includes(swagItem.id) && (
+                        <div className="flex items-center space-x-2">
+                          <Label className="text-sm text-gray-600">Qty:</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="999"
+                            value={adhocPOData.swagQuantities[swagItem.id] || 1}
+                            onChange={(e) => {
+                              const quantity = Math.max(1, parseInt(e.target.value) || 1)
+                              setAdhocPOData({
+                                ...adhocPOData,
+                                swagQuantities: {
+                                  ...adhocPOData.swagQuantities,
+                                  [swagItem.id]: quantity
+                                }
+                              })
+                            }}
+                            className="w-20 h-8"
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

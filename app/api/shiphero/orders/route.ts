@@ -102,8 +102,34 @@ export async function POST(request: NextRequest) {
       variables = {}
     } else if (type === 'purchase_order') {
       query = `
-        mutation CreatePurchaseOrder($data: CreatePurchaseOrderInput!) {
-          purchase_order_create(data: $data) {
+        mutation {
+          purchase_order_create(
+            data: {
+              po_date: "${data.po_date}"
+              po_number: "${data.po_number}"
+              subtotal: "${data.subtotal}"
+              shipping_price: "${data.shipping_price}"
+              total_price: "${data.total_price}"
+              warehouse_id: "${data.warehouse_id}"
+              fulfillment_status: "${data.fulfillment_status}"
+              discount: "${data.discount}"
+              vendor_id: "${data.vendor_id}"
+              line_items: [
+                ${data.line_items.map((item: any) => `{
+                  sku: "${item.sku}"
+                  quantity: ${item.quantity}
+                  expected_weight_in_lbs: "${item.expected_weight_in_lbs}"
+                  vendor_id: "${item.vendor_id}"
+                  quantity_received: ${item.quantity_received}
+                  quantity_rejected: ${item.quantity_rejected}
+                  price: "${item.price}"
+                  product_name: "${item.product_name}"
+                  fulfillment_status: "${item.fulfillment_status}"
+                  sell_ahead: ${item.sell_ahead}
+                }`).join(',')}
+              ]
+            }
+          ) {
             request_id
             complexity
             purchase_order {
@@ -113,13 +139,13 @@ export async function POST(request: NextRequest) {
               warehouse_id
               subtotal
               total_price
-              status
+              fulfillment_status
               po_date
             }
           }
         }
       `
-      variables = { data }
+      variables = {}
     } else {
       return NextResponse.json({ error: 'Invalid order type' }, { status: 400 })
     }

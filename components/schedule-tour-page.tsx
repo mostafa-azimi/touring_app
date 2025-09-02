@@ -280,13 +280,46 @@ export function ScheduleTourPage() {
 
                 <div className="grid gap-2">
                   <Label htmlFor="time">Time *</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={formData.time}
-                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                    required
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      value={formData.time.split(':')[0] || ''}
+                      onValueChange={(hour) => {
+                        const currentMinute = formData.time.split(':')[1] || '00'
+                        setFormData({ ...formData, time: `${hour}:${currentMinute}` })
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Hour" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <SelectItem key={i} value={i.toString().padStart(2, '0')}>
+                            {i.toString().padStart(2, '0')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={formData.time.split(':')[1] || ''}
+                      onValueChange={(minute) => {
+                        const currentHour = formData.time.split(':')[0] || '09'
+                        setFormData({ ...formData, time: `${currentHour}:${minute}` })
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Minutes" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="00">00</SelectItem>
+                        <SelectItem value="30">30</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.time && (
+                    <p className="text-sm text-muted-foreground">
+                      Selected time: {formData.time}
+                    </p>
+                  )}
                 </div>
               </div>
 
