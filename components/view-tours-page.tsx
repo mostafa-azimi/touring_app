@@ -22,6 +22,9 @@ interface Tour {
   shiphero_purchase_order_id?: string
   shiphero_purchase_order_number?: string
   shiphero_purchase_order_url?: string
+  host_shiphero_sales_order_id?: string
+  host_shiphero_sales_order_number?: string
+  host_shiphero_sales_order_url?: string
   warehouse: {
     id: string
     name: string
@@ -156,6 +159,9 @@ export function ViewToursPage() {
           shiphero_purchase_order_id,
           shiphero_purchase_order_number,
           shiphero_purchase_order_url,
+          host_shiphero_sales_order_id,
+          host_shiphero_sales_order_number,
+          host_shiphero_sales_order_url,
           warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
           host:team_members(id, first_name, last_name, email),
           participants:tour_participants(id, first_name, last_name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
@@ -345,6 +351,8 @@ export function ViewToursPage() {
       'Tour Status',
       'Purchase Order Number',
       'Purchase Order URL',
+      'Host Order Number',
+      'Host Order URL',
       'Participant First Name',
       'Participant Last Name',
       'Participant Email',
@@ -367,7 +375,9 @@ export function ViewToursPage() {
         `"${tour.warehouse.address}${tour.warehouse.city ? ', ' + tour.warehouse.city : ''}${tour.warehouse.state ? ', ' + tour.warehouse.state : ''}"`,
         tour.status || 'scheduled',
         tour.shiphero_purchase_order_number || '',
-        tour.shiphero_purchase_order_url || ''
+        tour.shiphero_purchase_order_url || '',
+        tour.host_shiphero_sales_order_number || '',
+        tour.host_shiphero_sales_order_url || ''
       ]
       
       // Add row for each participant
@@ -893,6 +903,18 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
                   <div className="grid gap-1">
                     <p className="font-medium">{tour.host.first_name} {tour.host.last_name}</p>
                     <p className="text-sm text-muted-foreground">{tour.host.email}</p>
+                    {tour.host_shiphero_sales_order_url && (
+                      <div className="mt-1">
+                        <a 
+                          href={tour.host_shiphero_sales_order_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-xs underline"
+                        >
+                          SO: {tour.host_shiphero_sales_order_number || 'View Order'}
+                        </a>
+                      </div>
+                    )}
                   </div>
                   <Badge variant="default" className="bg-blue-600">Host</Badge>
                 </div>
@@ -945,6 +967,37 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
           </p>
         </CardContent>
       </Card>
+
+      {/* Purchase Order Details */}
+      {tour.shiphero_purchase_order_url && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Purchase Order
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Order Number:</span>
+                <span className="font-medium">{tour.shiphero_purchase_order_number}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">ShipHero Link:</span>
+                <a 
+                  href={tour.shiphero_purchase_order_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-sm underline"
+                >
+                  View in ShipHero →
+                </a>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ShipHero Integration */}
       <Card>
