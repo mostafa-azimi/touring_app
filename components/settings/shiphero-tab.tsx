@@ -227,6 +227,7 @@ export function ShipHeroTab() {
   const handleCreateAdhocOrder = async () => {
     alert('Button clicked! Function called!')
     console.log('🚀🚀🚀 handleCreateAdhocOrder called with data:', adhocOrderData)
+    console.log('🔥 FORCE REBUILD - Variable conflict should be fixed')
     
     // Let's test with hardcoded values first to see if the API works
     const testOrder = {
