@@ -330,7 +330,8 @@ export class ShipHeroOrderService {
                   phone: "5555555555"
                 },
                 line_items: lineItems,
-                required_ship_date: tourDate.toISOString().split('T')[0] // Use date format like "2025-09-23"
+                required_ship_date: tourDate.toISOString().split('T')[0], // Use date format like "2025-09-23"
+                tags: [(warehouse as any).code || ""].filter(Boolean) // Add airport code as tag
               }
             })
           })

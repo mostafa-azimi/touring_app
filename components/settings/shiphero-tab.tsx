@@ -333,7 +333,8 @@ export function ShipHeroTab() {
           quantity_pending_fulfillment: item.quantity,
           warehouse_id: warehouse.shiphero_warehouse_id
         })),
-        required_ship_date: orderDate
+        required_ship_date: orderDate,
+        tags: [warehouse.code || ""].filter(Boolean) // Add airport code as tag
       }
 
       console.log('Creating adhoc order with data:', JSON.stringify(orderData, null, 2))
