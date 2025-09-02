@@ -12,7 +12,7 @@ export class ShipHeroOrderService {
   private supabase
 
   constructor() {
-    this.shipHero = createShipHeroClient()
+    // Don't create ShipHero client in constructor - we'll create it when needed with fresh tokens
     this.supabase = createClient()
   }
 
@@ -53,6 +53,7 @@ export class ShipHeroOrderService {
       throw new Error('No access token received from ShipHero. Please check your refresh token.')
     }
 
+    // Return the access token (we'll use fetch directly like adhoc orders)
     return accessToken
   }
 
