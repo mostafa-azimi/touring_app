@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
+import { Eye, Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
@@ -875,20 +875,7 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
         </CardContent>
       </Card>
 
-      {/* Swag Items - Manual Addition */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            Swag Items (Manual Addition)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Swag items will be added manually during tour finalization. Each participant and host will receive the standard swag package.
-          </p>
-        </CardContent>
-      </Card>
+
 
       {/* Purchase Order Details */}
       {tour.shiphero_purchase_order_url && (
