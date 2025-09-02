@@ -530,13 +530,6 @@ export class ShipHeroOrderService {
     message: string;
     poNumber?: string;
     errors: string[];
-  }>
-  }>;
-  async createPurchaseOrderForTour(tourId: string): Promise<{
-    success: boolean;
-    message: string;
-    poNumber?: string;
-    errors: string[];
   }> {
     try {
       // Get tour details with host, warehouse, and swag allocations
