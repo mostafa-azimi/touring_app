@@ -175,7 +175,7 @@ export function ShipHeroTab() {
         throw new Error('No access token received from refresh token')
       }
       
-      // Test connection by querying warehouses
+      // Test connection by querying warehouses only
       const warehousesResponse = await fetch('/api/shiphero/warehouses', {
         method: 'GET',
         headers: {
@@ -189,37 +189,13 @@ export function ShipHeroTab() {
       }
       
       const warehousesResult = await warehousesResponse.json()
-      
-      // Also query products with SWAG in SKU
-      const productsResponse = await fetch('/api/shiphero/products', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      let productsResult = null
-      if (productsResponse.ok) {
-        productsResult = await productsResponse.json()
-      } else {
-        console.log('Products query failed:', productsResponse.status, productsResponse.statusText)
-      }
-
-      // Combine results
-      const combinedResult = {
-        warehouses: warehousesResult,
-        products: productsResult
-      }
-      
-      setTestResults(combinedResult)
+      setTestResults(warehousesResult)
       
       const warehouseCount = warehousesResult.data?.account?.data?.warehouses?.length || 0
-      const productCount = productsResult?.data?.account?.data?.products?.edges?.length || 0
       
       toast({
         title: "Connection Test Successful",
-        description: `Found ${warehouseCount} warehouses and ${productCount} SWAG products in ShipHero`,
+        description: `Connected to ShipHero API! Found ${warehouseCount} warehouse${warehouseCount !== 1 ? 's' : ''}`,
       })
     } catch (error: any) {
       setTestResults({ error: error.message })
@@ -764,27 +740,22 @@ export function ShipHeroTab() {
                 <div className="space-y-3">
                   <div className="text-sm text-blue-700">
                     <strong>Status:</strong> Connected successfully
-                    {testResults.warehouses?.data?.account?.data?.warehouses && (
+                    {testResults.data?.account?.data?.warehouses && (
                       <span className="ml-2">
-                        • <strong>{testResults.warehouses.data.account.data.warehouses.length}</strong> warehouses found
-                      </span>
-                    )}
-                    {testResults.products?.data?.account?.data?.products?.edges && (
-                      <span className="ml-2">
-                        • <strong>{testResults.products.data.account.data.products.edges.length}</strong> products found
+                        • <strong>{testResults.data.account.data.warehouses.length}</strong> warehouses found
                       </span>
                     )}
                   </div>
                   
                   {/* Debug: Show raw data structure */}
                   <details className="text-xs">
-                    <summary className="cursor-pointer text-blue-600 hover:text-blue-800">Debug: All data (warehouses & products)</summary>
+                    <summary className="cursor-pointer text-blue-600 hover:text-blue-800">Debug: Warehouse data</summary>
                     <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
                       {JSON.stringify(testResults, null, 2)}
                     </pre>
                   </details>
                   
-                  {testResults.warehouses?.data?.account?.data?.warehouses && Array.isArray(testResults.warehouses.data.account.data.warehouses) && testResults.warehouses.data.account.data.warehouses.length > 0 && (
+                  {testResults.data?.account?.data?.warehouses && Array.isArray(testResults.data.account.data.warehouses) && testResults.data.account.data.warehouses.length > 0 && (
                     <div className="border rounded-lg overflow-hidden bg-white">
                       <Table>
                         <TableHeader>
@@ -795,7 +766,7 @@ export function ShipHeroTab() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {testResults.warehouses.data.account.data.warehouses.map((warehouse: any, index: number) => {
+                          {testResults.data.account.data.warehouses.map((warehouse: any, index: number) => {
                             // Ensure warehouse is an object and has the expected structure
                             if (!warehouse || typeof warehouse !== 'object') {
                               return (
