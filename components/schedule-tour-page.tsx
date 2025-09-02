@@ -227,7 +227,7 @@ export function ScheduleTourPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Tour Details Section */}
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-4">
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="warehouse">Warehouse *</Label>

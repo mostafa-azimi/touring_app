@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, RefreshCw, Eye, EyeOff, TestTube, Plus, ShoppingCart } from "lucide-react"
+import { RefreshCw, TestTube, Plus, ShoppingCart } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,7 +15,7 @@ import { generateSalesOrderName, generatePurchaseOrderName } from "@/lib/shipher
 
 export function ShipHeroTab() {
   const [refreshToken, setRefreshToken] = useState("")
-  const [showToken, setShowToken] = useState(false)
+
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
@@ -97,15 +97,7 @@ export function ShipHeroTab() {
 
 
 
-  const handleSaveToken = () => {
-    if (refreshToken) {
-      localStorage.setItem('shiphero_refresh_token', refreshToken)
-      toast({
-        title: "Token Saved",
-        description: "Refresh token saved successfully",
-      })
-    }
-  }
+
 
   const handleRefreshToken = async () => {
     setIsRefreshing(true)
@@ -130,8 +122,9 @@ export function ShipHeroTab() {
           const expirationDate = new Date(Date.now() + (expiresIn * 1000))
           
           toast({
-            title: "Access Token Refreshed Successfully",
-            description: `New access token generated. Expires: ${expirationDate.toLocaleString()}`,
+            title: "✅ New Access Token Generated",
+            description: `Token will be valid for 28 days (expires: ${expirationDate.toLocaleDateString()})`,
+            duration: 6000,
           })
         } else {
           throw new Error('No access token received from refresh')
@@ -701,63 +694,49 @@ export function ShipHeroTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>ShipHero API</CardTitle>
+          <CardTitle>ShipHero API Connection</CardTitle>
           <CardDescription>
-            Enter and manage your ShipHero refresh token
+            {refreshToken ? 
+              "Connected to ShipHero API. Generate a new access token or test your connection." : 
+              "No refresh token found. Please contact support to configure API access."
+            }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-2">
-            <Label htmlFor="refresh-token">Refresh Token</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="refresh-token"
-                type={showToken ? "text" : "password"}
-                placeholder="Enter your ShipHero refresh token..."
-                value={refreshToken}
-                onChange={(e) => {
-                  console.log('Input changed:', e.target.value)
-                  setRefreshToken(e.target.value)
-                }}
-                className="font-mono text-xs"
-                autoComplete="off"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowToken(!showToken)}
-              >
-                {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
-
           <div className="flex items-center gap-2">
-            <Button onClick={handleSaveToken} disabled={!refreshToken}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Token
-            </Button>
-            
             <Button
               onClick={handleRefreshToken}
               disabled={isRefreshing || !refreshToken}
-              variant="outline"
+              variant="default"
+              className="flex-1"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? "Refreshing..." : "Get New Access Token"}
+              {isRefreshing ? "Generating..." : "Generate New Access Token"}
             </Button>
             
             <Button
               onClick={handleConnectionTest}
               disabled={isTesting || !refreshToken}
               variant="outline"
+              className="flex-1"
             >
               <TestTube className={`h-4 w-4 mr-2 ${isTesting ? 'animate-pulse' : ''}`} />
               {isTesting ? "Testing..." : "Test Connection"}
             </Button>
           </div>
-
-
+          
+          {refreshToken && (
+            <div className="text-sm bg-muted p-4 rounded-lg space-y-2">
+              <p className="flex items-center gap-2">
+                <span className="text-green-600">✅</span>
+                <span>API credentials are configured and stored securely</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <span className="text-blue-600">💡</span>
+                <span>Access tokens last 28 days. Generate a new one before expiration</span>
+              </p>
+            </div>
+          )}
 
           {testResults && (
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
