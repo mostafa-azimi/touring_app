@@ -18,6 +18,13 @@ export function ShipHeroTab() {
   const [refreshToken, setRefreshToken] = useState("")
   const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null)
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
+  const [countdown, setCountdown] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    isExpired: boolean;
+  } | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
@@ -64,28 +71,55 @@ export function ShipHeroTab() {
     loadAdhocOrderData()
   }, [])
 
-  // Update countdown every hour
+  // Update countdown every second for live timer
   useEffect(() => {
     if (!tokenExpiresAt) return
 
     const updateCountdown = () => {
-      calculateDaysRemaining(tokenExpiresAt)
+      calculateCountdown(tokenExpiresAt)
     }
 
     // Update immediately
     updateCountdown()
 
-    // Update every hour
-    const interval = setInterval(updateCountdown, 60 * 60 * 1000)
+    // Update every second for live countdown
+    const interval = setInterval(updateCountdown, 1000)
     return () => clearInterval(interval)
   }, [tokenExpiresAt])
 
-  const calculateDaysRemaining = (expiresAt: string) => {
+  const calculateCountdown = (expiresAt: string) => {
     const expirationDate = new Date(expiresAt)
     const now = new Date()
     const diffTime = expirationDate.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    setDaysRemaining(Math.max(0, diffDays))
+    
+    if (diffTime <= 0) {
+      setCountdown({
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        isExpired: true
+      })
+      setDaysRemaining(0)
+      return
+    }
+
+    // Calculate time components
+    const days = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((diffTime % (1000 * 60)) / 1000)
+
+    setCountdown({
+      days,
+      hours,
+      minutes,
+      seconds,
+      isExpired: false
+    })
+    
+    // Keep the old days calculation for compatibility
+    setDaysRemaining(Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24))))
   }
 
 
@@ -814,17 +848,53 @@ export function ShipHeroTab() {
                 <span className="text-green-600">✅</span>
                 <span>API credentials are configured and stored securely</span>
               </p>
-              {daysRemaining !== null ? (
-                <p className="flex items-center gap-2">
-                  <span className={`text-lg ${daysRemaining <= 3 ? 'text-red-600' : daysRemaining <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
-                    ⏰
-                  </span>
-                  <span className={daysRemaining <= 3 ? 'text-red-600 font-medium' : daysRemaining <= 7 ? 'text-yellow-600' : 'text-green-600'}>
-                    {daysRemaining === 0 ? 'Token expires today! Generate a new one immediately.' :
-                     daysRemaining === 1 ? 'Token expires in 1 day. Generate a new one soon.' :
-                     `Token expires in ${daysRemaining} days`}
-                  </span>
-                </p>
+              {countdown !== null ? (
+                <div className="space-y-2">
+                  <p className="flex items-center gap-2">
+                    <span className={`text-lg ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                      ⏰
+                    </span>
+                    <span className={countdown.days <= 3 ? 'text-red-600 font-medium' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}>
+                      {countdown.isExpired ? 'Token has expired! Generate a new one immediately.' :
+                       countdown.days === 0 ? 'Token expires today! Generate a new one immediately.' :
+                       `Token expires in ${countdown.days} day${countdown.days !== 1 ? 's' : ''}`}
+                    </span>
+                  </p>
+                  {!countdown.isExpired && (
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Live Countdown:</p>
+                      <div className="flex items-center gap-4 font-mono text-lg">
+                        <div className="text-center">
+                          <div className={`font-bold ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {countdown.days.toString().padStart(2, '0')}
+                          </div>
+                          <div className="text-xs text-gray-500">DAYS</div>
+                        </div>
+                        <div className="text-gray-400">:</div>
+                        <div className="text-center">
+                          <div className={`font-bold ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {countdown.hours.toString().padStart(2, '0')}
+                          </div>
+                          <div className="text-xs text-gray-500">HOURS</div>
+                        </div>
+                        <div className="text-gray-400">:</div>
+                        <div className="text-center">
+                          <div className={`font-bold ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {countdown.minutes.toString().padStart(2, '0')}
+                          </div>
+                          <div className="text-xs text-gray-500">MINS</div>
+                        </div>
+                        <div className="text-gray-400">:</div>
+                        <div className="text-center">
+                          <div className={`font-bold ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {countdown.seconds.toString().padStart(2, '0')}
+                          </div>
+                          <div className="text-xs text-gray-500">SECS</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p className="flex items-center gap-2">
                   <span className="text-blue-600">💡</span>
