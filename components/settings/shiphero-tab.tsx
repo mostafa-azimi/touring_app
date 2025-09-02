@@ -30,16 +30,20 @@ export function ShipHeroTab() {
     warehouseId: '',
     hostId: '',
     swagItemIds: [] as string[],
-    notes: ''
+    notes: '',
+    orderDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] // Tomorrow's date
   })
   const [adhocPOData, setAdhocPOData] = useState({
     warehouseId: '',
     hostId: '',
     swagItemIds: [] as string[],
     swagQuantities: {} as Record<string, number>,
-    notes: ''
+    notes: '',
+    poDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] // Tomorrow's date
   })
   const [lastError, setLastError] = useState<string | null>(null)
+  const [lastOrderResponse, setLastOrderResponse] = useState<any>(null)
+  const [lastPOResponse, setLastPOResponse] = useState<any>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -271,10 +275,8 @@ export function ShipHeroTab() {
       // Generate order number using naming convention
       const orderNumber = generateSalesOrderName(host.first_name, host.last_name, warehouse.name, warehouse.code)
 
-      // Use tomorrow's date
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      const orderDate = tomorrow.toISOString().split('T')[0] // YYYY-MM-DD format
+      // Use the selected date from the form
+      const orderDate = adhocOrderData.orderDate
 
       const orderData = {
         order_number: orderNumber,
@@ -399,6 +401,12 @@ export function ShipHeroTab() {
 
       const orderResult = await orderResponse.json()
       console.log('🎉 ShipHero order creation response:', JSON.stringify(orderResult, null, 2))
+      
+      // Store the response for display
+      setLastOrderResponse({
+        request: orderData,
+        response: orderResult
+      })
       
       // Create ShipHero order link
       const orderId = orderResult.data?.order_create?.order?.id
@@ -554,10 +562,8 @@ export function ShipHeroTab() {
       // Generate PO number using naming convention
       const poNumber = generatePurchaseOrderName(host.last_name, warehouse.code)
       
-      // Use tomorrow's date
-      const tomorrow = new Date()
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      const poDate = tomorrow.toISOString().split('T')[0]
+      // Use the selected date from the form
+      const poDate = adhocPOData.poDate
 
       const poData = {
         po_date: poDate,
@@ -595,6 +601,12 @@ export function ShipHeroTab() {
 
       const poResult = await poResponse.json()
       console.log('🎉 ShipHero PO creation response:', JSON.stringify(poResult, null, 2))
+      
+      // Store the response for display
+      setLastPOResponse({
+        request: poData,
+        response: poResult
+      })
       
       const poId = poResult.data?.purchase_order_create?.purchase_order?.id
       const poLegacyId = poResult.data?.purchase_order_create?.purchase_order?.legacy_id
@@ -873,6 +885,16 @@ export function ShipHeroTab() {
                 </div>
               )}
               
+              <div className="grid gap-2 mb-4">
+                <Label htmlFor="order-date">Order Date *</Label>
+                <Input
+                  id="order-date"
+                  type="date"
+                  value={adhocOrderData.orderDate}
+                  onChange={(e) => setAdhocOrderData({...adhocOrderData, orderDate: e.target.value})}
+                />
+              </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="warehouse-select">Warehouse *</Label>
@@ -960,6 +982,21 @@ export function ShipHeroTab() {
                 <Plus className="h-4 w-4 mr-2" />
                 {isCreatingOrder ? "Creating Order..." : "Create Sales Order"}
               </Button>
+              
+              {lastOrderResponse && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="text-base">Last Order Response</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
+                      <pre className="text-xs whitespace-pre-wrap">
+                        {JSON.stringify(lastOrderResponse, null, 2)}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </CardContent>
@@ -1001,6 +1038,16 @@ export function ShipHeroTab() {
                   </button>
                 </div>
               )}
+              
+              <div className="grid gap-2 mb-4">
+                <Label htmlFor="po-date">Purchase Order Date *</Label>
+                <Input
+                  id="po-date"
+                  type="date"
+                  value={adhocPOData.poDate}
+                  onChange={(e) => setAdhocPOData({...adhocPOData, poDate: e.target.value})}
+                />
+              </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -1123,6 +1170,21 @@ export function ShipHeroTab() {
                 <Plus className="h-4 w-4 mr-2" />
                 {isCreatingPO ? "Creating Purchase Order..." : "Create Purchase Order"}
               </Button>
+              
+              {lastPOResponse && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="text-base">Last Purchase Order Response</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
+                      <pre className="text-xs whitespace-pre-wrap">
+                        {JSON.stringify(lastPOResponse, null, 2)}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </CardContent>
