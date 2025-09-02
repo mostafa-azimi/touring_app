@@ -183,7 +183,18 @@ export async function POST(request: NextRequest) {
       console.log('ShipHero Orders API - Request Body:', JSON.stringify({ query, variables }, null, 2))
     }
     
-    return NextResponse.json(result)
+    // Add request details to the response for UI display
+    const responseWithRequest = {
+      ...result,
+      _request: {
+        query,
+        variables,
+        originalData: data,
+        type
+      }
+    }
+    
+    return NextResponse.json(responseWithRequest)
 
   } catch (error: any) {
     console.error('ShipHero orders API error:', error)

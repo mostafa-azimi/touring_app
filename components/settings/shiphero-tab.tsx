@@ -402,9 +402,14 @@ export function ShipHeroTab() {
       const orderResult = await orderResponse.json()
       console.log('🎉 ShipHero order creation response:', JSON.stringify(orderResult, null, 2))
       
-      // Store the response for display
+      // Store the response for display including GraphQL query
       setLastOrderResponse({
-        request: orderData,
+        request: {
+          originalData: orderData,
+          graphqlQuery: orderResult._request?.query || 'Query not available',
+          graphqlVariables: orderResult._request?.variables || {},
+          type: orderResult._request?.type || 'sales_order'
+        },
         response: orderResult
       })
       
@@ -464,7 +469,8 @@ export function ShipHeroTab() {
         warehouseId: '',
         hostId: '',
         swagItemIds: [],
-        notes: ''
+        notes: '',
+        orderDate: ''
       })
       setShowAdhocOrder(false)
 
@@ -602,9 +608,14 @@ export function ShipHeroTab() {
       const poResult = await poResponse.json()
       console.log('🎉 ShipHero PO creation response:', JSON.stringify(poResult, null, 2))
       
-      // Store the response for display
+      // Store the response for display including GraphQL query
       setLastPOResponse({
-        request: poData,
+        request: {
+          originalData: poData,
+          graphqlQuery: poResult._request?.query || 'Query not available',
+          graphqlVariables: poResult._request?.variables || {},
+          type: poResult._request?.type || 'purchase_order'
+        },
         response: poResult
       })
       
@@ -664,7 +675,8 @@ export function ShipHeroTab() {
         hostId: '',
         swagItemIds: [],
         swagQuantities: {},
-        notes: ''
+        notes: '',
+        poDate: ''
       })
       setShowAdhocPO(false)
 
@@ -984,18 +996,46 @@ export function ShipHeroTab() {
               </Button>
               
               {lastOrderResponse && (
-                <Card className="mt-4">
-                  <CardHeader>
-                    <CardTitle className="text-base">Last Order Response</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
-                      <pre className="text-xs whitespace-pre-wrap">
-                        {JSON.stringify(lastOrderResponse, null, 2)}
-                      </pre>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="mt-4 space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">📤 GraphQL Query Sent</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
+                        <pre className="text-xs whitespace-pre-wrap">
+                          {lastOrderResponse.request?.graphqlQuery || 'Query not available'}
+                        </pre>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">📦 Original Request Data</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
+                        <pre className="text-xs whitespace-pre-wrap">
+                          {JSON.stringify(lastOrderResponse.request?.originalData, null, 2)}
+                        </pre>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">📥 ShipHero Response</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
+                        <pre className="text-xs whitespace-pre-wrap">
+                          {JSON.stringify(lastOrderResponse.response, null, 2)}
+                        </pre>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
             </div>
           )}
@@ -1172,18 +1212,46 @@ export function ShipHeroTab() {
               </Button>
               
               {lastPOResponse && (
-                <Card className="mt-4">
-                  <CardHeader>
-                    <CardTitle className="text-base">Last Purchase Order Response</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
-                      <pre className="text-xs whitespace-pre-wrap">
-                        {JSON.stringify(lastPOResponse, null, 2)}
-                      </pre>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="mt-4 space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">📤 GraphQL Query Sent</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
+                        <pre className="text-xs whitespace-pre-wrap">
+                          {lastPOResponse.request?.graphqlQuery || 'Query not available'}
+                        </pre>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">📦 Original Request Data</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
+                        <pre className="text-xs whitespace-pre-wrap">
+                          {JSON.stringify(lastPOResponse.request?.originalData, null, 2)}
+                        </pre>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">📥 ShipHero Response</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
+                        <pre className="text-xs whitespace-pre-wrap">
+                          {JSON.stringify(lastPOResponse.response, null, 2)}
+                        </pre>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
             </div>
           )}
