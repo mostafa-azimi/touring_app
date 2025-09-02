@@ -168,10 +168,16 @@ export class ShipHeroOrderService {
         for (const swagItem of allSwagItems) {
           if (!swagItem || !swagItem.sku) continue
 
+          const lineItemId = `${participant.id}-${swagItem.id}-${Date.now()}`
           participantOrders.get(participant.id).lineItems.push({
             sku: swagItem.sku,
+            partner_line_item_id: lineItemId, // Required field
             quantity: 1, // 1 of each swag item per participant
-            price: "0.00" // Free swag
+            price: "0.00", // Free swag
+            warehouse_id: warehouse.shiphero_warehouse_id, // Required field
+            product_name: swagItem.name || swagItem.sku,
+            fulfillment_status: "pending",
+            quantity_pending_fulfillment: 1
           })
         }
       }
@@ -194,10 +200,16 @@ export class ShipHeroOrderService {
         for (const swagItem of allSwagItems) {
           if (!swagItem || !swagItem.sku) continue
 
+          const lineItemId = `host-${host.id}-${swagItem.id}-${Date.now()}`
           participantOrders.get(`host-${host.id}`).lineItems.push({
             sku: swagItem.sku,
+            partner_line_item_id: lineItemId, // Required field
             quantity: 1, // 1 of each swag item for host
-            price: "0.00" // Free swag
+            price: "0.00", // Free swag
+            warehouse_id: warehouse.shiphero_warehouse_id, // Required field
+            product_name: swagItem.name || swagItem.sku,
+            fulfillment_status: "pending",
+            quantity_pending_fulfillment: 1
           })
         }
       }
@@ -304,7 +316,11 @@ export class ShipHeroOrderService {
           } else {
             const errorMsg = salesOrderData.errors?.[0]?.message || 'Unknown error'
             errors.push(`Failed to create order for ${participant.first_name} ${participant.last_name}: ${errorMsg}`)
-            console.error('Sales order creation failed:', salesOrderData)
+            console.error('Sales order creation failed - FULL DETAILS:', JSON.stringify(salesOrderData, null, 2))
+            // Log any specific error messages
+            if (salesOrderData.errors && salesOrderData.errors.length > 0) {
+              console.error('ShipHero specific errors:', salesOrderData.errors.map(e => e.message).join(', '))
+            }
           }
 
         } catch (error) {

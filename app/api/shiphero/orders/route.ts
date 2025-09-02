@@ -167,6 +167,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text()
       console.log('ShipHero Orders API - Error Response:', errorText)
+      console.log('ShipHero Orders API - Request Body:', JSON.stringify({ query, variables }, null, 2))
       return NextResponse.json(
         { error: `ShipHero API error: ${response.status} ${response.statusText}`, details: errorText },
         { status: response.status }
@@ -175,6 +176,13 @@ export async function POST(request: NextRequest) {
 
     const result = await response.json()
     console.log('ShipHero Orders API - Success Response:', JSON.stringify(result, null, 2))
+    
+    // Check for GraphQL errors in successful response
+    if (result.errors && result.errors.length > 0) {
+      console.log('ShipHero GraphQL Errors:', JSON.stringify(result.errors, null, 2))
+      console.log('ShipHero Orders API - Request Body:', JSON.stringify({ query, variables }, null, 2))
+    }
+    
     return NextResponse.json(result)
 
   } catch (error: any) {
