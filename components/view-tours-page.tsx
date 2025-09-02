@@ -49,17 +49,7 @@ interface Tour {
     shiphero_sales_order_number?: string
     shiphero_sales_order_url?: string
   }>
-  swag_allocations: Array<{
-    id: string
-    quantity: number
-    participant: {
-      name: string
-      email: string
-    }
-    swag_item: {
-      name: string
-    }
-  }>
+  // Removed swag_allocations - swag items will be added manually
 }
 
 const ITEMS_PER_PAGE = 10
@@ -115,33 +105,20 @@ export function ViewToursPage() {
           shiphero_purchase_order_url,
           warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
           host:team_members(id, first_name, last_name, email),
-          participants:tour_participants(id, name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url),
-          swag_allocations:tour_swag_allocations(
-            id,
-            quantity,
-            participant:tour_participants(name, email),
-            swag_item:swag_items(name)
-          )
+          participants:tour_participants(id, name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
         `,
         )
         .order("date", { ascending: false })
         .order("time", { ascending: false })
 
       if (error) throw error
-      // Fix: Supabase returns warehouse, participants, swag_allocations as arrays due to the select syntax.
+      // Fix: Supabase returns warehouse, participants as arrays due to the select syntax.
       // We need to flatten those to objects/arrays as expected by the Tour type.
       setTours(
         (data || []).map((tour: any) => ({
           ...tour,
           warehouse: Array.isArray(tour.warehouse) ? tour.warehouse[0] : tour.warehouse,
           participants: Array.isArray(tour.participants) ? tour.participants : [],
-          swag_allocations: Array.isArray(tour.swag_allocations)
-            ? tour.swag_allocations.map((alloc: any) => ({
-                ...alloc,
-                participant: Array.isArray(alloc.participant) ? alloc.participant[0] : alloc.participant,
-                swag_item: Array.isArray(alloc.swag_item) ? alloc.swag_item[0] : alloc.swag_item,
-              }))
-            : [],
         }))
       )
     } catch (error) {
@@ -351,7 +328,7 @@ export function ViewToursPage() {
                       <TableCell>
                         <Badge variant="outline" className="flex items-center gap-1 w-fit">
                           <Package className="h-3 w-3" />
-                          {tour.swag_allocations.length}
+                          Manual
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -742,32 +719,18 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
         </CardContent>
       </Card>
 
-      {/* Swag Allocations */}
+      {/* Swag Items - Manual Addition */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Package className="h-4 w-4" />
-            Swag Allocations ({tour.swag_allocations.length})
+            Swag Items (Manual Addition)
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {tour.swag_allocations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No swag items allocated yet</p>
-          ) : (
-            <div className="space-y-3">
-              {tour.swag_allocations.map((allocation) => (
-                <div key={allocation.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <div>
-                    <p className="font-medium">{allocation.swag_item.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      For: {allocation.participant.name} ({allocation.participant.email})
-                    </p>
-                  </div>
-                  <Badge variant="secondary">Qty: {allocation.quantity}</Badge>
-                </div>
-              ))}
-            </div>
-          )}
+          <p className="text-sm text-muted-foreground">
+            Swag items will be added manually during tour finalization. Each participant and host will receive the standard swag package.
+          </p>
         </CardContent>
       </Card>
 
@@ -844,7 +807,7 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
                 </p>
                 <Button 
                   onClick={handleCreatePurchaseOrder}
-                  disabled={isCreatingPO || tour.swag_allocations.length === 0}
+                  disabled={isCreatingPO}
                   variant="outline"
                   className="w-full"
                 >
