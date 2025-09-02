@@ -593,7 +593,7 @@ export class ShipHeroOrderService {
         console.log(`Created purchase order: ${purchaseOrder.po_number} (ID: ${purchaseOrder.id})`)
         
         // Store ShipHero purchase order details in database
-        const shipheroPOUrl = `https://app.shiphero.com/purchase-orders/${purchaseOrder.id}`
+        const shipheroPOUrl = `https://app.shiphero.com/dashboard/purchase-orders/details/${purchaseOrder.legacy_id}`
         const { error: updateError } = await this.supabase
           .from('tours')
           .update({
