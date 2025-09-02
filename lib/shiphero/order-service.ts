@@ -92,8 +92,7 @@ export class ShipHeroOrderService {
           ),
           participants:tour_participants(
             id,
-            first_name,
-            last_name,
+            name,
             email,
             company,
             title
@@ -212,10 +211,15 @@ export class ShipHeroOrderService {
 
           if (lineItems.length === 0) continue
 
+          // Parse participant name for order generation
+          const nameParts = participant.name.split(' ')
+          const firstName = nameParts[0] || ''
+          const lastName = nameParts.slice(1).join(' ') || nameParts[0] || ''
+          
           // Generate custom order name and number
           const orderName = generateSalesOrderName(
-            participant.first_name,
-            participant.last_name,
+            firstName,
+            lastName,
             (warehouse as any).code || "",
             tourDate.toISOString()
           )
@@ -261,8 +265,8 @@ export class ShipHeroOrderService {
                   email: participant.email
                 },
                 billing_address: {
-                  first_name: participant.first_name,
-                  last_name: participant.last_name,
+                  first_name: firstName,
+                  last_name: lastName,
                   company: participant.company || '',
                   address1: warehouse.address,
                   address2: warehouse.address2 || '',
@@ -282,7 +286,7 @@ export class ShipHeroOrderService {
           if (salesOrderData.order_create?.order) {
             ordersCreated++
             const order = salesOrderData.order_create.order
-            console.log(`Created sales order for ${participant.first_name} ${participant.last_name}: ${order.order_number} (ID: ${order.id})`)
+            console.log(`Created sales order for ${participant.name}: ${order.order_number} (ID: ${order.id})`)
             
             // Store ShipHero order details in database
             const shipheroOrderUrl = `https://app.shiphero.com/orders/${order.id}`
@@ -297,13 +301,13 @@ export class ShipHeroOrderService {
             
             if (updateError) {
               console.error('Failed to update participant with ShipHero order ID:', updateError)
-              errors.push(`Order created but failed to save tracking info for ${participant.first_name} ${participant.last_name}`)
+              errors.push(`Order created but failed to save tracking info for ${participant.name}`)
             } else {
-              console.log(`Successfully stored order tracking info for ${participant.first_name} ${participant.last_name}`)
+              console.log(`Successfully stored order tracking info for ${participant.name}`)
             }
           } else {
             const errorMsg = salesOrderData.errors?.[0]?.message || 'Unknown error'
-            errors.push(`Failed to create order for ${participant.first_name} ${participant.last_name}: ${errorMsg}`)
+            errors.push(`Failed to create order for ${participant.name}: ${errorMsg}`)
             console.error('Sales order creation failed:', salesOrderData)
           }
 
