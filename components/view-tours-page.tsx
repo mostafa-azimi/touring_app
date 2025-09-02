@@ -484,7 +484,6 @@ export function ViewToursPage() {
                   <SortableHeader field="warehouse">Warehouse</SortableHeader>
                   <SortableHeader field="host">Host</SortableHeader>
                   <SortableHeader field="participants">Participants</SortableHeader>
-                  <TableHead>Swag Items</TableHead>
                   <SortableHeader field="status">Status</SortableHeader>
                   <TableHead className="w-[140px]">Actions</TableHead>
                 </TableRow>
@@ -492,13 +491,13 @@ export function ViewToursPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       Loading tours...
                     </TableCell>
                   </TableRow>
                 ) : currentTours.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       {searchTerm ? "No tours match your search criteria." : "No tours scheduled yet."}
                     </TableCell>
                   </TableRow>
@@ -548,12 +547,6 @@ export function ViewToursPage() {
                         <Badge variant="secondary" className="flex items-center gap-1 w-fit">
                           <Users className="h-3 w-3" />
                           {tour.participants.length}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                          <Package className="h-3 w-3" />
-                          Manual
                         </Badge>
                       </TableCell>
                       <TableCell>
