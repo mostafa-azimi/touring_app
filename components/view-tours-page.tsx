@@ -169,6 +169,37 @@ export function ViewToursPage() {
   const handleFinalizeTour = async (tourId: string) => {
     setIsFinalizingTour(true)
     try {
+      // Get refresh token from localStorage (same as adhoc functionality)
+      const refreshToken = localStorage.getItem('shiphero_refresh_token')
+      
+      if (!refreshToken) {
+        throw new Error('ShipHero refresh token is required. Please configure it in Settings → ShipHero tab.')
+      }
+
+      // Get access token first (same as adhoc functionality)
+      const tokenResponse = await fetch('/api/shiphero/refresh-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refresh_token: refreshToken
+        })
+      })
+
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to get access token. Please check your refresh token in Settings.')
+      }
+
+      const tokenData = await tokenResponse.json()
+      const accessToken = tokenData.access_token
+
+      if (!accessToken) {
+        throw new Error('No access token received. Please check your refresh token in Settings.')
+      }
+
+      console.log('✅ Access token obtained for tour finalization')
+
       const orderService = new ShipHeroOrderService()
       
       // Create sales orders for all participants + host
@@ -368,7 +399,17 @@ export function ViewToursPage() {
                               </SheetContent>
                             </Sheet>
                             
-                            <Button variant="ghost" size="sm" title="Edit Tour">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              title="Edit Tour"
+                              onClick={() => {
+                                toast({
+                                  title: "Edit Tour",
+                                  description: "Tour editing functionality will be added in a future update",
+                                })
+                              }}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             
