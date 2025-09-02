@@ -557,7 +557,7 @@ export function ViewToursPage() {
                                 href={tour.shiphero_purchase_order_url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 text-xs underline"
+                                className="text-blue-600 hover:text-blue-800 text-xs underline cursor-pointer"
                               >
                                 PO: {tour.shiphero_purchase_order_number || 'View Order'}
                               </a>
@@ -827,7 +827,7 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
                           href={tour.host_shiphero_sales_order_url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-xs underline"
+                          className="text-blue-600 hover:text-blue-800 text-xs underline cursor-pointer"
                         >
                           SO: {tour.host_shiphero_sales_order_number || 'View Order'}
                         </a>
@@ -854,7 +854,7 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
                           href={participant.shiphero_sales_order_url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-xs underline"
+                          className="text-blue-600 hover:text-blue-800 text-xs underline cursor-pointer"
                         >
                           SO: {participant.shiphero_sales_order_number || 'View Order'}
                         </a>
@@ -894,7 +894,7 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
                   href={tour.shiphero_purchase_order_url} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 text-sm underline"
+                  className="text-blue-600 hover:text-blue-800 text-sm underline cursor-pointer"
                 >
                   View in ShipHero →
                 </a>

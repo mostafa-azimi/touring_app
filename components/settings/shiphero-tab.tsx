@@ -488,7 +488,7 @@ export function ShipHeroTab() {
                 href={shipheroLink} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors cursor-pointer"
               >
                 📦 View Order in ShipHero →
               </a>
@@ -693,7 +693,7 @@ export function ShipHeroTab() {
                 href={shipheroPOLink} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-block px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                className="inline-block px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors cursor-pointer"
               >
                 📦 View PO in ShipHero →
               </a>
@@ -1027,10 +1027,11 @@ export function ShipHeroTab() {
                 <Label>Swag Items *</Label>
                 <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
                   {swagItems.map((swagItem) => (
-                    <label key={swagItem.id} className="flex items-center space-x-2">
+                    <label key={swagItem.id} className="flex items-center space-x-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={adhocOrderData.swagItemIds.includes(swagItem.id)}
+                        className="cursor-pointer"
                         onChange={(e) => {
                           if (e.target.checked) {
                             setAdhocOrderData({
@@ -1215,6 +1216,7 @@ export function ShipHeroTab() {
                           type="checkbox"
                           id={`po-swag-${swagItem.id}`}
                           checked={adhocPOData.swagItemIds.includes(swagItem.id)}
+                          className="cursor-pointer"
                           onChange={(e) => {
                             const newIds = e.target.checked
                               ? [...adhocPOData.swagItemIds, swagItem.id]
@@ -1236,7 +1238,7 @@ export function ShipHeroTab() {
                           }}
                           className="rounded"
                         />
-                        <Label htmlFor={`po-swag-${swagItem.id}`} className="text-sm font-medium">
+                        <Label htmlFor={`po-swag-${swagItem.id}`} className="text-sm font-medium cursor-pointer">
                           {swagItem.name} ({swagItem.sku})
                         </Label>
                       </div>
