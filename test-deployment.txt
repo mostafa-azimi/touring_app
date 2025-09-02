@@ -1,3 +1,0 @@
-This is a test file to trigger the GitHub Actions workflow.
-Created at: $(date)
-Purpose: Test auto-deployment from dev to test/vercel-preview
