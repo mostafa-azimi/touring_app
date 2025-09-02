@@ -502,11 +502,18 @@ export class ShipHeroOrderService {
         }
       }
 
-      // Create line items for purchase order
-      const lineItems = Array.from(skuTotals.entries()).map(([sku, quantity]) => ({
-        sku,
-        quantity,
-        price: "0.00" // Set appropriate cost
+      // Create line items for purchase order (match adhoc PO format exactly)
+      const lineItems = Array.from(skuTotals.entries()).map(([sku, itemData]) => ({
+        sku: itemData.sku,
+        quantity: itemData.totalQuantity,
+        expected_weight_in_lbs: "1.00",
+        vendor_id: "1076735",
+        quantity_received: 0,
+        quantity_rejected: 0,
+        price: "0.00",
+        product_name: itemData.name,
+        fulfillment_status: "pending",
+        sell_ahead: 0
       }))
 
       const tourDate = new Date(tour.date)
@@ -536,23 +543,24 @@ export class ShipHeroOrderService {
         body: JSON.stringify({
           type: 'purchase_order',
           data: {
+            po_date: tourDate.toISOString().split('T')[0], // Use date format like "2025-09-23"
             po_number: poNumber,
-            po_date: tourDate.toISOString(),
             subtotal: "0.00",
             shipping_price: "0.00",
             total_price: "0.00",
             warehouse_id: warehouse.shiphero_warehouse_id,
-            vendor_id: "1076735",
+            line_items: lineItems,
             fulfillment_status: "pending",
-            line_items: lineItems
+            discount: "0.00",
+            vendor_id: "1076735"
           }
         })
       })
 
       const purchaseOrderData = await purchaseOrderResult.json()
 
-      if (purchaseOrderData.purchase_order_create?.purchase_order) {
-        const purchaseOrder = purchaseOrderData.purchase_order_create.purchase_order
+      if (purchaseOrderData.data?.purchase_order_create?.purchase_order) {
+        const purchaseOrder = purchaseOrderData.data.purchase_order_create.purchase_order
         console.log(`Created purchase order: ${purchaseOrder.po_number} (ID: ${purchaseOrder.id})`)
         
         // Store ShipHero purchase order details in database
