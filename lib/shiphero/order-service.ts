@@ -305,13 +305,15 @@ export class ShipHeroOrderService {
   }
 
   /**
-   * Create purchase order in ShipHero for all swag items needed for a tour
+  /**
+  /**
+   * Create a purchase order in ShipHero for all swag items needed for a tour.
    */
   async createPurchaseOrderForTour(tourId: string): Promise<{
-    success: boolean
-    message: string
-    poNumber?: string
-    errors: string[]
+    success: boolean;
+    message: string;
+    poNumber?: string;
+    errors: string[];
   }> {
     try {
       // Get tour with swag allocations and host
@@ -518,13 +520,23 @@ export class ShipHeroOrderService {
   }
 
   /**
+  /**
+  /**
+  /**
    * Create aggregated purchase order for a tour (sum all swag quantities)
    */
   async createPurchaseOrderForTour(tourId: string): Promise<{
-    success: boolean
-    message: string
-    poId?: string
-    errors: string[]
+    success: boolean;
+    message: string;
+    poNumber?: string;
+    errors: string[];
+  }>
+  }>;
+  async createPurchaseOrderForTour(tourId: string): Promise<{
+    success: boolean;
+    message: string;
+    poNumber?: string;
+    errors: string[];
   }> {
     try {
       // Get tour details with host, warehouse, and swag allocations

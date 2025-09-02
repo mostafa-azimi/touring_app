@@ -1,7 +1,8 @@
 -- Create team_members table
 CREATE TABLE IF NOT EXISTS public.team_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

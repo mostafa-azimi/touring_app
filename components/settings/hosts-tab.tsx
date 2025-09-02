@@ -66,15 +66,23 @@ export function HostsTab() {
       // Debug: Log the form data being submitted
       console.log("Submitting host data:", formData)
       
+      // Format data to match current database structure (name field required)
+      const dbData = {
+        name: `${formData.first_name} ${formData.last_name}`.trim(),
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email
+      }
+      
       if (editingHost) {
-        const { error } = await supabase.from("team_members").update(formData).eq("id", editingHost.id)
+        const { error } = await supabase.from("team_members").update(dbData).eq("id", editingHost.id)
         if (error) {
           console.error("Host update error:", error)
           throw error
         }
         toast({ title: "Success", description: "Host updated successfully" })
       } else {
-        const { error } = await supabase.from("team_members").insert([formData])
+        const { error } = await supabase.from("team_members").insert([dbData])
         if (error) {
           console.error("Host insert error:", error)
           throw error
