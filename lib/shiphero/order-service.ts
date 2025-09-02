@@ -190,9 +190,8 @@ export class ShipHeroOrderService {
           const orderName = generateSalesOrderName(
             participant.first_name,
             participant.last_name,
-            warehouse.name,
-            warehouse.code, // Pass airport code
-            tourDate
+            (warehouse as any).code || "",
+            tourDate.toISOString()
           )
           const orderNumber = generateSalesOrderNumber()
 
@@ -215,7 +214,7 @@ export class ShipHeroOrderService {
                 total_price: "0.00",
                 email: participant.email,
                 phone: "",
-                tags: warehouse.code ? [`Airport:${warehouse.code}`] : [],
+                tags: (warehouse as any).code ? [`Airport:${(warehouse as any).code}`] : [],
                 shipping_lines: {
                   title: "Generic Shipping",
                   price: "0.00",
@@ -437,7 +436,9 @@ export class ShipHeroOrderService {
       }
 
       // Generate custom purchase order name and number
-      const poName = generatePurchaseOrderName(host.last_name, tourDate)
+      // Use warehouse.name (sanitized) if available, since warehouse.code does not exist on the type
+      const warehouseCode = warehouse.name ? warehouse.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '';
+      const poName = generatePurchaseOrderName(host.last_name, warehouseCode, tourDate)
       const poNumber = generatePurchaseOrderNumber()
 
       const purchaseOrderResult = await fetch('/api/shiphero/orders', {

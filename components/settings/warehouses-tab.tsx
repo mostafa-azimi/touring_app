@@ -110,9 +110,6 @@ export function WarehousesTab() {
         state: "",
         zip: "",
         country: "US",
-        phone: "",
-        contact_person: "",
-        notes: "",
         shiphero_warehouse_id: ""
       })
       setEditingWarehouse(null)

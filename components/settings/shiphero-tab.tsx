@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
+import { generateSalesOrderName, generatePurchaseOrderName } from "@/lib/shiphero/naming-utils"
 
 export function ShipHeroTab() {
   const [refreshToken, setRefreshToken] = useState("")
@@ -267,8 +268,8 @@ export function ShipHeroTab() {
         price: "0.00"
       }))
 
-      // Generate order number
-      const orderNumber = `ADHOC-${Date.now()}`
+      // Generate order number using naming convention
+      const orderNumber = generateSalesOrderName(host.first_name, host.last_name, warehouse.name, warehouse.code)
 
       // Use tomorrow's date
       const tomorrow = new Date()
@@ -357,7 +358,11 @@ export function ShipHeroTab() {
         console.log('Order response status:', orderResponse.status, orderResponse.statusText)
       } catch (fetchError) {
         console.error('Fetch error:', fetchError)
-        throw new Error(`Network error: ${fetchError.message}`)
+        let message = 'Unknown network error'
+        if (fetchError instanceof Error) {
+          message = fetchError.message
+        }
+        throw new Error(`Network error: ${message}`)
       }
 
       if (!orderResponse.ok) {
@@ -546,8 +551,8 @@ export function ShipHeroTab() {
         sell_ahead: 0
       }))
 
-      // Generate PO number
-      const poNumber = `ADHOC-PO-${Date.now()}`
+      // Generate PO number using naming convention
+      const poNumber = generatePurchaseOrderName(host.last_name, warehouse.code)
       
       // Use tomorrow's date
       const tomorrow = new Date()

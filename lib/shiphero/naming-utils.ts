@@ -3,8 +3,8 @@
  */
 
 /**
- * Generate sales order name: participant first letter of first name, first three of last name, underscore, airport code, underscore, date
- * Example: J_Smi_LAX_2025-09-01
+ * Generate sales order name: first letter first name, first three letters last name, date (mm/dd/yy), warehouse code
+ * Example: mazi_9/2/25_ATL
  */
 export function generateSalesOrderName(
   participantFirstName: string,
@@ -13,37 +13,41 @@ export function generateSalesOrderName(
   airportCode?: string,
   date: Date = new Date()
 ): string {
-  const firstInitial = participantFirstName.charAt(0).toUpperCase()
-  const lastThree = participantLastName.substring(0, 3).toLowerCase()
-  const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD format
+  const firstLetter = participantFirstName.charAt(0).toLowerCase()
+  const firstThreeLastName = participantLastName.substring(0, 3).toLowerCase()
+  
+  // Format date as mm/dd/yy
+  const mm = date.getMonth() + 1
+  const dd = date.getDate()
+  const yy = date.getFullYear().toString().slice(-2)
+  const dateStr = `${mm}/${dd}/${yy}`
   
   // Use airport code if available, otherwise clean warehouse name
-  const locationCode = airportCode ? airportCode.toUpperCase() : 
-    warehouseName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+  const warehouseCode = airportCode ? airportCode.toUpperCase() : 
+    warehouseName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
   
-  return `${firstInitial}_${lastThree}_${locationCode}_${dateStr}`
+  return `${firstLetter}${firstThreeLastName}_${dateStr}_${warehouseCode}`
 }
 
 /**
- * Generate purchase order name: last name of the host, underscore, date (mm/dd/yy), underscore, date
- * Example: Smith_09-01-25_2025-09-01
+ * Generate purchase order name: warehouse code, date (mm/dd/yy), host last name
+ * Example: ATL_9/2/25_Azimi
  */
 export function generatePurchaseOrderName(
   hostLastName: string,
+  warehouseCode: string,
   date: Date = new Date()
 ): string {
-  const cleanHostName = hostLastName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+  // Format date as mm/dd/yy
+  const mm = date.getMonth() + 1
+  const dd = date.getDate()
+  const yy = date.getFullYear().toString().slice(-2)
+  const dateStr = `${mm}/${dd}/${yy}`
   
-  // Format: MM/DD/YY
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  const yy = String(date.getFullYear()).slice(-2)
-  const shortDate = `${mm}-${dd}-${yy}`
+  // Capitalize first letter of last name, rest lowercase
+  const formattedLastName = hostLastName.charAt(0).toUpperCase() + hostLastName.slice(1).toLowerCase()
   
-  // Full date: YYYY-MM-DD
-  const fullDate = date.toISOString().split('T')[0]
-  
-  return `${cleanHostName}_${shortDate}_${fullDate}`
+  return `${warehouseCode.toUpperCase()}_${dateStr}_${formattedLastName}`
 }
 
 /**
