@@ -581,7 +581,7 @@ export function ViewToursPage() {
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </SheetTrigger>
-                              <SheetContent className="w-[600px] sm:max-w-[600px]">
+                              <SheetContent className="w-[600px] sm:max-w-[600px] overflow-y-auto">
                                 <TourDetailsSheet tour={tour} />
                               </SheetContent>
                             </Sheet>
@@ -886,7 +886,7 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
           {tour.participants.length === 0 && !tour.host ? (
             <p className="text-sm text-muted-foreground">No participants registered</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
               {/* Show host first if exists */}
               {tour.host && (
                 <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
