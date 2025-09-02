@@ -225,7 +225,6 @@ export function ShipHeroTab() {
   }
 
   const handleCreateAdhocOrder = async () => {
-    alert('Button clicked! Function called!')
     console.log('🚀🚀🚀 handleCreateAdhocOrder called with data:', adhocOrderData)
     console.log('🔥 FORCE REBUILD - Variable conflict should be fixed')
     
@@ -457,26 +456,40 @@ export function ShipHeroTab() {
       }
 
       const orderResult = await orderResponse.json()
+      console.log('🎉 ShipHero order creation response:', JSON.stringify(orderResult, null, 2))
       
       // Create ShipHero order link
       const orderId = orderResult.data?.order_create?.order?.id
+      const legacyId = orderResult.data?.order_create?.order?.legacy_id
       const createdOrderNumber = orderResult.data?.order_create?.order?.order_number || orderNumber
       const shipheroLink = orderId ? `https://app.shiphero.com/orders/${orderId}` : null
+      
+      console.log('📦 Order created successfully!', {
+        orderId,
+        legacyId,
+        createdOrderNumber,
+        shipheroLink
+      })
       
       toast({
         title: "Adhoc Order Created Successfully!",
         description: (
           <div className="space-y-2">
-            <p>Order {createdOrderNumber} created for {host.first_name} {host.last_name}</p>
-            {shipheroLink && (
+            <p><strong>Order:</strong> {createdOrderNumber}</p>
+            <p><strong>Host:</strong> {host.first_name} {host.last_name}</p>
+            {orderId && <p><strong>ShipHero ID:</strong> {orderId}</p>}
+            {legacyId && <p><strong>Legacy ID:</strong> {legacyId}</p>}
+            {shipheroLink ? (
               <a 
                 href={shipheroLink} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 underline"
+                className="text-blue-600 hover:text-blue-800 underline block"
               >
                 View Order in ShipHero →
               </a>
+            ) : (
+              <p className="text-amber-600">⚠️ No ShipHero link available (check console for order ID)</p>
             )}
           </div>
         ),
