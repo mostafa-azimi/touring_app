@@ -69,7 +69,7 @@ export function ViewToursPage() {
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
   const [cancellingTourId, setCancellingTourId] = useState<string | null>(null)
-  const [showCancelled, setShowCancelled] = useState(false)
+
   const [sortField, setSortField] = useState<string>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const { toast } = useToast()
@@ -77,7 +77,7 @@ export function ViewToursPage() {
 
   useEffect(() => {
     fetchTours()
-  }, [showCancelled])
+  }, [])
 
   useEffect(() => {
     // Filter tours based on search term
@@ -170,10 +170,8 @@ export function ViewToursPage() {
         `,
         )
 
-      // Conditionally filter out cancelled tours (scheduled and finalized always shown)
-      if (!showCancelled) {
-        query = query.neq('status', 'cancelled')
-      }
+      // Always filter out cancelled tours for clean UI
+      query = query.neq('status', 'cancelled')
 
       const { data, error } = await query
         .order("date", { ascending: false })
@@ -505,13 +503,7 @@ export function ViewToursPage() {
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
-            <Button
-              variant={showCancelled ? "default" : "outline"}
-              onClick={() => setShowCancelled(!showCancelled)}
-              className="whitespace-nowrap"
-            >
-              {showCancelled ? "Hide Cancelled" : "Show Cancelled"}
-            </Button>
+
             <div className="text-sm text-muted-foreground">
               {filteredTours.length} tour{filteredTours.length !== 1 ? "s" : ""} found
             </div>
