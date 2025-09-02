@@ -65,7 +65,6 @@ export function ViewToursPage() {
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
   const [cancellingTourId, setCancellingTourId] = useState<string | null>(null)
-  const [showFinalized, setShowFinalized] = useState(false)
   const [showCancelled, setShowCancelled] = useState(false)
   const [sortField, setSortField] = useState<string>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -74,7 +73,7 @@ export function ViewToursPage() {
 
   useEffect(() => {
     fetchTours()
-  }, [showFinalized, showCancelled])
+  }, [showCancelled])
 
   useEffect(() => {
     // Filter tours based on search term
@@ -160,10 +159,7 @@ export function ViewToursPage() {
         `,
         )
 
-      // Conditionally filter out finalized and cancelled tours
-      if (!showFinalized) {
-        query = query.neq('status', 'finalized')
-      }
+      // Conditionally filter out cancelled tours (scheduled and finalized always shown)
       if (!showCancelled) {
         query = query.neq('status', 'cancelled')
       }
@@ -372,13 +368,6 @@ export function ViewToursPage() {
                 className="pl-10"
               />
             </div>
-            <Button
-              variant={showFinalized ? "default" : "outline"}
-              onClick={() => setShowFinalized(!showFinalized)}
-              className="whitespace-nowrap"
-            >
-              {showFinalized ? "Hide Finalized" : "Show Finalized"}
-            </Button>
             <Button
               variant={showCancelled ? "default" : "outline"}
               onClick={() => setShowCancelled(!showCancelled)}
