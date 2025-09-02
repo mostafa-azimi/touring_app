@@ -194,7 +194,11 @@ export function SwagItemsTab() {
 
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className={isLoading ? "cursor-wait" : ""}
+                >
                   {isLoading ? "Saving..." : editingItem ? "Update" : "Create"}
                 </Button>
               </DialogFooter>

@@ -315,7 +315,11 @@ export function WarehousesTab() {
 
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className={isLoading ? "cursor-wait" : ""}
+                >
                   {isLoading ? "Saving..." : editingWarehouse ? "Update" : "Create"}
                 </Button>
               </DialogFooter>

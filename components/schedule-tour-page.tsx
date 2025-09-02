@@ -494,7 +494,12 @@ export function ScheduleTourPage() {
 
             {/* Submit Button */}
             <div className="flex justify-end">
-              <Button type="submit" disabled={isLoading} size="lg">
+              <Button 
+                type="submit" 
+                disabled={isLoading} 
+                size="lg"
+                className={isLoading ? "cursor-wait" : ""}
+              >
                 {isLoading ? "Scheduling..." : "Schedule Tour"}
               </Button>
             </div>

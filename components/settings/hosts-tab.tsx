@@ -194,7 +194,11 @@ export function HostsTab() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className={isLoading ? "cursor-wait" : ""}
+                >
                   {isLoading ? "Saving..." : editingHost ? "Update" : "Create"}
                 </Button>
               </DialogFooter>

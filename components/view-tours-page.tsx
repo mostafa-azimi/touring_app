@@ -481,7 +481,7 @@ export function ViewToursPage() {
                               size="sm" 
                               onClick={() => handleFinalizeTour(tour.id)}
                               disabled={isFinalizingTour && (finalizingTourId === tour.id || finalizingTourId === null)}
-                              className="w-full bg-blue-600 hover:bg-blue-700"
+                              className={`w-full bg-blue-600 hover:bg-blue-700 ${isFinalizingTour && finalizingTourId === tour.id ? 'cursor-wait' : ''}`}
                             >
                               <ShoppingCart className="h-4 w-4 mr-2" />
                               {isFinalizingTour ? 'Finalizing...' : 'Finalize Tour'}
@@ -510,7 +510,7 @@ export function ViewToursPage() {
                                 title="Cancel Tour" 
                                 onClick={() => handleCancelTour(tour.id)}
                                 disabled={cancellingTourId === tour.id}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                className={`text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50 ${cancellingTourId === tour.id ? 'cursor-wait' : ''}`}
                               >
                                 <X className={`h-4 w-4 ${cancellingTourId === tour.id ? 'animate-spin' : ''}`} />
                               </Button>
