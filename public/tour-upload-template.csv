@@ -1,0 +1,5 @@
+warehouse_name,host_first_name,host_last_name,tour_date,tour_time,participant_first_name,participant_last_name,participant_email,participant_company,participant_title
+Convenience Counter,John,Doe,2025-01-15,14:00,Jane,Smith,jane.smith@example.com,Acme Corp,Sales Manager
+Convenience Counter,John,Doe,2025-01-15,14:00,Bob,Johnson,bob.johnson@example.com,Tech Solutions,Developer
+Distribution Center,Mary,Wilson,2025-01-20,10:30,Alice,Brown,alice.brown@example.com,Marketing Inc,Director
+Distribution Center,Mary,Wilson,2025-01-20,10:30,Charlie,Davis,charlie.davis@example.com,Logistics LLC,Coordinator

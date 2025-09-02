@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Calendar, MapPin, Users, Package, Gift } from "lucide-react"
+import { Plus, X, Calendar, MapPin, Users, Package, Gift, Upload, Download, FileText } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 // Removed swag allocation imports - swag items will be added manually, not allocated automatically
@@ -58,6 +58,7 @@ export function ScheduleTourPage() {
     time: "",
   })
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
+  const [isUploadingCSV, setIsUploadingCSV] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -214,6 +215,165 @@ export function ScheduleTourPage() {
 
   const selectedWarehouse = warehouses.find((w) => w.id === formData.warehouse_id)
 
+  // CSV Upload functionality
+  const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.csv')) {
+      toast({
+        title: "Invalid File",
+        description: "Please upload a CSV file",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsUploadingCSV(true)
+
+    try {
+      const text = await file.text()
+      const lines = text.split('\n').filter(line => line.trim())
+      const headers = lines[0].split(',').map(h => h.trim())
+      
+      // Validate headers
+      const requiredHeaders = ['warehouse_name', 'host_first_name', 'host_last_name', 'tour_date', 'tour_time', 'participant_first_name', 'participant_last_name', 'participant_email']
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
+      
+      if (missingHeaders.length > 0) {
+        toast({
+          title: "Invalid CSV Format",
+          description: `Missing required columns: ${missingHeaders.join(', ')}`,
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Group rows by tour (warehouse + host + date + time)
+      const tourGroups = new Map()
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim())
+        if (values.length < headers.length) continue
+
+        const row: any = {}
+        headers.forEach((header, index) => {
+          row[header] = values[index]
+        })
+
+        const tourKey = `${row.warehouse_name}-${row.host_first_name}-${row.host_last_name}-${row.tour_date}-${row.tour_time}`
+        
+        if (!tourGroups.has(tourKey)) {
+          tourGroups.set(tourKey, {
+            warehouse_name: row.warehouse_name,
+            host_first_name: row.host_first_name,
+            host_last_name: row.host_last_name,
+            tour_date: row.tour_date,
+            tour_time: row.tour_time,
+            participants: []
+          })
+        }
+
+        tourGroups.get(tourKey).participants.push({
+          first_name: row.participant_first_name,
+          last_name: row.participant_last_name,
+          email: row.participant_email,
+          company: row.participant_company || '',
+          title: row.participant_title || ''
+        })
+      }
+
+      // Create tours
+      let toursCreated = 0
+      for (const [, tourData] of tourGroups) {
+        try {
+          // Find warehouse by name
+          const warehouse = warehouses.find(w => w.name === tourData.warehouse_name)
+          if (!warehouse) {
+            console.warn(`Warehouse not found: ${tourData.warehouse_name}`)
+            continue
+          }
+
+          // Find host by name
+          const host = hosts.find(h => 
+            h.first_name === tourData.host_first_name && 
+            h.last_name === tourData.host_last_name
+          )
+          if (!host) {
+            console.warn(`Host not found: ${tourData.host_first_name} ${tourData.host_last_name}`)
+            continue
+          }
+
+          // Create tour
+          const { data: tourResult, error: tourError } = await supabase
+            .from("tours")
+            .insert([{
+              warehouse_id: warehouse.id,
+              host_id: host.id,
+              date: tourData.tour_date,
+              time: tourData.tour_time,
+              status: 'scheduled'
+            }])
+            .select()
+            .single()
+
+          if (tourError) throw tourError
+
+          // Add participants
+          const participantInserts = tourData.participants.map((p: any) => ({
+            tour_id: tourResult.id,
+            name: `${p.first_name} ${p.last_name}`,
+            first_name: p.first_name,
+            last_name: p.last_name,
+            email: p.email,
+            company: p.company,
+            title: p.title
+          }))
+
+          const { error: participantError } = await supabase
+            .from("tour_participants")
+            .insert(participantInserts)
+
+          if (participantError) throw participantError
+
+          toursCreated++
+        } catch (error) {
+          console.error('Error creating tour:', error)
+        }
+      }
+
+      toast({
+        title: "CSV Upload Successful",
+        description: `Created ${toursCreated} tours from CSV file`,
+      })
+
+      // Reset form
+      setFormData({ warehouse_id: "", host_id: "", date: "", time: "" })
+      setParticipants([])
+
+    } catch (error: any) {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to process CSV file",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploadingCSV(false)
+      // Reset file input
+      event.target.value = ''
+    }
+  }
+
+  // Download CSV template
+  const downloadTemplate = () => {
+    const link = document.createElement('a')
+    link.href = '/tour-upload-template.csv'
+    link.download = 'tour-upload-template.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Card>
@@ -225,6 +385,51 @@ export function ScheduleTourPage() {
           <CardDescription>Create a new warehouse tour and manage participants</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* CSV Upload Section */}
+          <div className="mb-6 p-4 bg-muted/50 rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                <span className="font-medium">Bulk Upload</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadTemplate}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Template
+                </Button>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVUpload}
+                    disabled={isUploadingCSV}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    disabled={isUploadingCSV}
+                    className={isUploadingCSV ? "cursor-wait" : ""}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    {isUploadingCSV ? "Uploading..." : "Upload CSV"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Upload a CSV file to create multiple tours at once. Download the template to see the required format.
+            </p>
+          </div>
+
+          <Separator className="my-6" />
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Tour Details Section - 2x2 Grid Layout */}
             <div className="grid gap-6 md:grid-cols-2">

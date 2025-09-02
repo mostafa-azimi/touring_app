@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
@@ -330,6 +330,89 @@ export function ViewToursPage() {
     })
   }
 
+  // CSV Export functionality
+  const exportToCSV = () => {
+    const csvData = []
+    
+    // CSV Headers
+    const headers = [
+      'Tour Date',
+      'Tour Time', 
+      'Host First Name',
+      'Host Last Name',
+      'Warehouse Name',
+      'Warehouse Location',
+      'Tour Status',
+      'Purchase Order Number',
+      'Purchase Order URL',
+      'Participant First Name',
+      'Participant Last Name',
+      'Participant Email',
+      'Participant Company',
+      'Participant Title',
+      'Sales Order Number',
+      'Sales Order URL'
+    ]
+    
+    csvData.push(headers.join(','))
+    
+    // Process each tour
+    sortedTours.forEach(tour => {
+      const baseData = [
+        tour.date,
+        tour.time,
+        tour.host?.first_name || '',
+        tour.host?.last_name || '',
+        tour.warehouse.name,
+        `"${tour.warehouse.address}${tour.warehouse.city ? ', ' + tour.warehouse.city : ''}${tour.warehouse.state ? ', ' + tour.warehouse.state : ''}"`,
+        tour.status || 'scheduled',
+        tour.shiphero_purchase_order_number || '',
+        tour.shiphero_purchase_order_url || ''
+      ]
+      
+      // Add row for each participant
+      if (tour.participants && tour.participants.length > 0) {
+        tour.participants.forEach(participant => {
+          const row = [
+            ...baseData,
+            participant.first_name,
+            participant.last_name,
+            participant.email,
+            `"${participant.company || ''}"`,
+            `"${participant.title || ''}"`,
+            participant.shiphero_sales_order_number || '',
+            participant.shiphero_sales_order_url || ''
+          ]
+          csvData.push(row.join(','))
+        })
+      } else {
+        // Tour with no participants
+        const row = [
+          ...baseData,
+          '', '', '', '', '', '', '' // Empty participant data
+        ]
+        csvData.push(row.join(','))
+      }
+    })
+    
+    // Create and download CSV file
+    const csvContent = csvData.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    
+    const filename = `tours_export_${new Date().toISOString().split('T')[0]}.csv`
+    link.href = URL.createObjectURL(blob)
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast({
+      title: "Export Successful",
+      description: `Downloaded ${sortedTours.length} tours to ${filename}`,
+    })
+  }
+
   const SortableHeader = ({ field, children }: { field: string; children: React.ReactNode }) => {
     const isActive = sortField === field
     const Icon = isActive 
@@ -360,7 +443,7 @@ export function ViewToursPage() {
           <CardDescription>Browse and manage existing warehouse tours</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Search Bar */}
+          {/* Search Bar and Controls */}
           <div className="flex items-center gap-2 mb-6">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -371,6 +454,15 @@ export function ViewToursPage() {
                 className="pl-10"
               />
             </div>
+            <Button
+              variant="outline"
+              onClick={exportToCSV}
+              disabled={sortedTours.length === 0}
+              className="whitespace-nowrap"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
             <Button
               variant={showCancelled ? "default" : "outline"}
               onClick={() => setShowCancelled(!showCancelled)}
