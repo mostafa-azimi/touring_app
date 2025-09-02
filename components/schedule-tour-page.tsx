@@ -182,6 +182,7 @@ export function ScheduleTourPage() {
         
         return {
           tour_id: tourData.id,
+          name: participant.name, // Keep name field for backward compatibility
           first_name: firstName,
           last_name: lastName,
           email: participant.email,
