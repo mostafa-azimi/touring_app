@@ -64,12 +64,13 @@ export function ViewToursPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
+  const [showFinalized, setShowFinalized] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
 
   useEffect(() => {
     fetchTours()
-  }, [])
+  }, [showFinalized])
 
   useEffect(() => {
     // Filter tours based on search term
@@ -81,7 +82,7 @@ export function ViewToursPage() {
           tour.warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           tour.participants.some(
             (p) =>
-              p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              `${p.first_name} ${p.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
               p.email.toLowerCase().includes(searchTerm.toLowerCase()),
           ),
       )
@@ -92,7 +93,7 @@ export function ViewToursPage() {
 
   const fetchTours = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("tours")
         .select(
           `
@@ -110,6 +111,13 @@ export function ViewToursPage() {
           participants:tour_participants(id, first_name, last_name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
         `,
         )
+
+      // Conditionally filter out finalized tours
+      if (!showFinalized) {
+        query = query.neq('status', 'finalized')
+      }
+
+      const { data, error } = await query
         .order("date", { ascending: false })
         .order("time", { ascending: false })
 
@@ -264,6 +272,13 @@ export function ViewToursPage() {
                 className="pl-10"
               />
             </div>
+            <Button
+              variant={showFinalized ? "default" : "outline"}
+              onClick={() => setShowFinalized(!showFinalized)}
+              className="whitespace-nowrap"
+            >
+              {showFinalized ? "Hide Finalized" : "Show Finalized"}
+            </Button>
             <div className="text-sm text-muted-foreground">
               {filteredTours.length} tour{filteredTours.length !== 1 ? "s" : ""} found
             </div>
