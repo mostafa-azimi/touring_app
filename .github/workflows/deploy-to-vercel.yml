@@ -3,6 +3,7 @@ name: Auto-deploy to Vercel Preview Branch
 on:
   push:
     branches: [ dev ]
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   deploy:
@@ -20,8 +21,18 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
     
-    - name: Merge dev into test/vercel-preview
+    - name: Sync branches (dev → test/vercel-preview → main)
       run: |
+        # Use GITHUB_TOKEN for pushing
+        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+        
+        # Sync test/vercel-preview with dev
+        git fetch origin
         git checkout test/vercel-preview
-        git merge dev --no-edit
-        git push origin test/vercel-preview
+        git reset --hard origin/dev
+        git push --force-with-lease origin test/vercel-preview
+        
+        # Also sync main with dev
+        git checkout main
+        git reset --hard origin/dev
+        git push --force-with-lease origin main
