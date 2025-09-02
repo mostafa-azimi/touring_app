@@ -605,6 +605,7 @@ export class ShipHeroOrderService {
             po_date: purchaseOrderDate.toISOString().split('T')[0], // Use day before tour date
             po_number: poName, // Use our custom naming convention instead of generic number
             subtotal: "0.00",
+            tax: "0.00",
             shipping_price: "0.00",
             total_price: "0.00",
             warehouse_id: warehouse.shiphero_warehouse_id,
