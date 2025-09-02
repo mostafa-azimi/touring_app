@@ -96,22 +96,6 @@ export class ShipHeroOrderService {
             email,
             company,
             title
-          ),
-          swag_allocations:tour_swag_allocations(
-            id,
-            qty,
-            swag_item:swag_items(
-              id,
-              name,
-              sku
-            ),
-            participant:tour_participants(
-              id,
-              first_name,
-              last_name,
-              email,
-              company
-            )
           )
         `)
         .eq('id', tourId)
@@ -374,14 +358,6 @@ export class ShipHeroOrderService {
             first_name,
             last_name,
             email
-          ),
-          swag_allocations:tour_swag_allocations(
-            qty,
-            swag_item:swag_items(
-              id,
-              name,
-              sku
-            )
           )
         `)
         .eq('id', tourId)
