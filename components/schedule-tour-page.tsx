@@ -30,7 +30,7 @@ interface Warehouse {
 
 interface Participant {
   id: string
-  name: string
+  name: string // Display name (will be split into first/last for database)
   email: string
   company: string
   title: string
@@ -174,14 +174,21 @@ export function ScheduleTourPage() {
 
       if (tourError) throw tourError
 
-      // Add participants
-      const participantInserts = participants.map((participant) => ({
-        tour_id: tourData.id,
-        name: participant.name,
-        email: participant.email,
-        company: participant.company,
-        title: participant.title,
-      }))
+      // Add participants - split name into first_name, last_name for database
+      const participantInserts = participants.map((participant) => {
+        const nameParts = participant.name.split(' ')
+        const firstName = nameParts[0] || ''
+        const lastName = nameParts.slice(1).join(' ') || ''
+        
+        return {
+          tour_id: tourData.id,
+          first_name: firstName,
+          last_name: lastName,
+          email: participant.email,
+          company: participant.company,
+          title: participant.title,
+        }
+      })
 
       const { data: insertedParticipants, error: participantError } = await supabase
         .from("tour_participants")

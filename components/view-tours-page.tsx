@@ -41,7 +41,8 @@ interface Tour {
   }
   participants: Array<{
     id: string
-    name: string
+    first_name: string
+    last_name: string
     email: string
     company: string | null
     title: string | null
@@ -105,7 +106,7 @@ export function ViewToursPage() {
           shiphero_purchase_order_url,
           warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
           host:team_members(id, first_name, last_name, email),
-          participants:tour_participants(id, name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
+          participants:tour_participants(id, first_name, last_name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
         `,
         )
         .order("date", { ascending: false })
@@ -701,7 +702,7 @@ function TourDetailsSheet({ tour }: { tour: Tour }) {
                 <div key={participant.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div className="grid gap-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium">{participant.name}</p>
+                      <p className="font-medium">{participant.first_name} {participant.last_name}</p>
                       {participant.title && (
                         <span className="text-sm text-muted-foreground">- {participant.title}</span>
                       )}
