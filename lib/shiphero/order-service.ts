@@ -8,7 +8,7 @@ import {
 } from './naming-utils'
 
 export class ShipHeroOrderService {
-  private shipHero
+  private shipHero: any
   private supabase
 
   constructor() {
@@ -168,10 +168,19 @@ export class ShipHeroOrderService {
         for (const swagItem of allSwagItems) {
           if (!swagItem || !swagItem.sku) continue
 
-          const lineItemId = `${participant.id}-${swagItem.id}-${Date.now()}`
+          // Use the same format as adhoc orders for line item IDs
+          const lineItemIndex = participantOrders.get(participant.id).lineItems.length + 1
+          // Create a consistent date format for all orders
+          const tourDate = new Date(tour.date)
+          const orderName = generateSalesOrderName(
+            participant.first_name,
+            participant.last_name,
+            (warehouse as any).code || "",
+            tourDate.toISOString()
+          )
           participantOrders.get(participant.id).lineItems.push({
             sku: swagItem.sku,
-            partner_line_item_id: lineItemId, // Required field
+            partner_line_item_id: `${orderName}-${lineItemIndex}`, // Same format as adhoc orders
             quantity: 1, // 1 of each swag item per participant
             price: "0.00", // Free swag
             warehouse_id: warehouse.shiphero_warehouse_id, // Required field
@@ -200,10 +209,19 @@ export class ShipHeroOrderService {
         for (const swagItem of allSwagItems) {
           if (!swagItem || !swagItem.sku) continue
 
-          const lineItemId = `host-${host.id}-${swagItem.id}-${Date.now()}`
+          // Use the same format as adhoc orders for line item IDs
+          const lineItemIndex = participantOrders.get(`host-${host.id}`).lineItems.length + 1
+          // Create a consistent date format for all orders
+          const tourDate = new Date(tour.date)
+          const orderName = generateSalesOrderName(
+            host.first_name,
+            host.last_name,
+            (warehouse as any).code || "",
+            tourDate.toISOString()
+          )
           participantOrders.get(`host-${host.id}`).lineItems.push({
             sku: swagItem.sku,
-            partner_line_item_id: lineItemId, // Required field
+            partner_line_item_id: `${orderName}-${lineItemIndex}`, // Same format as adhoc orders
             quantity: 1, // 1 of each swag item for host
             price: "0.00", // Free swag
             warehouse_id: warehouse.shiphero_warehouse_id, // Required field
@@ -215,7 +233,6 @@ export class ShipHeroOrderService {
       }
 
       // Create sales order for each participant
-      const tourDate = new Date(tour.date)
       
       for (const [participantId, orderData] of participantOrders) {
         try {
@@ -224,14 +241,14 @@ export class ShipHeroOrderService {
 
           if (lineItems.length === 0) continue
 
-          // Generate custom order name and number
+          // Generate custom order name and number (same as adhoc orders)
+          const tourDate = new Date(tour.date)
           const orderName = generateSalesOrderName(
             participant.first_name,
             participant.last_name,
             (warehouse as any).code || "",
             tourDate.toISOString()
           )
-          const orderNumber = generateSalesOrderNumber()
 
           const accessToken = await this.getAccessToken()
           const salesOrderResult = await fetch('/api/shiphero/orders', {
@@ -243,7 +260,7 @@ export class ShipHeroOrderService {
             body: JSON.stringify({
               type: 'sales_order',
               data: {
-                order_number: orderNumber,
+                order_number: orderName,
                 shop_name: "Warehouse Tours",
                 fulfillment_status: "pending",
                 order_date: tourDate.toISOString(),
@@ -319,7 +336,7 @@ export class ShipHeroOrderService {
             console.error('Sales order creation failed - FULL DETAILS:', JSON.stringify(salesOrderData, null, 2))
             // Log any specific error messages
             if (salesOrderData.errors && salesOrderData.errors.length > 0) {
-              console.error('ShipHero specific errors:', salesOrderData.errors.map(e => e.message).join(', '))
+              console.error('ShipHero specific errors:', salesOrderData.errors.map((e: any) => e.message).join(', '))
             }
           }
 
