@@ -424,24 +424,38 @@ export function ShipHeroTab() {
       })
       
       toast({
-        title: "Adhoc Order Created Successfully!",
+        title: "🎉 Adhoc Order Created Successfully!",
         description: (
-          <div className="space-y-2">
-            <p><strong>Order:</strong> {createdOrderNumber}</p>
-            <p><strong>Host:</strong> {host.first_name} {host.last_name}</p>
-            {orderId && <p><strong>ShipHero ID:</strong> {orderId}</p>}
-            {legacyId && <p><strong>Legacy ID:</strong> {legacyId}</p>}
+          <div className="space-y-3">
+            <div className="p-3 bg-green-50 border border-green-200 rounded">
+              <p className="font-semibold text-green-800">Order Details:</p>
+              <p><strong>Order Number:</strong> {createdOrderNumber}</p>
+              <p><strong>Host:</strong> {host.first_name} {host.last_name}</p>
+              {orderId && (
+                <p className="text-lg font-bold text-green-700">
+                  <strong>ShipHero Order ID:</strong> {orderId}
+                </p>
+              )}
+              {legacyId && (
+                <p><strong>Legacy ID:</strong> {legacyId}</p>
+              )}
+            </div>
             {shipheroLink ? (
               <a 
                 href={shipheroLink} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 underline block"
+                className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
               >
-                View Order in ShipHero →
+                📦 View Order in ShipHero →
               </a>
             ) : (
-              <p className="text-amber-600">⚠️ No ShipHero link available (check console for order ID)</p>
+              <div className="p-2 bg-amber-50 border border-amber-200 rounded">
+                <p className="text-amber-700">
+                  ⚠️ ShipHero link not available
+                  {orderId ? ` (Order ID: ${orderId})` : ' (check console for details)'}
+                </p>
+              </div>
             )}
           </div>
         ),
