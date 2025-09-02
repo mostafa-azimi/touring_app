@@ -63,7 +63,7 @@ export function ShipHeroTab() {
     }
 
     // Load data when component mounts
-    loadData()
+    loadAdhocOrderData()
     loadTours()
   }, [])
 
