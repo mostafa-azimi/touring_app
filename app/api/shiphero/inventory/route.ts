@@ -17,22 +17,26 @@ export async function GET(request: NextRequest) {
     const query = `
       query GetInventory {
         products(first: 100, has_inventory: true) {
+          request_id
+          complexity
           data {
             edges {
               node {
+                id
                 sku
                 name
                 inventory {
-                  available
-                  on_hand
-                  allocated
                   warehouse_id
-                }
-                warehouse {
-                  id
-                  name
+                  on_hand
+                  available
+                  allocated
                 }
               }
+              cursor
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
             }
           }
         }
@@ -66,20 +70,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract products and flatten the data structure
-    const products = result.data?.products?.data?.edges?.map((edge: any) => ({
-      sku: edge.node.sku,
-      name: edge.node.name,
-      inventory: {
-        available: edge.node.inventory.available || 0,
-        on_hand: edge.node.inventory.on_hand || 0,
-        allocated: edge.node.inventory.allocated || 0,
-        warehouse_id: edge.node.inventory.warehouse_id
-      },
-      warehouse: {
-        id: edge.node.warehouse?.id,
-        name: edge.node.warehouse?.name
+    const products = result.data?.products?.data?.edges?.map((edge: any) => {
+      const inventory = edge.node.inventory || {}
+      return {
+        sku: edge.node.sku,
+        name: edge.node.name,
+        inventory: {
+          available: inventory.available || 0,
+          on_hand: inventory.on_hand || 0,
+          allocated: inventory.allocated || 0,
+          warehouse_id: inventory.warehouse_id
+        }
       }
-    })) || []
+    }) || []
 
     return NextResponse.json({
       success: true,
