@@ -82,8 +82,14 @@ export function ShipHeroTab() {
       })
 
       const result = await response.json()
+      console.log('📦 Inventory API response:', {
+        status: response.status,
+        ok: response.ok,
+        result: result
+      })
 
       if (!response.ok) {
+        console.error('❌ Inventory API error details:', result)
         throw new Error(result.error || 'Failed to fetch inventory')
       }
 
