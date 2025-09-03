@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2, RefreshCw, Building2, TestTube } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 
@@ -38,9 +38,33 @@ interface Warehouse {
   created_at: string
 }
 
+interface ShipHeroWarehouse {
+  id: string
+  legacy_id: number
+  identifier: string
+  account_id: string
+  address: {
+    name: string
+    address1: string
+    address2?: string
+    city: string
+    state: string
+    country: string
+    zip: string
+    phone?: string
+  }
+  dynamic_slotting: boolean
+  invoice_email?: string
+  phone_number?: string
+  profile?: string
+}
+
 export function WarehousesTab() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const [shipHeroWarehouses, setShipHeroWarehouses] = useState<ShipHeroWarehouse[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshingFromShipHero, setIsRefreshingFromShipHero] = useState(false)
+  const [lastShipHeroSync, setLastShipHeroSync] = useState<Date | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null)
   const [formData, setFormData] = useState({
@@ -59,6 +83,13 @@ export function WarehousesTab() {
 
   useEffect(() => {
     fetchWarehouses()
+    
+    // Auto-load ShipHero warehouses if access token exists
+    const accessToken = localStorage.getItem('shiphero_access_token')
+    if (accessToken) {
+      console.log('🔄 Auto-loading ShipHero warehouses on component mount')
+      fetchShipHeroWarehouses()
+    }
   }, [])
 
   const fetchWarehouses = async () => {
@@ -75,6 +106,73 @@ export function WarehousesTab() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchShipHeroWarehouses = async () => {
+    setIsRefreshingFromShipHero(true)
+    console.log('🏭 Fetching warehouses from ShipHero...')
+    
+    try {
+      // Get access token from localStorage
+      const accessToken = localStorage.getItem('shiphero_access_token')
+      
+      if (!accessToken) {
+        throw new Error('No access token available. Please generate a new access token in the ShipHero tab first.')
+      }
+
+      console.log('🔍 Using access token from localStorage')
+
+      const response = await fetch('/api/shiphero/warehouses', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('🏭 ShipHero warehouses API response:', {
+        status: response.status,
+        ok: response.ok
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error('❌ ShipHero warehouses API error:', {
+          status: response.status,
+          error: result.error,
+          details: result.details,
+          fullResult: result
+        })
+        
+        throw new Error(result.error || 'Failed to fetch ShipHero warehouses')
+      }
+
+      // Extract warehouses from ShipHero response
+      const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
+      setShipHeroWarehouses(shipHeroWarehouses)
+      setLastShipHeroSync(new Date())
+      
+      toast({
+        title: "ShipHero Warehouses Loaded",
+        description: `Found ${shipHeroWarehouses.length} warehouses from ShipHero`,
+      })
+
+      console.log('✅ ShipHero warehouses loaded successfully:', {
+        totalWarehouses: shipHeroWarehouses.length,
+        sampleWarehouses: shipHeroWarehouses.slice(0, 3).map((w: ShipHeroWarehouse) => w.address?.name || w.identifier)
+      })
+
+    } catch (error: any) {
+      console.error('❌ Failed to fetch ShipHero warehouses:', error)
+      toast({
+        title: "Failed to Load ShipHero Warehouses",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsRefreshingFromShipHero(false)
     }
   }
 
@@ -177,9 +275,107 @@ export function WarehousesTab() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Header with ShipHero Integration */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Warehouses
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Manage warehouse locations with real-time ShipHero integration
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={fetchShipHeroWarehouses}
+              disabled={isRefreshingFromShipHero}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshingFromShipHero ? 'animate-spin' : ''}`} />
+              {isRefreshingFromShipHero ? 'Loading...' : 'Sync ShipHero'}
+            </Button>
+          </div>
+        </div>
+
+        {/* ShipHero Status */}
+        <div className="flex items-center justify-between bg-muted/50 p-4 rounded-lg">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <TestTube className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium">ShipHero Integration</span>
+            </div>
+            
+            {lastShipHeroSync && (
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-muted-foreground">
+                  Last synced: {lastShipHeroSync.toLocaleString()}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Found {shipHeroWarehouses.length} ShipHero warehouses
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ShipHero Warehouses Display */}
+      {shipHeroWarehouses.length > 0 && (
+        <div className="space-y-4">
+          <h4 className="text-md font-medium">ShipHero Warehouses</h4>
+          <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table className="min-w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[150px]">Name</TableHead>
+                    <TableHead className="min-w-[100px]">Identifier</TableHead>
+                    <TableHead className="min-w-[200px]">Address</TableHead>
+                    <TableHead className="min-w-[100px]">City</TableHead>
+                    <TableHead className="min-w-[80px]">State</TableHead>
+                    <TableHead className="min-w-[80px]">Zip</TableHead>
+                    <TableHead className="min-w-[120px]">ShipHero ID</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {shipHeroWarehouses.map((warehouse) => (
+                    <TableRow key={warehouse.id}>
+                      <TableCell className="font-medium">
+                        {warehouse.address?.name || warehouse.identifier || '-'}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {warehouse.identifier || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {warehouse.address?.address1 || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {warehouse.address?.city || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {warehouse.address?.state || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {warehouse.address?.zip || '-'}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {warehouse.id || '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Warehouses</h3>
+        <h4 className="text-md font-medium">Local Warehouse Configuration</h4>
         <Dialog
           open={isDialogOpen}
           onOpenChange={(open) => {
