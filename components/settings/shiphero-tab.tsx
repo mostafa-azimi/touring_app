@@ -140,44 +140,58 @@ export function ShipHeroTab() {
 
 
   const loadAdhocOrderData = async () => {
+    console.log('🔄 Loading adhoc order data...')
+    const startTime = Date.now()
+    
     try {
       const supabase = createClient()
-      
-      // Load hosts from Supabase (still needed)
-      const hostsRes = await supabase
-        .from('team_members')
-        .select('id, first_name, last_name, email')
-        .order('first_name')
-
-      if (hostsRes.error) {
-        throw new Error(`Hosts error: ${hostsRes.error.message}`)
-      }
-
-      setHosts(hostsRes.data || [])
-
-      // Load ShipHero warehouses and products
       const accessToken = localStorage.getItem('shiphero_access_token')
+      
       if (!accessToken) {
         throw new Error('No ShipHero access token available. Please generate a new access token first.')
       }
 
-      // Fetch ShipHero warehouses
-      const warehousesResponse = await fetch('/api/shiphero/warehouses', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      // Load all data in parallel for better performance
+      console.log('📡 Making parallel API calls...')
+      const [hostsRes, warehousesResponse, productsResponse] = await Promise.all([
+        // Load hosts from Supabase
+        supabase
+          .from('team_members')
+          .select('id, first_name, last_name, email')
+          .order('first_name'),
+        
+        // Fetch ShipHero warehouses
+        fetch('/api/shiphero/warehouses', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        
+        // Fetch ShipHero products
+        fetch('/api/shiphero/inventory', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      ])
 
+      // Process hosts
+      if (hostsRes.error) {
+        throw new Error(`Hosts error: ${hostsRes.error.message}`)
+      }
+      setHosts(hostsRes.data || [])
+
+      // Process warehouses
       if (!warehousesResponse.ok) {
         throw new Error('Failed to fetch ShipHero warehouses')
       }
-
       const warehousesResult = await warehousesResponse.json()
       const shipHeroWarehouses = warehousesResult.data?.account?.data?.warehouses || []
       
-      // Transform ShipHero warehouses to match expected format
       const transformedWarehouses = shipHeroWarehouses.map((warehouse: any) => ({
         id: warehouse.id,
         name: warehouse.address?.name || warehouse.identifier,
@@ -188,49 +202,36 @@ export function ShipHeroTab() {
         zip: warehouse.address?.zip || '',
         shiphero_warehouse_id: warehouse.id
       }))
-
       setWarehouses(transformedWarehouses)
 
-      // Fetch ShipHero products
-      const productsResponse = await fetch('/api/shiphero/inventory', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
+      // Process products
       if (!productsResponse.ok) {
         throw new Error('Failed to fetch ShipHero products')
       }
-
       const productsResult = await productsResponse.json()
       const shipHeroProducts = productsResult.products || []
       
-      // Transform products to match expected format
       const transformedProducts = shipHeroProducts.map((product: any) => ({
-        id: product.sku, // Use SKU as ID for consistency
+        id: product.sku,
         name: product.name,
         sku: product.sku,
         available: product.inventory?.available || 0,
         warehouse_name: product.inventory?.warehouse_name || 'Unknown'
       }))
-
       setProducts(transformedProducts)
-      
-      console.log('Loaded data:', {
-        warehouses: transformedWarehouses.length,
+
+      const loadTime = Date.now() - startTime
+      console.log(`✅ Adhoc order data loaded in ${loadTime}ms`, {
         hosts: hostsRes.data?.length || 0,
+        warehouses: transformedWarehouses.length,
         products: transformedProducts.length
       })
       
-      console.log('Warehouse data:', transformedWarehouses.slice(0, 2))
-      console.log('Host data:', hostsRes.data?.slice(0, 2))
-      console.log('Products data:', transformedProducts.slice(0, 5))
     } catch (error: any) {
-      console.error('Error loading adhoc order data:', error)
+      const loadTime = Date.now() - startTime
+      console.error(`❌ Error loading adhoc order data (${loadTime}ms):`, error)
       toast({
-        title: "Error",
+        title: "Error Loading Data",
         description: `Failed to load data: ${error.message}`,
         variant: "destructive",
       })
@@ -879,13 +880,17 @@ export function ShipHeroTab() {
                     localStorage.removeItem('shiphero_token_expires_at')
                     setTokenExpiresAt(null)
                     setDaysRemaining(null)
+                    console.log('✅ Refresh token saved to localStorage')
                     toast({
-                      title: "Refresh Token Saved",
+                      title: "✅ Refresh Token Saved",
                       description: "Your ShipHero refresh token has been saved securely. Generate a new access token to start the 28-day countdown.",
                     })
+                    // Clear the input field after saving
+                    setRefreshToken("")
                   }}
                   disabled={!refreshToken.trim()}
                   variant="outline"
+                  className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
                 >
                   Save Token
                 </Button>
