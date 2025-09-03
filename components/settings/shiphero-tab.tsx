@@ -247,6 +247,9 @@ export function ShipHeroTab() {
         const expiresIn = data.expires_in
         
         if (newAccessToken) {
+          // Store the access token in localStorage
+          localStorage.setItem('shiphero_access_token', newAccessToken)
+          
           // Calculate expiration date
           const expirationDate = new Date(Date.now() + (expiresIn * 1000))
           
@@ -264,7 +267,8 @@ export function ShipHeroTab() {
         }
       } else {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to refresh token')
+        console.error('ShipHero refresh token error:', errorData)
+        throw new Error(errorData.error || `Failed to refresh token (${response.status})`)
       }
     } catch (error: any) {
       toast({
