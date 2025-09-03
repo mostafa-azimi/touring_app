@@ -175,11 +175,20 @@ export async function GET(request: NextRequest) {
       })
       ?.map((edge: any) => {
         const warehouseProducts = edge.node.warehouse_products || []
-        // Get the first warehouse product (no longer prioritizing available inventory)
-        const warehouseProduct = warehouseProducts[0] || {}
+        
+        // If product has warehouse_products, use the first one
+        // If no warehouse_products, show the product anyway with zero inventory
+        const warehouseProduct = warehouseProducts[0] || {
+          warehouse_id: null,
+          warehouse_identifier: null,
+          available: 0,
+          on_hand: 0,
+          allocated: 0
+        }
         
         // Get warehouse name from our lookup map
-        const warehouseInfo = warehouseMap.get(warehouseProduct.warehouse_id)
+        const warehouseInfo = warehouseProduct.warehouse_id ? 
+          warehouseMap.get(warehouseProduct.warehouse_id) : null
         
         return {
           sku: edge.node.sku,
@@ -194,7 +203,7 @@ export async function GET(request: NextRequest) {
             allocated: warehouseProduct.allocated || 0,
             warehouse_id: warehouseProduct.warehouse_id,
             warehouse_identifier: warehouseProduct.warehouse_identifier,
-            warehouse_name: warehouseInfo?.name || 'Unknown Warehouse'
+            warehouse_name: warehouseInfo?.name || (warehouseProduct.warehouse_id ? 'Unknown Warehouse' : 'No Warehouse')
           }
         }
       }) || []
@@ -207,8 +216,10 @@ export async function GET(request: NextRequest) {
       kitsFiltered,
       totalProducts: products.length,
       productsWithAvailableInventory: products.filter(p => p.inventory.available > 0).length,
-      sampleSKUs: products.slice(0, 3).map(p => p.sku),
-      sampleWarehouses: products.slice(0, 3).map(p => p.inventory.warehouse_name)
+      productsWithNoWarehouse: products.filter(p => !p.inventory.warehouse_id).length,
+      productsWithZeroInventory: products.filter(p => p.inventory.on_hand === 0).length,
+      sampleSKUs: products.slice(0, 5).map(p => p.sku),
+      sampleWarehouses: products.slice(0, 5).map(p => p.inventory.warehouse_name)
     })
 
     return NextResponse.json({
