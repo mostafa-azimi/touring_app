@@ -11,6 +11,8 @@ import { Eye, Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, Shoppi
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
+import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
+import { TourFinalizationDialog } from "@/components/tour-finalization-dialog"
 
 interface Tour {
   id: string
@@ -69,6 +71,8 @@ export function ViewToursPage() {
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
   const [cancellingTourId, setCancellingTourId] = useState<string | null>(null)
+  const [finalizationDialogOpen, setFinalizationDialogOpen] = useState(false)
+  const [tourToFinalize, setTourToFinalize] = useState<string | null>(null)
 
   const [sortField, setSortField] = useState<string>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -255,80 +259,74 @@ export function ViewToursPage() {
     }
   }
 
-  const handleFinalizeTour = async (tourId: string) => {
+  const handleFinalizeTourClick = (tourId: string) => {
+    setTourToFinalize(tourId)
+    setFinalizationDialogOpen(true)
+  }
+
+  const handleFinalizeTour = async (selectedOptions: WorkflowOption[]) => {
+    if (!tourToFinalize) return
+
     setIsFinalizingTour(true)
-    setFinalizingTourId(tourId)
+    setFinalizingTourId(tourToFinalize)
+    
     try {
-      console.log(`Finalizing tour with ID: ${tourId}`)
-      // Order service handles token management internally
-      const orderService = new ShipHeroOrderService()
+      console.log(`Finalizing tour ${tourToFinalize} with options:`, selectedOptions)
       
-      // Create sales orders for all participants + host
-      const salesResult = await orderService.createSalesOrdersForTour(tourId)
+      const finalizationService = new TourFinalizationService()
+      const result = await finalizationService.finalizeTour(tourToFinalize, selectedOptions)
       
-      if (!salesResult.success) {
-        throw new Error(`Sales orders failed: ${salesResult.message}`)
-      }
-
-      // Create aggregated purchase order
-      const poResult = await orderService.createPurchaseOrderForTour(tourId)
-      
-      if (!poResult.success) {
-        throw new Error(`Purchase order failed: ${poResult.message}`)
-      }
-
-      // Update tour status to finalized
-      const { error: updateError } = await supabase
-        .from('tours')
-        .update({ status: 'finalized' })
-        .eq('id', tourId)
-
-      if (updateError) throw updateError
-
-      // Refresh tours to get updated order information
-      await fetchTours()
-      
-      // Update selected tour if it's currently open by fetching fresh data
-      if (selectedTour && selectedTour.id === tourId) {
-        // Fetch the updated tour data directly
-        const { data: updatedTourData } = await supabase
-          .from("tours")
-          .select(`
-            id,
-            date,
-            time,
-            status,
-            created_at,
-            tour_numeric_id,
-            shiphero_purchase_order_id,
-            shiphero_purchase_order_number,
-            shiphero_purchase_order_url,
-            host_shiphero_sales_order_id,
-            host_shiphero_sales_order_number,
-            host_shiphero_sales_order_url,
-            warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
-            host:team_members(id, first_name, last_name, email),
-            participants:tour_participants(id, first_name, last_name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
-          `)
-          .eq('id', tourId)
-          .single()
+      if (result.success) {
+        // Refresh tours to get updated order information
+        await fetchTours()
         
-        if (updatedTourData) {
-          const processedTour = {
-            ...updatedTourData,
-            warehouse: Array.isArray(updatedTourData.warehouse) ? updatedTourData.warehouse[0] : updatedTourData.warehouse,
-            host: Array.isArray(updatedTourData.host) ? updatedTourData.host[0] : updatedTourData.host,
-            participants: Array.isArray(updatedTourData.participants) ? updatedTourData.participants : [],
+        // Update selected tour if it's currently open by fetching fresh data
+        if (selectedTour && selectedTour.id === tourToFinalize) {
+          const { data: updatedTourData } = await supabase
+            .from("tours")
+            .select(`
+              id,
+              date,
+              time,
+              status,
+              created_at,
+              tour_numeric_id,
+              shiphero_purchase_order_id,
+              shiphero_purchase_order_number,
+              shiphero_purchase_order_url,
+              host_shiphero_sales_order_id,
+              host_shiphero_sales_order_number,
+              host_shiphero_sales_order_url,
+              warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
+              host:team_members(id, first_name, last_name, email),
+              participants:tour_participants(id, first_name, last_name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
+            `)
+            .eq('id', tourToFinalize)
+            .single()
+          
+          if (updatedTourData) {
+            const processedTour = {
+              ...updatedTourData,
+              warehouse: Array.isArray(updatedTourData.warehouse) ? updatedTourData.warehouse[0] : updatedTourData.warehouse,
+              host: Array.isArray(updatedTourData.host) ? updatedTourData.host[0] : updatedTourData.host,
+              participants: Array.isArray(updatedTourData.participants) ? updatedTourData.participants : [],
+            }
+            setSelectedTour(processedTour)
           }
-          setSelectedTour(processedTour)
         }
+
+        toast({
+          title: "🎉 Tour Finalized Successfully!",
+          description: result.message,
+        })
+      } else {
+        throw new Error(result.message)
       }
-
-      toast({
-        title: "🎉 Tour Finalized Successfully!",
-        description: `Created ${salesResult.ordersCreated} sales orders and 1 purchase order. Tour is now finalized.`,
-      })
-
+      
+      // Close dialog and reset state
+      setFinalizationDialogOpen(false)
+      setTourToFinalize(null)
+      
     } catch (error: any) {
       console.error('Tour finalization error:', error)
       toast({
@@ -598,7 +596,7 @@ export function ViewToursPage() {
                             <Button 
                               variant="default" 
                               size="sm" 
-                              onClick={() => handleFinalizeTour(tour.id)}
+                              onClick={() => handleFinalizeTourClick(tour.id)}
                               disabled={isFinalizingTour && (finalizingTourId === tour.id || finalizingTourId === null)}
                               className={`w-full bg-blue-600 hover:bg-blue-700 ${isFinalizingTour && finalizingTourId === tour.id ? 'cursor-wait' : ''}`}
                             >
@@ -944,6 +942,14 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
         </Card>
       )}
 
+      {/* Tour Finalization Dialog */}
+      <TourFinalizationDialog
+        open={finalizationDialogOpen}
+        onOpenChange={setFinalizationDialogOpen}
+        onFinalize={handleFinalizeTour}
+        isLoading={isFinalizingTour}
+        tourId={tourToFinalize || ''}
+      />
 
     </div>
   )
