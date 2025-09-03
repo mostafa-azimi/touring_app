@@ -49,6 +49,13 @@ export async function GET(request: NextRequest) {
     })
 
     const result = await response.json()
+    console.log('ShipHero inventory API response:', {
+      status: response.status,
+      hasData: !!result.data,
+      hasErrors: !!result.errors,
+      errors: result.errors,
+      dataStructure: result.data ? Object.keys(result.data) : 'no data'
+    })
 
     if (result.errors) {
       console.error('ShipHero API errors:', result.errors)

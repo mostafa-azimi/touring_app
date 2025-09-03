@@ -116,6 +116,8 @@ export function ShipHeroTab() {
   useEffect(() => {
     const savedToken = localStorage.getItem('shiphero_refresh_token') || ''
     const savedExpiresAt = localStorage.getItem('shiphero_token_expires_at')
+    const savedAccessToken = localStorage.getItem('shiphero_access_token')
+    
     setRefreshToken(savedToken)
     setTokenExpiresAt(savedExpiresAt)
     
@@ -123,6 +125,14 @@ export function ShipHeroTab() {
     if (savedExpiresAt) {
       calculateCountdown(savedExpiresAt)
     }
+
+    // Log what tokens we have on startup
+    console.log('🔄 Component initialized with tokens:', {
+      hasRefreshToken: !!savedToken,
+      hasAccessToken: !!savedAccessToken,
+      accessTokenStart: savedAccessToken ? savedAccessToken.substring(0, 20) + '...' : 'none',
+      expiresAt: savedExpiresAt
+    })
 
     // Load data when component mounts
     loadAdhocOrderData()
