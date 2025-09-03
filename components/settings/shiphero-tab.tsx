@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { RefreshCw, TestTube, Plus, ShoppingCart } from "lucide-react"
+import { RefreshCw, TestTube, Plus, ShoppingCart, Package } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -28,6 +28,9 @@ export function ShipHeroTab() {
   } | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [inventoryData, setInventoryData] = useState<any[]>([])
+  const [isLoadingInventory, setIsLoadingInventory] = useState(false)
+  const [showInventory, setShowInventory] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
   const [showAdhocOrder, setShowAdhocOrder] = useState(false)
@@ -57,6 +60,57 @@ export function ShipHeroTab() {
   const [lastPOResponse, setLastPOResponse] = useState<any>(null)
 
   const { toast } = useToast()
+
+  const handleFetchInventory = async () => {
+    setIsLoadingInventory(true)
+    setInventoryData([])
+    
+    try {
+      // Get the access token from localStorage
+      const accessToken = localStorage.getItem('shiphero_access_token')
+      
+      if (!accessToken) {
+        throw new Error('No access token available. Please generate a new access token first.')
+      }
+
+      const response = await fetch('/api/shiphero/inventory', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch inventory')
+      }
+
+      // Filter only products with available quantity > 0
+      const availableProducts = result.products.filter((product: any) => 
+        product.inventory.available > 0
+      )
+
+      setInventoryData(availableProducts)
+      setShowInventory(true)
+      
+      toast({
+        title: "✅ Inventory Loaded",
+        description: `Found ${availableProducts.length} products with available inventory`,
+        duration: 4000,
+      })
+    } catch (error: any) {
+      console.error('Failed to fetch inventory:', error)
+      toast({
+        title: "❌ Inventory Fetch Failed",
+        description: error.message || "Failed to load inventory data",
+        variant: "destructive",
+        duration: 6000,
+      })
+    } finally {
+      setIsLoadingInventory(false)
+    }
+  }
 
   useEffect(() => {
     const savedToken = localStorage.getItem('shiphero_refresh_token') || ''
@@ -1402,6 +1456,90 @@ export function ShipHeroTab() {
               )}
             </div>
           )}
+
+          {/* Inventory Viewer Section */}
+          <div className="border-t pt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Inventory Viewer</h3>
+                <p className="text-sm text-muted-foreground">
+                  View all SKUs with available inventory across your warehouses
+                </p>
+              </div>
+              <Button
+                onClick={handleFetchInventory}
+                disabled={isLoadingInventory || !refreshToken}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Package className={`h-4 w-4 ${isLoadingInventory ? 'animate-pulse' : ''}`} />
+                {isLoadingInventory ? "Loading..." : "Fetch Inventory"}
+              </Button>
+            </div>
+
+            {showInventory && inventoryData.length > 0 && (
+              <div className="space-y-4">
+                <div className="bg-muted/50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Package className="h-5 w-5 text-green-600" />
+                    <span className="font-medium">Available Inventory ({inventoryData.length} SKUs)</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Showing only products with available quantity greater than 0
+                  </p>
+                </div>
+
+                <div className="max-h-96 overflow-y-auto border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-32">SKU</TableHead>
+                        <TableHead>Product Name</TableHead>
+                        <TableHead className="w-24 text-center">Available</TableHead>
+                        <TableHead className="w-24 text-center">On Hand</TableHead>
+                        <TableHead className="w-24 text-center">Allocated</TableHead>
+                        <TableHead className="w-40">Warehouse</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {inventoryData.map((product: any, index: number) => (
+                        <TableRow key={`${product.sku}-${index}`}>
+                          <TableCell className="font-mono text-sm">
+                            {product.sku}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {product.name || 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                              {product.inventory.available}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">
+                            {product.inventory.on_hand}
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">
+                            {product.inventory.allocated}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {product.warehouse?.name || `ID: ${product.inventory.warehouse_id}`}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {showInventory && inventoryData.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">No Available Inventory</p>
+                <p className="text-sm">No products found with available quantity greater than 0</p>
+              </div>
+            )}
+          </div>
 
           
         </CardContent>
