@@ -23,9 +23,14 @@ export async function GET(request: NextRequest) {
     }
 
     // GraphQL query to get all products with inventory information
+    // Based on official ShipHero documentation - GetProductsWithFilters format
     const query = `
-      query GetInventory {
-        products(first: 100, has_inventory: true) {
+      query GetInventory(
+        $first: Int = 100
+      ) {
+        products(
+          first: $first
+        ) {
           request_id
           complexity
           data {
@@ -34,6 +39,10 @@ export async function GET(request: NextRequest) {
                 id
                 sku
                 name
+                price
+                barcode
+                created_at
+                updated_at
                 inventory {
                   warehouse_id
                   on_hand
@@ -57,7 +66,8 @@ export async function GET(request: NextRequest) {
       method: 'POST',
       hasToken: !!accessToken,
       queryLength: query.length,
-      queryStart: query.substring(0, 100) + '...'
+      queryStart: query.substring(0, 100) + '...',
+      variables: { first: 100 }
     })
 
     const response = await fetch('https://public-api.shiphero.com/graphql', {
@@ -66,7 +76,12 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ 
+        query,
+        variables: {
+          first: 100
+        }
+      }),
     })
 
     console.log('📡 ShipHero response received:', {
