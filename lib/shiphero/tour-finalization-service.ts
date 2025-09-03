@@ -1,6 +1,7 @@
 import { createShipHeroClient } from './client'
 import { createClient } from '@/lib/supabase/client'
 import { ShipHeroOrderService } from './order-service'
+import { getCelebrityNames } from '@/lib/celebrity-names'
 
 export interface TourData {
   id: string
@@ -25,6 +26,8 @@ export interface TourData {
     address: any
     shiphero_warehouse_id: string
   }
+  selected_workflows: string[]
+  selected_skus: string[]
 }
 
 export type WorkflowOption = 
@@ -87,6 +90,8 @@ export class TourFinalizationService {
         id,
         warehouse_id,
         host_id,
+        selected_workflows,
+        selected_skus,
         warehouses (
           id,
           name,
@@ -126,7 +131,9 @@ export class TourFinalizationService {
         name: tour.warehouses.name,
         address: tour.warehouses.address,
         shiphero_warehouse_id: tour.warehouses.shiphero_warehouse_id
-      }
+      },
+      selected_workflows: tour.selected_workflows || [],
+      selected_skus: tour.selected_skus || []
     }
   }
 

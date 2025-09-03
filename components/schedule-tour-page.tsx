@@ -119,6 +119,9 @@ export function ScheduleTourPage() {
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const [isUploadingCSV, setIsUploadingCSV] = useState(false)
   const [selectedWorkflows, setSelectedWorkflows] = useState<WorkflowOption[]>([])
+  const [selectedSkus, setSelectedSkus] = useState<string[]>([])
+  const [availableSkus, setAvailableSkus] = useState<any[]>([])
+  const [isLoadingSkus, setIsLoadingSkus] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -127,6 +130,64 @@ export function ScheduleTourPage() {
       setSelectedWorkflows(prev => [...prev, optionId])
     } else {
       setSelectedWorkflows(prev => prev.filter(id => id !== optionId))
+    }
+  }
+
+  const handleSkuChange = (sku: string, checked: boolean) => {
+    if (checked) {
+      setSelectedSkus(prev => [...prev, sku])
+    } else {
+      setSelectedSkus(prev => prev.filter(s => s !== sku))
+    }
+  }
+
+  const loadAvailableSkus = async () => {
+    setIsLoadingSkus(true)
+    try {
+      const accessToken = localStorage.getItem('shiphero_access_token')
+      if (!accessToken) {
+        toast({
+          title: "Access Token Required",
+          description: "Please generate a ShipHero access token in Settings to load SKUs.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch('/api/shiphero/inventory', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch inventory')
+      }
+
+      const result = await response.json()
+      
+      if (result.success && result.products) {
+        // Filter products with available inventory and sort by availability
+        const availableProducts = result.products
+          .filter((product: any) => product.inventory?.available > 0)
+          .sort((a: any, b: any) => b.inventory.available - a.inventory.available)
+        
+        setAvailableSkus(availableProducts)
+        console.log(`Loaded ${availableProducts.length} available SKUs`)
+      } else {
+        throw new Error('Invalid response format')
+      }
+    } catch (error: any) {
+      console.error('Failed to load SKUs:', error)
+      toast({
+        title: "Failed to Load SKUs",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingSkus(false)
     }
   }
 
@@ -238,6 +299,7 @@ export function ScheduleTourPage() {
             status: 'scheduled',
             tour_numeric_id: generateTourNumericId(),
             selected_workflows: selectedWorkflows,
+            selected_skus: selectedSkus,
           },
         ])
         .select()
@@ -273,6 +335,7 @@ export function ScheduleTourPage() {
       setParticipants([])
       setSwagPreview([])
       setSelectedWorkflows([])
+      setSelectedSkus([])
     } catch (error) {
       toast({
         title: "Error",
@@ -385,7 +448,8 @@ export function ScheduleTourPage() {
               time: tourData.tour_time,
               status: 'scheduled',
               tour_numeric_id: generateTourNumericId(),
-              selected_workflows: selectedWorkflows
+              selected_workflows: selectedWorkflows,
+              selected_skus: selectedSkus
             }])
             .select()
             .single()
@@ -727,6 +791,66 @@ export function ScheduleTourPage() {
                   )
                 })}
               </div>
+            </div>
+
+            <Separator />
+
+            {/* SKU Selection Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 justify-between">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  <h3 className="text-lg font-semibold">Product SKUs</h3>
+                  <span className="text-sm text-muted-foreground">({selectedSkus.length} selected)</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={loadAvailableSkus}
+                  disabled={isLoadingSkus}
+                >
+                  {isLoadingSkus ? "Loading..." : "Load SKUs"}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Select the specific SKUs to use for this tour. These will be used to create realistic orders instead of placeholder items.
+              </p>
+
+              {availableSkus.length > 0 && (
+                <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {availableSkus.map(product => (
+                      <div key={product.sku} className="flex items-start space-x-3 p-2 rounded border hover:bg-muted/50">
+                        <Checkbox
+                          id={product.sku}
+                          checked={selectedSkus.includes(product.sku)}
+                          onCheckedChange={(checked) => handleSkuChange(product.sku, checked as boolean)}
+                        />
+                        <div className="flex-1 space-y-1">
+                          <Label htmlFor={product.sku} className="font-medium cursor-pointer text-sm">
+                            {product.sku}
+                          </Label>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {product.name}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Available: {product.inventory?.available || 0}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {availableSkus.length === 0 && !isLoadingSkus && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Click "Load SKUs" to see available products</p>
+                  <p className="text-xs">Requires ShipHero access token</p>
+                </div>
+              )}
             </div>
 
             <Separator />
