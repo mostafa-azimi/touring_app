@@ -23,14 +23,10 @@ export async function GET(request: NextRequest) {
     }
 
     // GraphQL query to get all products with inventory information
-    // Based on official ShipHero documentation - GetProductsWithFilters format
+    // Based on actual Product schema - using warehouse_products instead of inventory
     const query = `
-      query GetInventory(
-        $first: Int = 100
-      ) {
-        products(
-          first: $first
-        ) {
+      query GetInventory {
+        products {
           request_id
           complexity
           data {
@@ -41,13 +37,13 @@ export async function GET(request: NextRequest) {
                 name
                 price
                 barcode
-                created_at
-                updated_at
-                inventory {
+                active
+                warehouse_products {
                   warehouse_id
                   on_hand
                   available
                   allocated
+                  warehouse_identifier
                 }
               }
               cursor
@@ -67,7 +63,7 @@ export async function GET(request: NextRequest) {
       hasToken: !!accessToken,
       queryLength: query.length,
       queryStart: query.substring(0, 100) + '...',
-      variables: { first: 100 }
+      noVariables: true
     })
 
     const response = await fetch('https://public-api.shiphero.com/graphql', {
@@ -76,12 +72,7 @@ export async function GET(request: NextRequest) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ 
-        query,
-        variables: {
-          first: 100
-        }
-      }),
+      body: JSON.stringify({ query }),
     })
 
     console.log('📡 ShipHero response received:', {
@@ -126,15 +117,21 @@ export async function GET(request: NextRequest) {
 
     // Extract products and flatten the data structure
     const products = result.data?.products?.data?.edges?.map((edge: any) => {
-      const inventory = edge.node.inventory || {}
+      const warehouseProducts = edge.node.warehouse_products || []
+      // Get the first warehouse product with available inventory, or first one if none available
+      const warehouseProduct = warehouseProducts.find((wp: any) => wp.available > 0) || warehouseProducts[0] || {}
+      
       return {
         sku: edge.node.sku,
         name: edge.node.name,
+        active: edge.node.active,
+        price: edge.node.price,
         inventory: {
-          available: inventory.available || 0,
-          on_hand: inventory.on_hand || 0,
-          allocated: inventory.allocated || 0,
-          warehouse_id: inventory.warehouse_id
+          available: warehouseProduct.available || 0,
+          on_hand: warehouseProduct.on_hand || 0,
+          allocated: warehouseProduct.allocated || 0,
+          warehouse_id: warehouseProduct.warehouse_id,
+          warehouse_identifier: warehouseProduct.warehouse_identifier
         }
       }
     }) || []
