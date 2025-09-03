@@ -37,19 +37,19 @@ export function ShipHeroTab() {
   const [isCreatingPO, setIsCreatingPO] = useState(false)
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [hosts, setHosts] = useState<any[]>([])
-  const [swagItems, setSwagItems] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
   const [adhocOrderData, setAdhocOrderData] = useState({
     warehouseId: '',
     hostId: '',
-    swagItemIds: [] as string[],
+    productIds: [] as string[],
     notes: '',
     orderDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] // Tomorrow's date
   })
   const [adhocPOData, setAdhocPOData] = useState({
     warehouseId: '',
     hostId: '',
-    swagItemIds: [] as string[],
-    swagQuantities: {} as Record<string, number>,
+    productIds: [] as string[],
+    productQuantities: {} as Record<string, number>,
     notes: '',
     poDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] // Tomorrow's date
   })
@@ -143,36 +143,90 @@ export function ShipHeroTab() {
     try {
       const supabase = createClient()
       
-      // Load warehouses, hosts, and swag items directly from Supabase
-      const [warehousesRes, hostsRes, swagItemsRes] = await Promise.all([
-        supabase.from('warehouses').select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id').order('name'),
-        supabase.from('team_members').select('id, first_name, last_name, email').order('first_name'),
-        supabase.from('swag_items').select('id, name, sku, vendor_id').order('name')
-      ])
+      // Load hosts from Supabase (still needed)
+      const hostsRes = await supabase
+        .from('team_members')
+        .select('id, first_name, last_name, email')
+        .order('first_name')
 
-      if (warehousesRes.error) {
-        throw new Error(`Warehouses error: ${warehousesRes.error.message}`)
-      }
       if (hostsRes.error) {
         throw new Error(`Hosts error: ${hostsRes.error.message}`)
       }
-      if (swagItemsRes.error) {
-        throw new Error(`Swag items error: ${swagItemsRes.error.message}`)
+
+      setHosts(hostsRes.data || [])
+
+      // Load ShipHero warehouses and products
+      const accessToken = localStorage.getItem('shiphero_access_token')
+      if (!accessToken) {
+        throw new Error('No ShipHero access token available. Please generate a new access token first.')
       }
 
-      setWarehouses(warehousesRes.data || [])
-      setHosts(hostsRes.data || [])
-      setSwagItems(swagItemsRes.data || [])
+      // Fetch ShipHero warehouses
+      const warehousesResponse = await fetch('/api/shiphero/warehouses', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!warehousesResponse.ok) {
+        throw new Error('Failed to fetch ShipHero warehouses')
+      }
+
+      const warehousesResult = await warehousesResponse.json()
+      const shipHeroWarehouses = warehousesResult.data?.account?.data?.warehouses || []
+      
+      // Transform ShipHero warehouses to match expected format
+      const transformedWarehouses = shipHeroWarehouses.map((warehouse: any) => ({
+        id: warehouse.id,
+        name: warehouse.address?.name || warehouse.identifier,
+        code: warehouse.identifier || '',
+        address: warehouse.address?.address1 || '',
+        city: warehouse.address?.city || '',
+        state: warehouse.address?.state || '',
+        zip: warehouse.address?.zip || '',
+        shiphero_warehouse_id: warehouse.id
+      }))
+
+      setWarehouses(transformedWarehouses)
+
+      // Fetch ShipHero products
+      const productsResponse = await fetch('/api/shiphero/inventory', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!productsResponse.ok) {
+        throw new Error('Failed to fetch ShipHero products')
+      }
+
+      const productsResult = await productsResponse.json()
+      const shipHeroProducts = productsResult.products || []
+      
+      // Transform products to match expected format
+      const transformedProducts = shipHeroProducts.map((product: any) => ({
+        id: product.sku, // Use SKU as ID for consistency
+        name: product.name,
+        sku: product.sku,
+        available: product.inventory?.available || 0,
+        warehouse_name: product.inventory?.warehouse_name || 'Unknown'
+      }))
+
+      setProducts(transformedProducts)
       
       console.log('Loaded data:', {
-        warehouses: warehousesRes.data?.length || 0,
+        warehouses: transformedWarehouses.length,
         hosts: hostsRes.data?.length || 0,
-        swagItems: swagItemsRes.data?.length || 0
+        products: transformedProducts.length
       })
       
-      console.log('Warehouse data:', warehousesRes.data)
-      console.log('Host data:', hostsRes.data)
-      console.log('Swag items data:', swagItemsRes.data)
+      console.log('Warehouse data:', transformedWarehouses.slice(0, 2))
+      console.log('Host data:', hostsRes.data?.slice(0, 2))
+      console.log('Products data:', transformedProducts.slice(0, 5))
     } catch (error: any) {
       console.error('Error loading adhoc order data:', error)
       toast({
@@ -1033,7 +1087,7 @@ export function ShipHeroTab() {
         <CardHeader>
           <CardTitle>Adhoc Sales Order</CardTitle>
           <CardDescription>
-            Create a sales order manually using existing warehouses, hosts, and swag items
+            Create a sales order manually using ShipHero warehouses, hosts, and products
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1116,29 +1170,34 @@ export function ShipHeroTab() {
               </div>
 
               <div className="grid gap-2">
-                <Label>Swag Items *</Label>
+                <Label>Products *</Label>
                 <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
-                  {swagItems.map((swagItem) => (
-                    <label key={swagItem.id} className="flex items-center space-x-2 cursor-pointer">
+                  {products.map((product) => (
+                    <label key={product.id} className="flex items-center space-x-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={adhocOrderData.swagItemIds.includes(swagItem.id)}
+                        checked={adhocOrderData.productIds.includes(product.id)}
                         className="cursor-pointer"
                         onChange={(e) => {
                           if (e.target.checked) {
                             setAdhocOrderData({
                               ...adhocOrderData,
-                              swagItemIds: [...adhocOrderData.swagItemIds, swagItem.id]
+                              productIds: [...adhocOrderData.productIds, product.id]
                             })
                           } else {
                             setAdhocOrderData({
                               ...adhocOrderData,
-                              swagItemIds: adhocOrderData.swagItemIds.filter(id => id !== swagItem.id)
+                              productIds: adhocOrderData.productIds.filter(id => id !== product.id)
                             })
                           }
                         }}
                       />
-                      <span className="text-sm">{swagItem.name} ({swagItem.sku})</span>
+                      <span className="text-sm">{product.name} ({product.sku})</span>
+                      {product.available !== undefined && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          - {product.available} available
+                        </span>
+                      )}
                     </label>
                   ))}
                 </div>
@@ -1157,7 +1216,7 @@ export function ShipHeroTab() {
 
               <Button
                 onClick={handleCreateAdhocOrder}
-                disabled={isCreatingOrder || !adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0}
+                disabled={isCreatingOrder || !adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.productIds.length === 0}
                 className="w-full"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1216,7 +1275,7 @@ export function ShipHeroTab() {
         <CardHeader>
           <CardTitle>Create Adhoc Purchase Order</CardTitle>
           <CardDescription>
-            Create a test purchase order using existing warehouse, host, and swag item data
+            Create a test purchase order using ShipHero warehouse, host, and product data
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1299,57 +1358,62 @@ export function ShipHeroTab() {
               </div>
 
               <div className="grid gap-2">
-                <Label>Swag Items *</Label>
+                <Label>Products *</Label>
                 <div className="space-y-3">
-                  {swagItems.map((swagItem) => (
-                    <div key={swagItem.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  {products.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
-                          id={`po-swag-${swagItem.id}`}
-                          checked={adhocPOData.swagItemIds.includes(swagItem.id)}
+                          id={`po-product-${product.id}`}
+                          checked={adhocPOData.productIds.includes(product.id)}
                           className="cursor-pointer"
                           onChange={(e) => {
                             const newIds = e.target.checked
-                              ? [...adhocPOData.swagItemIds, swagItem.id]
-                              : adhocPOData.swagItemIds.filter(id => id !== swagItem.id)
+                              ? [...adhocPOData.productIds, product.id]
+                              : adhocPOData.productIds.filter(id => id !== product.id)
                             
                             // Reset quantity when unchecking
-                            const newQuantities = { ...adhocPOData.swagQuantities }
+                            const newQuantities = { ...adhocPOData.productQuantities }
                             if (!e.target.checked) {
-                              delete newQuantities[swagItem.id]
+                              delete newQuantities[product.id]
                             } else {
-                              newQuantities[swagItem.id] = 1 // Default to 1
+                              newQuantities[product.id] = 1 // Default to 1
                             }
                             
                             setAdhocPOData({ 
                               ...adhocPOData, 
-                              swagItemIds: newIds,
-                              swagQuantities: newQuantities
+                              productIds: newIds,
+                              productQuantities: newQuantities
                             })
                           }}
                           className="rounded"
                         />
-                        <Label htmlFor={`po-swag-${swagItem.id}`} className="text-sm font-medium cursor-pointer">
-                          {swagItem.name} ({swagItem.sku})
+                        <Label htmlFor={`po-product-${product.id}`} className="text-sm font-medium cursor-pointer">
+                          {product.name} ({product.sku})
+                          {product.available !== undefined && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              - {product.available} available
+                            </span>
+                          )}
                         </Label>
                       </div>
                       
-                      {adhocPOData.swagItemIds.includes(swagItem.id) && (
+                      {adhocPOData.productIds.includes(product.id) && (
                         <div className="flex items-center space-x-2">
                           <Label className="text-sm text-gray-600">Qty:</Label>
                           <Input
                             type="number"
                             min="1"
                             max="999"
-                            value={adhocPOData.swagQuantities[swagItem.id] || 1}
+                            value={adhocPOData.productQuantities[product.id] || 1}
                             onChange={(e) => {
                               const quantity = Math.max(1, parseInt(e.target.value) || 1)
                               setAdhocPOData({
                                 ...adhocPOData,
-                                swagQuantities: {
-                                  ...adhocPOData.swagQuantities,
-                                  [swagItem.id]: quantity
+                                productQuantities: {
+                                  ...adhocPOData.productQuantities,
+                                  [product.id]: quantity
                                 }
                               })
                             }}
@@ -1374,7 +1438,7 @@ export function ShipHeroTab() {
 
               <Button
                 onClick={handleCreateAdhocPO}
-                disabled={isCreatingPO || !adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.swagItemIds.length === 0}
+                disabled={isCreatingPO || !adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.productIds.length === 0}
                 className="w-full"
               >
                 <Plus className="h-4 w-4 mr-2" />
