@@ -79,6 +79,17 @@ export class ShipHeroOrderService {
     return countryMap[country] || country
   }
 
+  private decodeWarehouseId(base64Id: string): string {
+    try {
+      const decoded = atob(base64Id)
+      // Remove "Warehouse:" prefix and return just the number
+      return decoded.replace('Warehouse:', '')
+    } catch (error) {
+      console.error('Failed to decode warehouse ID:', base64Id, error)
+      return 'Unknown'
+    }
+  }
+
   /**
    * Create sales orders in ShipHero for each participant in a tour
    */
@@ -284,9 +295,22 @@ export class ShipHeroOrderService {
             tourDate
           )
           
+          const warehouseNumber = warehouse.shiphero_warehouse_id ? this.decodeWarehouseId(warehouse.shiphero_warehouse_id) : ""
+          const orderTags = [
+            "Tour", 
+            "Warehouse Tours", 
+            `Tour_${tour.tour_numeric_id}`, 
+            warehouse.code || "", 
+            warehouseNumber
+          ].filter(Boolean)
+          
           console.log('📦 Generated order name:', orderName)
-          console.log('🏷️ Order tags being sent:', [warehouse.code || ""].filter(Boolean))
-          console.log('🏢 Warehouse code value:', warehouse.code)
+          console.log('🏷️ Order tags being sent:', orderTags)
+          console.log('🏢 Warehouse details:', {
+            code: warehouse.code,
+            shiphero_id: warehouse.shiphero_warehouse_id,
+            warehouse_number: warehouseNumber
+          })
 
           const accessToken = await this.getAccessToken()
           const salesOrderResult = await fetch('/api/shiphero/orders', {
@@ -344,7 +368,7 @@ export class ShipHeroOrderService {
                 },
                 line_items: lineItems,
                 required_ship_date: tourDate.toISOString().split('T')[0], // Use date format like "2025-09-23"
-                tags: ["Tour", "Warehouse Tours", `Tour_${tour.tour_numeric_id}`, warehouse.code || ""].filter(Boolean) // Add tour and airport code as tags
+                tags: orderTags // Add tour, airport code, and warehouse number as tags
               }
             })
           })
