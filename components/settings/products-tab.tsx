@@ -229,13 +229,13 @@ export function ProductsTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-32">SKU</TableHead>
-                    <TableHead>Product Name</TableHead>
-                    <TableHead className="w-20 text-center">Status</TableHead>
-                    <TableHead className="w-24 text-center">Available</TableHead>
-                    <TableHead className="w-24 text-center">On Hand</TableHead>
-                    <TableHead className="w-24 text-center">Allocated</TableHead>
-                    <TableHead className="w-40">Warehouse</TableHead>
+                    <TableHead className="w-[120px] min-w-[120px]">SKU</TableHead>
+                    <TableHead className="min-w-[200px]">Product Name</TableHead>
+                    <TableHead className="w-[80px] min-w-[80px] text-center hidden sm:table-cell">Status</TableHead>
+                    <TableHead className="w-[80px] min-w-[80px] text-center">Available</TableHead>
+                    <TableHead className="w-[80px] min-w-[80px] text-center hidden md:table-cell">On Hand</TableHead>
+                    <TableHead className="w-[80px] min-w-[80px] text-center hidden lg:table-cell">Allocated</TableHead>
+                    <TableHead className="w-[140px] min-w-[140px] hidden xl:table-cell">Warehouse</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -245,25 +245,42 @@ export function ProductsTab() {
                         {product.sku}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {product.name || 'Unnamed Product'}
+                        <div className="space-y-1">
+                          <div>{product.name || 'Unnamed Product'}</div>
+                          {/* Show status on mobile */}
+                          <div className="sm:hidden">
+                            <Badge variant={product.active ? "default" : "secondary"} className="text-xs">
+                              {product.active ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center hidden sm:table-cell">
                         <Badge variant={product.active ? "default" : "secondary"}>
                           {product.active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center font-medium">
-                        <span className={product.inventory.available > 0 ? "text-green-600" : "text-muted-foreground"}>
-                          {product.inventory.available}
-                        </span>
+                        <div className="space-y-1">
+                          <span className={product.inventory.available > 0 ? "text-green-600" : "text-muted-foreground"}>
+                            {product.inventory.available}
+                          </span>
+                          {/* Show additional info on mobile */}
+                          <div className="md:hidden text-xs text-muted-foreground">
+                            On Hand: {product.inventory.on_hand} | Allocated: {product.inventory.allocated}
+                          </div>
+                          <div className="xl:hidden text-xs text-muted-foreground">
+                            {product.inventory.warehouse_name || product.inventory.warehouse_identifier || 'N/A'}
+                          </div>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-center text-muted-foreground">
+                      <TableCell className="text-center text-muted-foreground hidden md:table-cell">
                         {product.inventory.on_hand}
                       </TableCell>
-                      <TableCell className="text-center text-muted-foreground">
+                      <TableCell className="text-center text-muted-foreground hidden lg:table-cell">
                         {product.inventory.allocated}
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="text-sm hidden xl:table-cell">
                         {product.inventory.warehouse_name || product.inventory.warehouse_identifier || 'N/A'}
                       </TableCell>
                     </TableRow>

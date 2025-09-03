@@ -198,14 +198,56 @@ export function ScheduleTourPage() {
 
   const fetchWarehouses = async () => {
     try {
-      const { data, error } = await supabase.from("warehouses").select("id, name, code, address, address2, city, state, zip, country").order("name")
+      // First try to load from ShipHero if access token exists
+      const accessToken = localStorage.getItem('shiphero_access_token')
+      
+      if (accessToken) {
+        console.log('Loading warehouses from ShipHero...')
+        const response = await fetch('/api/shiphero/warehouses', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        })
 
+        if (response.ok) {
+          const result = await response.json()
+          const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
+          
+          // Transform ShipHero warehouses to match expected format
+          const transformedWarehouses = shipHeroWarehouses.map((warehouse: any) => ({
+            id: warehouse.id,
+            name: warehouse.address?.name || warehouse.identifier,
+            code: warehouse.identifier || '',
+            address: warehouse.address?.address1 || '',
+            address2: warehouse.address?.address2 || '',
+            city: warehouse.address?.city || '',
+            state: warehouse.address?.state || '',
+            zip: warehouse.address?.zip || '',
+            country: warehouse.address?.country || 'US',
+            shiphero_warehouse_id: warehouse.id,
+            // Store full address object for later use
+            full_address: warehouse.address
+          }))
+          
+          setWarehouses(transformedWarehouses)
+          console.log(`Loaded ${transformedWarehouses.length} warehouses from ShipHero`)
+          return
+        }
+      }
+      
+      // Fallback to Supabase warehouses if ShipHero fails or no token
+      console.log('Loading warehouses from Supabase (fallback)...')
+      const { data, error } = await supabase.from("warehouses").select("id, name, code, address, address2, city, state, zip, country").order("name")
       if (error) throw error
       setWarehouses(data || [])
+      
     } catch (error) {
+      console.error("Error fetching warehouses:", error)
       toast({
         title: "Error",
-        description: "Failed to fetch warehouses",
+        description: "Failed to load warehouses. Please check your ShipHero connection or try again.",
         variant: "destructive",
       })
     }
@@ -819,23 +861,24 @@ export function ScheduleTourPage() {
 
               {availableSkus.length > 0 && (
                 <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {availableSkus.map(product => (
-                      <div key={product.sku} className="flex items-start space-x-3 p-2 rounded border hover:bg-muted/50">
+                      <div key={product.sku} className="flex items-start space-x-2 p-2 rounded border hover:bg-muted/50">
                         <Checkbox
                           id={product.sku}
                           checked={selectedSkus.includes(product.sku)}
                           onCheckedChange={(checked) => handleSkuChange(product.sku, checked as boolean)}
+                          className="mt-0.5"
                         />
-                        <div className="flex-1 space-y-1">
-                          <Label htmlFor={product.sku} className="font-medium cursor-pointer text-sm">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <Label htmlFor={product.sku} className="font-medium cursor-pointer text-xs block truncate">
                             {product.sku}
                           </Label>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-tight">
                             {product.name}
                           </p>
                           <p className="text-xs text-green-600">
-                            Available: {product.inventory?.available || 0}
+                            {product.inventory?.available || 0}
                           </p>
                         </div>
                       </div>
