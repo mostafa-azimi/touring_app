@@ -22,8 +22,56 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // First, get warehouse information to map warehouse_id to warehouse name
+    const warehouseQuery = `
+      query GetWarehouses {
+        account {
+          request_id
+          complexity
+          data {
+            warehouses {
+              id
+              identifier
+              address {
+                name
+              }
+            }
+          }
+        }
+      }
+    `
+
+    console.log('🏭 Fetching warehouse information first...')
+    const warehouseResponse = await fetch('https://public-api.shiphero.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ query: warehouseQuery }),
+    })
+
+    const warehouseResult = await warehouseResponse.json()
+    console.log('🏭 Warehouse data received:', {
+      status: warehouseResponse.status,
+      hasData: !!warehouseResult.data,
+      warehouseCount: warehouseResult.data?.account?.data?.warehouses?.length || 0
+    })
+
+    // Create warehouse lookup map
+    const warehouseMap = new Map()
+    if (warehouseResult.data?.account?.data?.warehouses) {
+      warehouseResult.data.account.data.warehouses.forEach((warehouse: any) => {
+        warehouseMap.set(warehouse.id, {
+          name: warehouse.address?.name || warehouse.identifier || 'Unknown Warehouse',
+          identifier: warehouse.identifier
+        })
+      })
+    }
+
     // GraphQL query to get all products with inventory information
     // Based on actual Product schema - using warehouse_products instead of inventory
+    // Exclude kits and build kits as requested
     const query = `
       query GetInventory {
         products {
@@ -38,12 +86,14 @@ export async function GET(request: NextRequest) {
                 price
                 barcode
                 active
+                kit
+                kit_build
                 warehouse_products {
                   warehouse_id
+                  warehouse_identifier
                   on_hand
                   available
                   allocated
-                  warehouse_identifier
                 }
               }
               cursor
@@ -116,30 +166,49 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract products and flatten the data structure
-    const products = result.data?.products?.data?.edges?.map((edge: any) => {
-      const warehouseProducts = edge.node.warehouse_products || []
-      // Get the first warehouse product with available inventory, or first one if none available
-      const warehouseProduct = warehouseProducts.find((wp: any) => wp.available > 0) || warehouseProducts[0] || {}
-      
-      return {
-        sku: edge.node.sku,
-        name: edge.node.name,
-        active: edge.node.active,
-        price: edge.node.price,
-        inventory: {
-          available: warehouseProduct.available || 0,
-          on_hand: warehouseProduct.on_hand || 0,
-          allocated: warehouseProduct.allocated || 0,
-          warehouse_id: warehouseProduct.warehouse_id,
-          warehouse_identifier: warehouseProduct.warehouse_identifier
+    // Filter out kits and build kits as requested
+    const products = result.data?.products?.data?.edges
+      ?.filter((edge: any) => {
+        const node = edge.node
+        // Exclude kits and build kits
+        return !node.kit && !node.kit_build
+      })
+      ?.map((edge: any) => {
+        const warehouseProducts = edge.node.warehouse_products || []
+        // Get the first warehouse product (no longer prioritizing available inventory)
+        const warehouseProduct = warehouseProducts[0] || {}
+        
+        // Get warehouse name from our lookup map
+        const warehouseInfo = warehouseMap.get(warehouseProduct.warehouse_id)
+        
+        return {
+          sku: edge.node.sku,
+          name: edge.node.name,
+          active: edge.node.active,
+          price: edge.node.price,
+          kit: edge.node.kit,
+          kit_build: edge.node.kit_build,
+          inventory: {
+            available: warehouseProduct.available || 0,
+            on_hand: warehouseProduct.on_hand || 0,
+            allocated: warehouseProduct.allocated || 0,
+            warehouse_id: warehouseProduct.warehouse_id,
+            warehouse_identifier: warehouseProduct.warehouse_identifier,
+            warehouse_name: warehouseInfo?.name || 'Unknown Warehouse'
+          }
         }
-      }
-    }) || []
+      }) || []
 
+    const totalProductsBeforeFilter = result.data?.products?.data?.edges?.length || 0
+    const kitsFiltered = totalProductsBeforeFilter - products.length
+    
     console.log('✅ Successfully processed inventory data:', {
+      totalProductsBeforeFilter,
+      kitsFiltered,
       totalProducts: products.length,
       productsWithAvailableInventory: products.filter(p => p.inventory.available > 0).length,
-      sampleSKUs: products.slice(0, 3).map(p => p.sku)
+      sampleSKUs: products.slice(0, 3).map(p => p.sku),
+      sampleWarehouses: products.slice(0, 3).map(p => p.inventory.warehouse_name)
     })
 
     return NextResponse.json({

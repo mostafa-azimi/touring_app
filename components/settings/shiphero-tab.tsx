@@ -1563,7 +1563,7 @@ export function ShipHeroTab() {
                             {product.inventory.allocated}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {product.inventory.warehouse_identifier || product.inventory.warehouse_id || 'N/A'}
+                            {product.inventory.warehouse_name || product.inventory.warehouse_identifier || 'N/A'}
                           </TableCell>
                         </TableRow>
                       ))}
