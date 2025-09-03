@@ -29,11 +29,13 @@ export function ProductsTab() {
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [isAutoRefresh, setIsAutoRefresh] = useState(false)
   const { toast } = useToast()
 
-  const handleFetchProducts = async () => {
+  const handleFetchProducts = async (autoRefresh = false) => {
     setIsLoading(true)
-    console.log('📦 Fetching products from ShipHero...')
+    setIsAutoRefresh(autoRefresh)
+    console.log(`📦 ${autoRefresh ? 'Auto-' : ''}Fetching products from ShipHero...`)
     
     try {
       // Get access token from localStorage
@@ -82,10 +84,13 @@ export function ProductsTab() {
         setProducts(result.products)
         setLastUpdated(new Date())
         
-        toast({
-          title: "Products Loaded",
-          description: `Found ${result.products.length} products (${result.products.filter((p: Product) => p.inventory.available > 0).length} with available inventory)`,
-        })
+        // Only show toast for manual refresh, not auto-refresh
+        if (!autoRefresh) {
+          toast({
+            title: "Products Loaded",
+            description: `Found ${result.products.length} products (${result.products.filter((p: Product) => p.inventory.available > 0).length} with available inventory)`,
+          })
+        }
 
         console.log('✅ Products loaded successfully:', {
           totalProducts: result.products.length,
@@ -105,6 +110,7 @@ export function ProductsTab() {
       setProducts([])
     } finally {
       setIsLoading(false)
+      setIsAutoRefresh(false)
     }
   }
 
@@ -116,6 +122,32 @@ export function ProductsTab() {
       handleFetchProducts()
     }
   }, [])
+
+  // Auto-refresh every hour during business hours (8 AM - 8 PM Eastern)
+  useEffect(() => {
+    const checkAndRefresh = () => {
+      const now = new Date()
+      const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}))
+      const hour = easternTime.getHours()
+      
+      // Only refresh between 8 AM and 8 PM Eastern
+      if (hour >= 8 && hour < 20) {
+        const accessToken = localStorage.getItem('shiphero_access_token')
+        if (accessToken && products.length > 0) {
+          console.log(`🕐 Auto-refreshing products at ${easternTime.toLocaleTimeString()} ET (${hour}:00)`)
+          handleFetchProducts(true) // Pass true for auto-refresh
+        }
+      } else {
+        console.log(`⏸️ Outside business hours (${hour}:00 ET) - skipping auto-refresh`)
+      }
+    }
+
+    // Set up hourly interval
+    const interval = setInterval(checkAndRefresh, 60 * 60 * 1000) // Every hour
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval)
+  }, [products.length]) // Re-run when products change (to avoid refreshing empty state)
 
   const activeProducts = products.filter(p => p.active)
   const productsWithInventory = products.filter(p => p.inventory.available > 0)
@@ -137,19 +169,28 @@ export function ProductsTab() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button 
-                onClick={handleFetchProducts} 
+                onClick={() => handleFetchProducts(false)} 
                 disabled={isLoading}
                 className="cursor-pointer"
+                variant="default"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                {isLoading ? 'Loading Products...' : 'Refresh Products'}
+                {isLoading 
+                  ? (isAutoRefresh ? 'Auto-Refreshing...' : 'Refreshing...')
+                  : 'Refresh Inventory'
+                }
               </Button>
               
-              {lastUpdated && (
-                <span className="text-sm text-muted-foreground">
-                  Last updated: {lastUpdated.toLocaleTimeString()}
+              <div className="flex flex-col gap-1">
+                {lastUpdated && (
+                  <span className="text-sm text-muted-foreground">
+                    Last updated: {lastUpdated.toLocaleString()}
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  Auto-refreshes hourly (8 AM - 8 PM ET)
                 </span>
-              )}
+              </div>
             </div>
             
             <div className="flex gap-2">
