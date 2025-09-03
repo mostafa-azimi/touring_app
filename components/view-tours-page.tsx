@@ -712,7 +712,31 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
     })
   }
 
-
+  // Generate ShipHero URL with tour tag filter and date range
+  const generateShipHeroFilterUrl = (tourNumericId: number, tourDate: string): string => {
+    const tourTag = `Tour_${tourNumericId}`
+    
+    // Parse the tour date and create date range (day before to week after for buffer)
+    const date = new Date(tourDate)
+    const startDate = new Date(date)
+    startDate.setDate(date.getDate() - 1) // Day before tour
+    
+    const endDate = new Date(date)
+    endDate.setDate(date.getDate() + 7) // Week after tour for buffer
+    
+    // Format dates as MM%2FDD%2FYYYY (URL encoded MM/DD/YYYY)
+    const formatDateForUrl = (date: Date): string => {
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const day = date.getDate().toString().padStart(2, '0')
+      const year = date.getFullYear()
+      return `${month}%2F${day}%2F${year}`
+    }
+    
+    const startDateStr = formatDateForUrl(startDate)
+    const endDateStr = formatDateForUrl(endDate)
+    
+    return `https://app.shiphero.com/dashboard/orders/v2/manage?tags=${tourTag}&start_date=${startDateStr}&preselectedDate=custom&end_date=${endDateStr}`
+  }
 
   const handleCancelTour = async () => {
     if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
@@ -796,6 +820,22 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
               <p className="text-sm font-medium text-muted-foreground">Host</p>
               <p className="font-medium">{tour.host.first_name} {tour.host.last_name}</p>
               <p className="text-sm text-muted-foreground">{tour.host.email}</p>
+            </div>
+          )}
+          {tour.tour_numeric_id && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Tour ID</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium font-mono">{tour.tour_numeric_id}</p>
+                <a 
+                  href={generateShipHeroFilterUrl(tour.tour_numeric_id, tour.date)}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-sm underline cursor-pointer"
+                >
+                  View Orders in ShipHero →
+                </a>
+              </div>
             </div>
           )}
 

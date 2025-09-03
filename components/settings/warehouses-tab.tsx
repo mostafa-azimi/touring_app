@@ -298,6 +298,7 @@ export function WarehousesTab() {
                     <TableHead className="min-w-[80px]">State</TableHead>
                     <TableHead className="min-w-[80px]">Zip</TableHead>
                     <TableHead className="min-w-[100px]">Warehouse #</TableHead>
+                    <TableHead className="min-w-[200px]">ShipHero ID</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -363,6 +364,9 @@ export function WarehousesTab() {
                         </TableCell>
                         <TableCell className="font-mono text-sm font-medium">
                           {warehouseNumber}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground max-w-[200px] truncate" title={warehouse.id}>
+                          {warehouse.id}
                         </TableCell>
                       </TableRow>
                     )
