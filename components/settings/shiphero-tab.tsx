@@ -89,7 +89,21 @@ export function ShipHeroTab() {
       })
 
       if (!response.ok) {
-        console.error('❌ Inventory API error details:', result)
+        console.error('❌ Inventory API error details:', {
+          status: response.status,
+          error: result.error,
+          details: result.details,
+          fullResult: result
+        })
+        
+        // If there are specific ShipHero errors, log them clearly
+        if (result.details && Array.isArray(result.details)) {
+          console.error('🚨 ShipHero specific errors:', result.details)
+          result.details.forEach((error: any, index: number) => {
+            console.error(`Error ${index + 1}:`, error)
+          })
+        }
+        
         throw new Error(result.error || 'Failed to fetch inventory')
       }
 
