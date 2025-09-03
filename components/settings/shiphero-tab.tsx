@@ -68,6 +68,7 @@ export function ShipHeroTab() {
     try {
       // Get the access token from localStorage
       const accessToken = localStorage.getItem('shiphero_access_token')
+      console.log('🔍 Checking for access token:', accessToken ? `Found: ${accessToken.substring(0, 20)}...` : 'Not found')
       
       if (!accessToken) {
         throw new Error('No access token available. Please generate a new access token first.')
@@ -243,12 +244,18 @@ export function ShipHeroTab() {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('🎉 ShipHero API response:', { 
+          hasAccessToken: !!data.access_token, 
+          expiresIn: data.expires_in,
+          tokenStart: data.access_token ? data.access_token.substring(0, 20) + '...' : 'none'
+        })
         const newAccessToken = data.access_token
         const expiresIn = data.expires_in
         
         if (newAccessToken) {
           // Store the access token in localStorage
           localStorage.setItem('shiphero_access_token', newAccessToken)
+          console.log('✅ Access token stored in localStorage:', newAccessToken.substring(0, 20) + '...')
           
           // Calculate expiration date
           const expirationDate = new Date(Date.now() + (expiresIn * 1000))
