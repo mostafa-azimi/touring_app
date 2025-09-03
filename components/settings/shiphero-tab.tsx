@@ -28,6 +28,7 @@ export function ShipHeroTab() {
   } | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [tokenSaved, setTokenSaved] = useState(false)
 
   const [isTesting, setIsTesting] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
@@ -881,6 +882,11 @@ export function ShipHeroTab() {
                     setTokenExpiresAt(null)
                     setDaysRemaining(null)
                     console.log('✅ Refresh token saved to localStorage')
+                    
+                    // Set saved state for visual feedback
+                    setTokenSaved(true)
+                    setTimeout(() => setTokenSaved(false), 3000) // Reset after 3 seconds
+                    
                     toast({
                       title: "✅ Refresh Token Saved",
                       description: "Your ShipHero refresh token has been saved securely. Generate a new access token to start the 28-day countdown.",
@@ -889,10 +895,13 @@ export function ShipHeroTab() {
                     setRefreshToken("")
                   }}
                   disabled={!refreshToken.trim()}
-                  variant="outline"
-                  className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+                  variant={tokenSaved ? "default" : "outline"}
+                  className={tokenSaved 
+                    ? "bg-green-600 hover:bg-green-700 text-white border-green-600" 
+                    : "bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+                  }
                 >
-                  Save Token
+                  {tokenSaved ? "✅ Saved!" : "Save Token"}
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
