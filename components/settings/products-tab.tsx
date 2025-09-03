@@ -81,7 +81,12 @@ export function ProductsTab() {
       }
 
       if (result.success && result.products) {
-        setProducts(result.products)
+        // Sort products by available quantity (highest to lowest)
+        const sortedProducts = result.products.sort((a: Product, b: Product) => 
+          b.inventory.available - a.inventory.available
+        )
+        
+        setProducts(sortedProducts)
         setLastUpdated(new Date())
         
         // Only show toast for manual refresh, not auto-refresh
@@ -92,9 +97,10 @@ export function ProductsTab() {
           })
         }
 
-        console.log('✅ Products loaded successfully:', {
-          totalProducts: result.products.length,
-          productsWithInventory: result.products.filter((p: Product) => p.inventory.available > 0).length
+        console.log('✅ Products loaded and sorted by available quantity:', {
+          totalProducts: sortedProducts.length,
+          productsWithInventory: sortedProducts.filter((p: Product) => p.inventory.available > 0).length,
+          topAvailableQuantities: sortedProducts.slice(0, 5).map(p => `${p.sku}: ${p.inventory.available}`)
         })
       } else {
         throw new Error('Invalid response format')
@@ -230,7 +236,6 @@ export function ProductsTab() {
                     <TableHead className="w-24 text-center">On Hand</TableHead>
                     <TableHead className="w-24 text-center">Allocated</TableHead>
                     <TableHead className="w-40">Warehouse</TableHead>
-                    <TableHead className="w-24 text-right">Price</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -260,9 +265,6 @@ export function ProductsTab() {
                       </TableCell>
                       <TableCell className="text-sm">
                         {product.inventory.warehouse_name || product.inventory.warehouse_identifier || 'N/A'}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {product.price ? `$${product.price}` : '-'}
                       </TableCell>
                     </TableRow>
                   ))}
