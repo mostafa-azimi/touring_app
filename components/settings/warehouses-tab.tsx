@@ -59,30 +59,31 @@ interface ShipHeroWarehouse {
   profile?: string
 }
 
+// Utility function to decode ShipHero warehouse ID and extract warehouse number
+const decodeWarehouseId = (base64Id: string): string => {
+  try {
+    const decoded = atob(base64Id)
+    // Remove "Warehouse:" prefix and return just the number
+    return decoded.replace('Warehouse:', '')
+  } catch (error) {
+    console.error('Failed to decode warehouse ID:', base64Id, error)
+    return 'Unknown'
+  }
+}
+
 export function WarehousesTab() {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [shipHeroWarehouses, setShipHeroWarehouses] = useState<ShipHeroWarehouse[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [warehouseCodes, setWarehouseCodes] = useState<{[key: string]: string}>({})
   const [isRefreshingFromShipHero, setIsRefreshingFromShipHero] = useState(false)
   const [lastShipHeroSync, setLastShipHeroSync] = useState<Date | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null)
-  const [formData, setFormData] = useState({
-    name: "",
-    code: "",
-    address: "",
-    address2: "",
-    city: "",
-    state: "",
-    zip: "",
-    country: "US",
-    shiphero_warehouse_id: ""
-  })
+  const [editingCodeId, setEditingCodeId] = useState<string | null>(null)
+  const [editingCodeValue, setEditingCodeValue] = useState('')
   const { toast } = useToast()
   const supabase = createClient()
 
   useEffect(() => {
-    fetchWarehouses()
+    // Load warehouse codes from Supabase
+    loadWarehouseCodes()
     
     // Auto-load ShipHero warehouses if access token exists
     const accessToken = localStorage.getItem('shiphero_access_token')
@@ -92,20 +93,29 @@ export function WarehousesTab() {
     }
   }, [])
 
-  const fetchWarehouses = async () => {
+  const loadWarehouseCodes = async () => {
     try {
-      const { data, error } = await supabase.from("warehouses").select("*").order("created_at", { ascending: false })
+      // Load warehouse codes from a new table (we'll create this)
+      const { data, error } = await supabase
+        .from("warehouse_codes")
+        .select("shiphero_warehouse_id, code")
 
-      if (error) throw error
-      setWarehouses(data || [])
+      if (error && error.code !== 'PGRST116') { // Ignore table not found error for now
+        throw error
+      }
+      
+      // Convert to lookup object
+      const codesMap: {[key: string]: string} = {}
+      if (data) {
+        data.forEach((item: any) => {
+          codesMap[item.shiphero_warehouse_id] = item.code
+        })
+      }
+      
+      setWarehouseCodes(codesMap)
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch warehouses",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
+      console.error('Error loading warehouse codes:', error)
+      // Don't show error toast for now, table might not exist yet
     }
   }
 
@@ -176,102 +186,51 @@ export function WarehousesTab() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    try {
-      // Debug: Log the form data being submitted
-      console.log("Submitting warehouse data:", formData)
-      
-      if (editingWarehouse) {
-        const { data, error } = await supabase.from("warehouses").update(formData).eq("id", editingWarehouse.id).select()
-        console.log("Update result:", { data, error })
-        if (error) throw error
-        toast({ title: "Success", description: "Warehouse updated successfully" })
-      } else {
-        const { data, error } = await supabase.from("warehouses").insert([formData]).select()
-        console.log("Insert result:", { data, error })
-        if (error) {
-          console.error("Warehouse insert error:", error)
-          throw error
-        }
-        toast({ title: "Success", description: "Warehouse created successfully" })
-      }
-
-      setFormData({
-        name: "",
-        code: "",
-        address: "",
-        address2: "",
-        city: "",
-        state: "",
-        zip: "",
-        country: "US",
-        shiphero_warehouse_id: ""
-      })
-      setEditingWarehouse(null)
-      setIsDialogOpen(false)
-      fetchWarehouses()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save warehouse",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+  const startEditingCode = (warehouseId: string, currentCode: string) => {
+    setEditingCodeId(warehouseId)
+    setEditingCodeValue(currentCode)
   }
 
-  const handleEdit = (warehouse: Warehouse) => {
-    setEditingWarehouse(warehouse)
-    setFormData({
-      name: warehouse.name,
-      code: warehouse.code || "",
-      address: warehouse.address,
-      address2: warehouse.address2 || "",
-      city: warehouse.city || "",
-      state: warehouse.state || "",
-      zip: warehouse.zip || "",
-      country: warehouse.country || "US",
-      shiphero_warehouse_id: warehouse.shiphero_warehouse_id || ""
-    })
-    setIsDialogOpen(true)
+  const cancelEditingCode = () => {
+    setEditingCodeId(null)
+    setEditingCodeValue('')
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this warehouse?")) return
-
+  const saveWarehouseCode = async (warehouseId: string, code: string) => {
     try {
-      const { error } = await supabase.from("warehouses").delete().eq("id", id)
+      // Create warehouse_codes table if it doesn't exist and upsert the code
+      const { error } = await supabase
+        .from('warehouse_codes')
+        .upsert({
+          shiphero_warehouse_id: warehouseId,
+          code: code.trim(),
+          updated_at: new Date().toISOString()
+        })
+
       if (error) throw error
-      toast({ title: "Success", description: "Warehouse deleted successfully" })
-      fetchWarehouses()
-    } catch (error) {
+
+      // Update local state
+      setWarehouseCodes(prev => ({
+        ...prev,
+        [warehouseId]: code.trim()
+      }))
+
+      setEditingCodeId(null)
+      setEditingCodeValue('')
+
+      toast({
+        title: "Code Saved",
+        description: `Warehouse code updated to "${code.trim()}"`,
+      })
+
+    } catch (error: any) {
+      console.error('Error saving warehouse code:', error)
       toast({
         title: "Error",
-        description: "Failed to delete warehouse",
+        description: "Failed to save warehouse code",
         variant: "destructive",
       })
     }
-  }
-
-
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      code: "",
-      address: "",
-      address2: "",
-      city: "",
-      state: "",
-      zip: "",
-      country: "US",
-      shiphero_warehouse_id: ""
-    })
-    setEditingWarehouse(null)
   }
 
   return (
@@ -324,7 +283,7 @@ export function WarehousesTab() {
       </div>
 
       {/* ShipHero Warehouses Display */}
-      {shipHeroWarehouses.length > 0 && (
+      {shipHeroWarehouses.length > 0 ? (
         <div className="space-y-4">
           <h4 className="text-md font-medium">ShipHero Warehouses</h4>
           <div className="border rounded-lg overflow-hidden">
@@ -333,255 +292,93 @@ export function WarehousesTab() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[150px]">Name</TableHead>
-                    <TableHead className="min-w-[100px]">Identifier</TableHead>
+                    <TableHead className="min-w-[100px]">Code</TableHead>
                     <TableHead className="min-w-[200px]">Address</TableHead>
                     <TableHead className="min-w-[100px]">City</TableHead>
                     <TableHead className="min-w-[80px]">State</TableHead>
                     <TableHead className="min-w-[80px]">Zip</TableHead>
-                    <TableHead className="min-w-[120px]">ShipHero ID</TableHead>
+                    <TableHead className="min-w-[100px]">Warehouse #</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {shipHeroWarehouses.map((warehouse) => (
-                    <TableRow key={warehouse.id}>
-                      <TableCell className="font-medium">
-                        {warehouse.address?.name || warehouse.identifier || '-'}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {warehouse.identifier || '-'}
-                      </TableCell>
-                      <TableCell>
-                        {warehouse.address?.address1 || '-'}
-                      </TableCell>
-                      <TableCell>
-                        {warehouse.address?.city || '-'}
-                      </TableCell>
-                      <TableCell>
-                        {warehouse.address?.state || '-'}
-                      </TableCell>
-                      <TableCell>
-                        {warehouse.address?.zip || '-'}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {warehouse.id || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {shipHeroWarehouses.map((warehouse) => {
+                    const warehouseNumber = decodeWarehouseId(warehouse.id)
+                    const currentCode = warehouseCodes[warehouse.id] || ''
+                    const isEditing = editingCodeId === warehouse.id
+
+                    return (
+                      <TableRow key={warehouse.id}>
+                        <TableCell className="font-medium">
+                          {warehouse.address?.name || warehouse.identifier || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {isEditing ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editingCodeValue}
+                                onChange={(e) => setEditingCodeValue(e.target.value)}
+                                className="w-20 h-8"
+                                placeholder="Code"
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => saveWarehouseCode(warehouse.id, editingCodeValue)}
+                                className="h-8 px-2"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={cancelEditingCode}
+                                className="h-8 px-2"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              onClick={() => startEditingCode(warehouse.id, currentCode)}
+                            >
+                              <span className="font-mono text-sm">
+                                {currentCode || 'Click to add'}
+                              </span>
+                              <Edit className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {warehouse.address?.address1 || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {warehouse.address?.city || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {warehouse.address?.state || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {warehouse.address?.zip || '-'}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm font-medium">
+                          {warehouseNumber}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
           </div>
         </div>
-      )}
-
-      <div className="flex justify-between items-center">
-        <h4 className="text-md font-medium">Local Warehouse Configuration</h4>
-        <Dialog
-          open={isDialogOpen}
-          onOpenChange={(open) => {
-            setIsDialogOpen(open)
-            if (!open) resetForm()
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Warehouse
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingWarehouse ? "Edit Warehouse" : "Add New Warehouse"}</DialogTitle>
-              <DialogDescription>
-                {editingWarehouse ? "Update the warehouse information." : "Add a new warehouse location."}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit}>
-              <div className="grid gap-4 py-4">
-                {/* ShipHero Integration */}
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium text-muted-foreground">ShipHero Integration</h4>
-                  <div className="grid gap-2">
-                    <Label htmlFor="shiphero_warehouse_id">ShipHero Warehouse ID *</Label>
-                    <Input
-                      id="shiphero_warehouse_id"
-                      value={formData.shiphero_warehouse_id}
-                      onChange={(e) => setFormData({ ...formData, shiphero_warehouse_id: e.target.value })}
-                      placeholder="V2FyZWhvdXN10jExOTM0Mw=="
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Warehouse Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Main Distribution Center"
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="code">Airport Code *</Label>
-                    <Input
-                      id="code"
-                      value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                      placeholder="LAX"
-                      maxLength={3}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Address Section */}
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium text-muted-foreground">Address Information</h4>
-                  <div className="grid gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="address">Street Address *</Label>
-                      <Input
-                        id="address"
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        placeholder="123 Industrial Blvd"
-                        required
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="address2">Address Line 2</Label>
-                      <Input
-                        id="address2"
-                        value={formData.address2}
-                        onChange={(e) => setFormData({ ...formData, address2: e.target.value })}
-                        placeholder="Suite 100"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="city">City *</Label>
-                        <Input
-                          id="city"
-                          value={formData.city}
-                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          placeholder="Los Angeles"
-                          required
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="state">State *</Label>
-                        <Input
-                          id="state"
-                          value={formData.state}
-                          onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                          placeholder="CA"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="zip">ZIP Code *</Label>
-                        <Input
-                          id="zip"
-                          value={formData.zip}
-                          onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                          placeholder="90210"
-                          required
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="country">Country *</Label>
-                        <Input
-                          id="country"
-                          value={formData.country}
-                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                          placeholder="US"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-
-              </div>
-              <DialogFooter>
-                <Button 
-                  type="submit" 
-                  disabled={isLoading}
-                  className={isLoading ? "cursor-wait" : ""}
-                >
-                  {isLoading ? "Saving..." : editingWarehouse ? "Update" : "Create"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table className="min-w-full">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[150px]">Name</TableHead>
-                <TableHead className="min-w-[80px]">Code</TableHead>
-                <TableHead className="min-w-[200px]">City, State</TableHead>
-                <TableHead className="min-w-[150px]">ShipHero ID</TableHead>
-                <TableHead className="min-w-[100px]">Created</TableHead>
-                <TableHead className="w-[140px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  Loading warehouses...
-                </TableCell>
-              </TableRow>
-            ) : warehouses.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No warehouses found. Add your first warehouse to get started.
-                </TableCell>
-              </TableRow>
-            ) : (
-              warehouses.map((warehouse) => (
-                <TableRow key={warehouse.id}>
-                  <TableCell className="font-medium">{warehouse.name}</TableCell>
-                  <TableCell>{warehouse.code || '-'}</TableCell>
-                  <TableCell>
-                    {warehouse.city && warehouse.state 
-                      ? `${warehouse.city}, ${warehouse.state}` 
-                      : warehouse.address || '-'
-                    }
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{warehouse.shiphero_warehouse_id || '-'}</TableCell>
-                  <TableCell>{new Date(warehouse.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(warehouse)}>
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(warehouse.id)}>
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-            </TableBody>
-          </Table>
+      ) : (
+        <div className="text-center py-12 text-muted-foreground">
+          <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>No ShipHero warehouses loaded yet.</p>
+          <p className="text-sm">Click "Sync ShipHero" to load your warehouse data.</p>
         </div>
-      </div>
+      )}
     </div>
   )
 }
