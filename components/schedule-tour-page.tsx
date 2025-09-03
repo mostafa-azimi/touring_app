@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, X, Calendar, MapPin, Users, Package, Gift, Upload, Download, FileText } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
+import { WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
 // Removed swag allocation imports - swag items will be added manually, not allocated automatically
 
 interface Warehouse {
@@ -50,6 +52,58 @@ function generateTourNumericId(): number {
   return Math.floor(100000 + Math.random() * 900000)
 }
 
+// Workflow options for tour finalization
+const workflowOptions = [
+  {
+    id: "receive_to_light" as WorkflowOption,
+    name: "Receive to Light",
+    description: "Creates sales orders for participants + aggregated purchase order (receive to light workflow)",
+    category: "As-Is Workflows",
+    badge: "Original"
+  },
+  {
+    id: "pack_to_light" as WorkflowOption,
+    name: "Pack to Light",
+    description: "Creates sales orders for participants + aggregated purchase order (pack to light workflow)",
+    category: "As-Is Workflows",
+    badge: "Original"
+  },
+  {
+    id: "standard_receiving" as WorkflowOption,
+    name: "Standard Receiving",
+    description: "Creates a dedicated purchase order with 6 specific SKUs for receiving workflow training",
+    category: "Purchase Orders",
+    badge: "Training"
+  },
+  {
+    id: "bulk_shipping" as WorkflowOption,
+    name: "Bulk Shipping",
+    description: "Creates 10 sales orders with same SKU but different addresses for bulk shipping training",
+    category: "Sales Orders",
+    badge: "Training"
+  },
+  {
+    id: "single_item_batch" as WorkflowOption,
+    name: "Single-Item Batch",
+    description: "Creates 5 single-item orders for batch picking training (SKUs can repeat)",
+    category: "Sales Orders",
+    badge: "Training"
+  },
+  {
+    id: "multi_item_batch" as WorkflowOption,
+    name: "Multi-Item Batch",
+    description: "Creates 5 multi-item orders for complex batch picking training",
+    category: "Sales Orders",
+    badge: "Training"
+  }
+]
+
+const categories = [
+  "As-Is Workflows",
+  "Purchase Orders", 
+  "Sales Orders"
+]
+
 export function ScheduleTourPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [hosts, setHosts] = useState<any[]>([])
@@ -64,8 +118,17 @@ export function ScheduleTourPage() {
   })
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const [isUploadingCSV, setIsUploadingCSV] = useState(false)
+  const [selectedWorkflows, setSelectedWorkflows] = useState<WorkflowOption[]>([])
   const { toast } = useToast()
   const supabase = createClient()
+
+  const handleWorkflowChange = (optionId: WorkflowOption, checked: boolean) => {
+    if (checked) {
+      setSelectedWorkflows(prev => [...prev, optionId])
+    } else {
+      setSelectedWorkflows(prev => prev.filter(id => id !== optionId))
+    }
+  }
 
   useEffect(() => {
     fetchWarehouses()
@@ -174,6 +237,7 @@ export function ScheduleTourPage() {
             time: formData.time,
             status: 'scheduled',
             tour_numeric_id: generateTourNumericId(),
+            selected_workflows: selectedWorkflows,
           },
         ])
         .select()
@@ -208,6 +272,7 @@ export function ScheduleTourPage() {
       setFormData({ warehouse_id: "", host_id: "", date: "", time: "" })
       setParticipants([])
       setSwagPreview([])
+      setSelectedWorkflows([])
     } catch (error) {
       toast({
         title: "Error",
@@ -319,7 +384,8 @@ export function ScheduleTourPage() {
               date: tourData.tour_date,
               time: tourData.tour_time,
               status: 'scheduled',
-              tour_numeric_id: generateTourNumericId()
+              tour_numeric_id: generateTourNumericId(),
+              selected_workflows: selectedWorkflows
             }])
             .select()
             .single()
@@ -608,6 +674,60 @@ export function ScheduleTourPage() {
             </div>
 
 
+
+            <Separator />
+
+            {/* Workflow Selection Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                <h3 className="text-lg font-semibold">Training Workflows</h3>
+                <span className="text-sm text-muted-foreground">({selectedWorkflows.length} selected)</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Select the training workflows to create when finalizing this tour. These will generate specific orders in ShipHero for different training scenarios.
+              </p>
+
+              <div className="space-y-6">
+                {categories.map(category => {
+                  const categoryOptions = workflowOptions.filter(option => option.category === category)
+                  
+                  return (
+                    <div key={category} className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium text-sm">{category}</h4>
+                        <Separator className="flex-1" />
+                      </div>
+                      
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {categoryOptions.map(option => (
+                          <div key={option.id} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50">
+                            <Checkbox
+                              id={option.id}
+                              checked={selectedWorkflows.includes(option.id)}
+                              onCheckedChange={(checked) => handleWorkflowChange(option.id, checked as boolean)}
+                            />
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor={option.id} className="font-medium cursor-pointer">
+                                  {option.name}
+                                </Label>
+                                <Badge variant={option.badge === "Original" ? "default" : "secondary"} className="text-xs">
+                                  {option.badge}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {option.description}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
 
             <Separator />
 

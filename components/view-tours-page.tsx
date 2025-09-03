@@ -12,7 +12,6 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
 import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
-import { TourFinalizationDialog } from "@/components/tour-finalization-dialog"
 
 interface Tour {
   id: string
@@ -71,8 +70,7 @@ export function ViewToursPage() {
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
   const [cancellingTourId, setCancellingTourId] = useState<string | null>(null)
-  const [finalizationDialogOpen, setFinalizationDialogOpen] = useState(false)
-  const [tourToFinalize, setTourToFinalize] = useState<string | null>(null)
+
 
   const [sortField, setSortField] = useState<string>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -259,22 +257,35 @@ export function ViewToursPage() {
     }
   }
 
-  const handleFinalizeTourClick = (tourId: string) => {
-    setTourToFinalize(tourId)
-    setFinalizationDialogOpen(true)
-  }
-
-  const handleFinalizeTour = async (selectedOptions: WorkflowOption[]) => {
-    if (!tourToFinalize) return
-
+  const handleFinalizeTour = async (tourId: string) => {
     setIsFinalizingTour(true)
-    setFinalizingTourId(tourToFinalize)
+    setFinalizingTourId(tourId)
     
     try {
-      console.log(`Finalizing tour ${tourToFinalize} with options:`, selectedOptions)
+      // Get the tour to check for pre-selected workflows
+      const { data: tourData, error: tourError } = await supabase
+        .from('tours')
+        .select('selected_workflows')
+        .eq('id', tourId)
+        .single()
+
+      if (tourError) throw new Error(`Failed to fetch tour: ${tourError.message}`)
+
+      const selectedWorkflows = tourData.selected_workflows || []
+      
+      if (selectedWorkflows.length === 0) {
+        toast({
+          title: "No Workflows Selected",
+          description: "This tour has no workflows selected. Please edit the tour to add training workflows before finalizing.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      console.log(`Finalizing tour ${tourId} with pre-selected workflows:`, selectedWorkflows)
       
       const finalizationService = new TourFinalizationService()
-      const result = await finalizationService.finalizeTour(tourToFinalize, selectedOptions)
+      const result = await finalizationService.finalizeTour(tourId, selectedWorkflows)
       
       if (result.success) {
         // Refresh tours to get updated order information
@@ -322,10 +333,6 @@ export function ViewToursPage() {
       } else {
         throw new Error(result.message)
       }
-      
-      // Close dialog and reset state
-      setFinalizationDialogOpen(false)
-      setTourToFinalize(null)
       
     } catch (error: any) {
       console.error('Tour finalization error:', error)
@@ -596,7 +603,7 @@ export function ViewToursPage() {
                             <Button 
                               variant="default" 
                               size="sm" 
-                              onClick={() => handleFinalizeTourClick(tour.id)}
+                              onClick={() => handleFinalizeTour(tour.id)}
                               disabled={isFinalizingTour && (finalizingTourId === tour.id || finalizingTourId === null)}
                               className={`w-full bg-blue-600 hover:bg-blue-700 ${isFinalizingTour && finalizingTourId === tour.id ? 'cursor-wait' : ''}`}
                             >
@@ -942,14 +949,7 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
         </Card>
       )}
 
-      {/* Tour Finalization Dialog */}
-      <TourFinalizationDialog
-        open={finalizationDialogOpen}
-        onOpenChange={setFinalizationDialogOpen}
-        onFinalize={handleFinalizeTour}
-        isLoading={isFinalizingTour}
-        tourId={tourToFinalize || ''}
-      />
+
 
     </div>
   )
