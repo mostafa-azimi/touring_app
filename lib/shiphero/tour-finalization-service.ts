@@ -98,7 +98,7 @@ export class TourFinalizationService {
           address,
           shiphero_warehouse_id
         ),
-        hosts (
+        team_members (
           id,
           name,
           first_name,
@@ -120,10 +120,10 @@ export class TourFinalizationService {
     return {
       id: tour.id,
       host: {
-        id: tour.hosts.id,
-        name: tour.hosts.name,
-        first_name: tour.hosts.first_name,
-        last_name: tour.hosts.last_name
+        id: tour.team_members.id,
+        name: tour.team_members.name,
+        first_name: tour.team_members.first_name,
+        last_name: tour.team_members.last_name
       },
       participants: participants || [],
       warehouse: {
