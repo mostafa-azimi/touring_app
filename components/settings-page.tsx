@@ -20,10 +20,10 @@ export function SettingsPage() {
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6">
-          <TabsTrigger value="warehouses">Warehouses</TabsTrigger>
-          <TabsTrigger value="hosts">Hosts</TabsTrigger>
-          <TabsTrigger value="products">Products</TabsTrigger>
-          <TabsTrigger value="shiphero">ShipHero</TabsTrigger>
+          <TabsTrigger value="warehouses" className="cursor-pointer">Warehouses</TabsTrigger>
+          <TabsTrigger value="hosts" className="cursor-pointer">Hosts</TabsTrigger>
+          <TabsTrigger value="products" className="cursor-pointer">Products</TabsTrigger>
+          <TabsTrigger value="shiphero" className="cursor-pointer">ShipHero</TabsTrigger>
         </TabsList>
 
         <TabsContent value="warehouses">

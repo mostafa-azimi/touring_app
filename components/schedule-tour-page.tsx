@@ -169,12 +169,13 @@ export function ScheduleTourPage() {
       const result = await response.json()
       
       if (result.success && result.products) {
-        // Show ALL products (not just available inventory) and sort alphabetically by SKU
+        // Show only active products and sort alphabetically by SKU
         const availableProducts = result.products
+          .filter((product: any) => product.active === true)
           .sort((a: any, b: any) => a.sku.localeCompare(b.sku))
         
         setAvailableSkus(availableProducts)
-        console.log(`Loaded ${availableProducts.length} total SKUs (all products, not just available inventory)`)
+        console.log(`Loaded ${availableProducts.length} active SKUs for tour selection`)
       } else {
         throw new Error('Invalid response format')
       }
@@ -703,14 +704,14 @@ export function ScheduleTourPage() {
                   value={formData.warehouse_id}
                   onValueChange={(value) => setFormData({ ...formData, warehouse_id: value })}
                 >
-                  <SelectTrigger id="warehouse">
+                  <SelectTrigger id="warehouse" className="cursor-pointer">
                     <SelectValue placeholder="Select a warehouse" />
                   </SelectTrigger>
                   <SelectContent>
                     {warehouses.map((warehouse) => {
                       console.log('Rendering warehouse:', warehouse.name, warehouse.id)
                       return (
-                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                        <SelectItem key={warehouse.id} value={warehouse.id} className="cursor-pointer">
                           {warehouse.name}
                         </SelectItem>
                       )
@@ -739,12 +740,12 @@ export function ScheduleTourPage() {
                   value={formData.host_id}
                   onValueChange={(value) => setFormData({ ...formData, host_id: value })}
                 >
-                  <SelectTrigger id="host">
+                  <SelectTrigger id="host" className="cursor-pointer">
                     <SelectValue placeholder="Select tour host" />
                   </SelectTrigger>
                   <SelectContent>
                     {hosts.map((host) => (
-                      <SelectItem key={host.id} value={host.id}>
+                      <SelectItem key={host.id} value={host.id} className="cursor-pointer">
                         {host.first_name} {host.last_name} ({host.email})
                       </SelectItem>
                     ))}
@@ -1003,14 +1004,14 @@ export function ScheduleTourPage() {
                 <div className="space-y-4">
                   {/* ShipHero-style header with counts */}
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border">
-                    <div className="flex items-center gap-4">
-                      <div className="text-sm font-medium text-slate-700">
-                        {availableSkus.length} Products Available
-                      </div>
-                      <div className="text-sm text-slate-500">
-                        {selectedSkus.length} Selected
-                      </div>
+                                      <div className="flex items-center gap-4">
+                    <div className="text-sm font-medium text-slate-700">
+                      {availableSkus.length} Active Products
                     </div>
+                    <div className="text-sm text-slate-500">
+                      {selectedSkus.length} Selected
+                    </div>
+                  </div>
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -1066,9 +1067,9 @@ export function ScheduleTourPage() {
                             }`}>
                               {product.inventory?.available || 0} available
                             </span>
-                            {product.active && (
-                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                Active
+                            {product.inventory?.warehouse_name && (
+                              <span className="text-xs text-slate-500 truncate max-w-24" title={product.inventory.warehouse_name}>
+                                {product.inventory.warehouse_name}
                               </span>
                             )}
                           </div>

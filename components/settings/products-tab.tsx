@@ -81,10 +81,10 @@ export function ProductsTab() {
       }
 
       if (result.success && result.products) {
-        // Sort products by available quantity (highest to lowest)
-        const sortedProducts = result.products.sort((a: Product, b: Product) => 
-          b.inventory.available - a.inventory.available
-        )
+        // Filter for active products only and sort by available quantity (highest to lowest)
+        const sortedProducts = result.products
+          .filter((product: Product) => product.active === true)
+          .sort((a: Product, b: Product) => b.inventory.available - a.inventory.available)
         
         setProducts(sortedProducts)
         setLastUpdated(new Date())
@@ -93,7 +93,7 @@ export function ProductsTab() {
         if (!autoRefresh) {
           toast({
             title: "Products Loaded",
-            description: `Found ${result.products.length} products (${result.products.filter((p: Product) => p.inventory.available > 0).length} with available inventory)`,
+            description: `Found ${sortedProducts.length} active products (${sortedProducts.filter((p: Product) => p.inventory.available > 0).length} with available inventory)`,
           })
         }
 
@@ -168,7 +168,7 @@ export function ProductsTab() {
             Product Catalog
           </CardTitle>
           <CardDescription>
-            View all products from your ShipHero account with real-time inventory levels
+            View active products from your ShipHero account with real-time inventory levels
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -231,7 +231,6 @@ export function ProductsTab() {
                   <TableRow>
                     <TableHead className="w-[120px] min-w-[120px]">SKU</TableHead>
                     <TableHead className="min-w-[200px]">Product Name</TableHead>
-                    <TableHead className="w-[80px] min-w-[80px] text-center hidden sm:table-cell">Status</TableHead>
                     <TableHead className="w-[80px] min-w-[80px] text-center">Available</TableHead>
                     <TableHead className="w-[80px] min-w-[80px] text-center hidden md:table-cell">On Hand</TableHead>
                     <TableHead className="w-[80px] min-w-[80px] text-center hidden lg:table-cell">Allocated</TableHead>
@@ -245,20 +244,7 @@ export function ProductsTab() {
                         {product.sku}
                       </TableCell>
                       <TableCell className="font-medium">
-                        <div className="space-y-1">
-                          <div>{product.name || 'Unnamed Product'}</div>
-                          {/* Show status on mobile */}
-                          <div className="sm:hidden">
-                            <Badge variant={product.active ? "default" : "secondary"} className="text-xs">
-                              {product.active ? "Active" : "Inactive"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center hidden sm:table-cell">
-                        <Badge variant={product.active ? "default" : "secondary"}>
-                          {product.active ? "Active" : "Inactive"}
-                        </Badge>
+                        <div>{product.name || 'Unnamed Product'}</div>
                       </TableCell>
                       <TableCell className="text-center font-medium">
                         <div className="space-y-1">

@@ -26,9 +26,9 @@ export function NavigationTabs() {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="schedule">Schedule Tour</TabsTrigger>
-        <TabsTrigger value="view">View Tours</TabsTrigger>
-        <TabsTrigger value="settings">Settings</TabsTrigger>
+        <TabsTrigger value="schedule" className="cursor-pointer">Schedule Tour</TabsTrigger>
+        <TabsTrigger value="view" className="cursor-pointer">View Tours</TabsTrigger>
+        <TabsTrigger value="settings" className="cursor-pointer">Settings</TabsTrigger>
       </TabsList>
 
       <TabsContent value="schedule" className="mt-6">
