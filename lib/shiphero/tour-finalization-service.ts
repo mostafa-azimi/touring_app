@@ -84,32 +84,40 @@ export class TourFinalizationService {
    * Fetch tour details including host, participants, and warehouse info
    */
   async getTourDetails(tourId: string): Promise<TourData> {
+    console.log('🔍 Fetching tour details for:', tourId)
+    
+    // First, get basic tour data
     const { data: tour, error: tourError } = await this.supabase
       .from('tours')
-      .select(`
-        id,
-        warehouse_id,
-        host_id,
-        selected_workflows,
-        selected_skus,
-        warehouses (
-          id,
-          name,
-          address,
-          shiphero_warehouse_id
-        ),
-        team_members (
-          id,
-          name,
-          first_name,
-          last_name
-        )
-      `)
+      .select('id, warehouse_id, host_id, selected_workflows, selected_skus')
       .eq('id', tourId)
       .single()
 
     if (tourError) throw new Error(`Failed to fetch tour: ${tourError.message}`)
+    
+    console.log('✅ Basic tour data:', tour)
+    
+    // Get warehouse data separately
+    const { data: warehouse, error: warehouseError } = await this.supabase
+      .from('warehouses')
+      .select('id, name, address, shiphero_warehouse_id')
+      .eq('id', tour.warehouse_id)
+      .single()
+      
+    if (warehouseError) throw new Error(`Failed to fetch warehouse: ${warehouseError.message}`)
+    console.log('✅ Warehouse data:', warehouse)
+    
+    // Get host data separately  
+    const { data: host, error: hostError } = await this.supabase
+      .from('team_members')
+      .select('id, name, first_name, last_name')
+      .eq('id', tour.host_id)
+      .single()
+      
+    if (hostError) throw new Error(`Failed to fetch host: ${hostError.message}`)
+    console.log('✅ Host data:', host)
 
+    // Get participants
     const { data: participants, error: participantsError } = await this.supabase
       .from('tour_participants')
       .select('id, name, first_name, last_name, email, company, title')
@@ -120,17 +128,17 @@ export class TourFinalizationService {
     return {
       id: tour.id,
       host: {
-        id: tour.team_members.id,
-        name: tour.team_members.name,
-        first_name: tour.team_members.first_name,
-        last_name: tour.team_members.last_name
+        id: host.id,
+        name: host.name,
+        first_name: host.first_name,
+        last_name: host.last_name
       },
       participants: participants || [],
       warehouse: {
-        id: tour.warehouses.id,
-        name: tour.warehouses.name,
-        address: tour.warehouses.address,
-        shiphero_warehouse_id: tour.warehouses.shiphero_warehouse_id
+        id: warehouse.id,
+        name: warehouse.name,
+        address: warehouse.address,
+        shiphero_warehouse_id: warehouse.shiphero_warehouse_id
       },
       selected_workflows: tour.selected_workflows || [],
       selected_skus: tour.selected_skus || []
