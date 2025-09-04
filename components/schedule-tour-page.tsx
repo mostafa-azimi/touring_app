@@ -198,6 +198,7 @@ export function ScheduleTourPage() {
 
   const fetchWarehouses = async () => {
     try {
+      console.log('🚨 NEW CODE EXECUTING - fetchWarehouses called! - TIMESTAMP:', new Date().toISOString())
       console.log('🏢 Loading warehouses from REMOTE database...')
       
       // First, load existing warehouses from remote database
