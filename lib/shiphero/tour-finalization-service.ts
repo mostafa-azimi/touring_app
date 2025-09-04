@@ -166,7 +166,7 @@ export class TourFinalizationService {
     errors: string[]
     instructionGuide?: string
   }> {
-    console.log(`🔥 TourFinalizationService.finalizeTour called`)
+    console.log(`🦄 DEPLOYMENT MARKER - TourFinalizationService.finalizeTour called`)
     console.log(`📋 Tour ID: ${tourId}`)
     console.log(`🎯 Selected options:`, selectedOptions)
     
