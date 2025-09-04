@@ -210,12 +210,48 @@ export class TourFinalizationService {
     message: string
     errors: string[]
     instructionGuide?: string
+    finalizationResult?: {
+      tourId: string
+      tourDate: string
+      tourTime: string
+      warehouseName: string
+      warehouseAddress: string
+      hostName: string
+      selectedWorkflows: string[]
+      selectedSkus: string[]
+      participantCount: number
+      orders: {
+        sales_orders: Array<{
+          order_number: string
+          workflow: string
+          customer_name: string
+          items: Array<{ sku: string; quantity: number }>
+        }>
+        purchase_orders: Array<{
+          po_number: string
+          workflow: string
+          items: Array<{ sku: string; quantity: number }>
+        }>
+      }
+      instructions: string
+    }
   }> {
     console.log(`🚀 DEPLOYMENT MARKER V8 - TourFinalizationService.finalizeTour called`)
     console.log(`📋 Tour ID: ${tourId}`)
     console.log(`🎯 Selected options:`, selectedOptions)
     
     const errors: string[] = []
+    const salesOrders: Array<{
+      order_number: string
+      workflow: string
+      customer_name: string
+      items: Array<{ sku: string; quantity: number }>
+    }> = []
+    const purchaseOrders: Array<{
+      po_number: string
+      workflow: string
+      items: Array<{ sku: string; quantity: number }>
+    }> = []
 
     try {
       console.log('🔌 Initializing ShipHero client...')
@@ -302,11 +338,30 @@ export class TourFinalizationService {
         ? `Tour finalized with ${errors.length} workflow error(s). Instruction guide generated.`
         : "Tour finalized successfully with all selected workflows. Instruction guide generated."
 
+      // Create finalization result
+      const finalizationResult = {
+        tourId: tourData.id,
+        tourDate: tourData.date || new Date().toISOString().split('T')[0],
+        tourTime: tourData.time || '10:00',
+        warehouseName: tourData.warehouse.name,
+        warehouseAddress: `${tourData.warehouse.address?.address1 || ''} ${tourData.warehouse.address?.city || ''} ${tourData.warehouse.address?.state || ''} ${tourData.warehouse.address?.zip || ''}`.trim() || 'Address not available',
+        hostName: `${tourData.host.first_name} ${tourData.host.last_name}`,
+        selectedWorkflows: selectedOptions,
+        selectedSkus: tourData.selected_skus,
+        participantCount: tourData.participants.length,
+        orders: {
+          sales_orders: salesOrders,
+          purchase_orders: purchaseOrders
+        },
+        instructions: instructionGuide
+      }
+
       return {
         success: errors.length === 0,
         message: successMessage,
         errors,
-        instructionGuide
+        instructionGuide,
+        finalizationResult
       }
 
     } catch (error) {

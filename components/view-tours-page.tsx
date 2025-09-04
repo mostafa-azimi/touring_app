@@ -11,6 +11,7 @@ import { Eye, Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, Shoppi
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
+import { TourFinalizationResults } from "@/components/tour-finalization-results"
 
 interface Tour {
   id: string
@@ -69,6 +70,8 @@ export function ViewToursPage() {
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
   const [cancellingTourId, setCancellingTourId] = useState<string | null>(null)
+  const [finalizationResult, setFinalizationResult] = useState<any>(null)
+  const [showFinalizationResults, setShowFinalizationResults] = useState(false)
 
 
   const [sortField, setSortField] = useState<string>('date')
@@ -334,6 +337,12 @@ export function ViewToursPage() {
           }
         }
 
+        // Show the finalization results popup
+        if (result.finalizationResult) {
+          setFinalizationResult(result.finalizationResult)
+          setShowFinalizationResults(true)
+        }
+
         toast({
           title: "🎉 Tour Finalized Successfully!",
           description: result.message,
@@ -354,6 +363,57 @@ export function ViewToursPage() {
       console.log('🏁 Finalization process complete, cleaning up state')
       setIsFinalizingTour(false)
       setFinalizingTourId(null)
+    }
+  }
+
+  const handleViewInstructions = async (tourId: string) => {
+    try {
+      // Fetch tour data to regenerate instructions
+      const { data: tourData, error: tourError } = await supabase
+        .from('tours')
+        .select(`
+          id,
+          date,
+          time,
+          selected_workflows,
+          selected_skus,
+          warehouse:warehouses(id, name, address, address2, city, state, zip, country, shiphero_warehouse_id),
+          host:team_members(id, first_name, last_name, email),
+          participants:tour_participants(id, first_name, last_name, email, company, title)
+        `)
+        .eq('id', tourId)
+        .single()
+
+      if (tourError || !tourData) {
+        throw new Error('Failed to fetch tour data')
+      }
+
+      // Create a mock finalization result for viewing instructions
+      const mockResult = {
+        tourId: tourData.id,
+        tourDate: tourData.date,
+        tourTime: tourData.time,
+        warehouseName: tourData.warehouse?.name || 'Unknown Warehouse',
+        warehouseAddress: `${tourData.warehouse?.address || ''} ${tourData.warehouse?.city || ''} ${tourData.warehouse?.state || ''} ${tourData.warehouse?.zip || ''}`.trim() || 'Address not available',
+        hostName: `${tourData.host?.first_name || ''} ${tourData.host?.last_name || ''}`.trim(),
+        selectedWorkflows: tourData.selected_workflows || [],
+        selectedSkus: tourData.selected_skus || [],
+        participantCount: tourData.participants?.length || 0,
+        orders: {
+          sales_orders: [], // Would need to be stored in DB for full functionality
+          purchase_orders: []
+        },
+        instructions: `Instructions for Tour ${tourId}\n\nSelected Workflows: ${(tourData.selected_workflows || []).join(', ')}\nSelected SKUs: ${(tourData.selected_skus || []).join(', ')}\n\nFor detailed order numbers, please re-finalize the tour or contact support.`
+      }
+
+      setFinalizationResult(mockResult)
+      setShowFinalizationResults(true)
+    } catch (error: any) {
+      toast({
+        title: "Failed to Load Instructions",
+        description: error.message,
+        variant: "destructive",
+      })
     }
   }
 
@@ -622,6 +682,19 @@ export function ViewToursPage() {
                             </Button>
                           )}
                           
+                          {/* View Instructions for Finalized Tours */}
+                          {tour.status === 'finalized' && (
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              onClick={() => handleViewInstructions(tour.id)}
+                              className="w-full bg-green-600 hover:bg-green-700"
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              View Instructions
+                            </Button>
+                          )}
+                          
                           {/* Secondary Actions */}
                           <div className="flex items-center gap-1">
                             <Sheet>
@@ -702,6 +775,13 @@ export function ViewToursPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Tour Finalization Results Popup */}
+      <TourFinalizationResults
+        isOpen={showFinalizationResults}
+        onClose={() => setShowFinalizationResults(false)}
+        result={finalizationResult}
+      />
     </div>
   )
 }
