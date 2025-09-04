@@ -73,28 +73,28 @@ const workflowOptions = [
     name: "Standard Receiving",
     description: "Creates a purchase order using your selected SKUs with realistic quantities for receiving training",
     category: "Purchase Orders",
-    badge: "Enhanced"
+    badge: "Attainable Automation"
   },
   {
     id: "bulk_shipping" as WorkflowOption,
     name: "Bulk Shipping",
     description: "Creates identical orders with same SKUs shipping to different customer addresses (demonstrates bulk processing efficiency)",
     category: "Sales Orders",
-    badge: "Enhanced"
+    badge: "Attainable Automation"
   },
   {
     id: "single_item_batch" as WorkflowOption,
     name: "Single-Item Batch",
     description: "Creates single line-item orders with different SKUs shipping to different customer addresses (demonstrates single-item batch efficiency)",
     category: "Sales Orders",
-    badge: "Enhanced"
+    badge: "Attainable Automation"
   },
   {
     id: "multi_item_batch" as WorkflowOption,
     name: "Multi-Item Batch",
     description: "Creates participant orders + random demonstration orders with multiple SKUs for complex batch picking training",
     category: "Sales Orders",
-    badge: "Enhanced"
+    badge: "Attainable Automation"
   }
 ]
 

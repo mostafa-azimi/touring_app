@@ -1248,34 +1248,63 @@ export function ShipHeroTab() {
                     No active products found for the selected warehouse
                   </div>
                 ) : (
-                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                   {products.map((product) => (
-                    <label key={product.id} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={adhocOrderData.productIds.includes(product.id)}
-                        className="cursor-pointer"
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setAdhocOrderData({
-                              ...adhocOrderData,
-                              productIds: [...adhocOrderData.productIds, product.id]
-                            })
-                          } else {
-                            setAdhocOrderData({
-                              ...adhocOrderData,
-                              productIds: adhocOrderData.productIds.filter(id => id !== product.id)
-                            })
-                          }
-                        }}
-                      />
-                      <span className="text-sm">{product.name} ({product.sku})</span>
-                      {product.available !== undefined && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                          - {product.available} available
-                        </span>
-                      )}
-                    </label>
+                    <div 
+                      key={product.id} 
+                      className={`
+                        relative flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer
+                        ${adhocOrderData.productIds.includes(product.id)
+                          ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200' 
+                          : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25'
+                        }
+                      `}
+                      onClick={() => {
+                        if (adhocOrderData.productIds.includes(product.id)) {
+                          setAdhocOrderData({
+                            ...adhocOrderData,
+                            productIds: adhocOrderData.productIds.filter(id => id !== product.id)
+                          })
+                        } else {
+                          setAdhocOrderData({
+                            ...adhocOrderData,
+                            productIds: [...adhocOrderData.productIds, product.id]
+                          })
+                        }
+                      }}
+                    >
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={adhocOrderData.productIds.includes(product.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAdhocOrderData({
+                                ...adhocOrderData,
+                                productIds: [...adhocOrderData.productIds, product.id]
+                              })
+                            } else {
+                              setAdhocOrderData({
+                                ...adhocOrderData,
+                                productIds: adhocOrderData.productIds.filter(id => id !== product.id)
+                              })
+                            }
+                          }}
+                          className="cursor-pointer mt-1"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-slate-900 truncate">
+                          {product.sku}
+                        </div>
+                        <div className="text-xs text-slate-500 truncate">
+                          {product.name}
+                        </div>
+                        <div className="text-xs text-slate-400 truncate">
+                          Available: {product.available}
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
                 )}
