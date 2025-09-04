@@ -10,9 +10,9 @@ export function NavigationTabs() {
   const [activeTab, setActiveTab] = useState("schedule")
 
   useEffect(() => {
-    const deploymentId = 'V8.1-' + Date.now().toString().slice(-6) // Last 6 digits of timestamp
+    const deploymentId = 'V8.2-' + Date.now().toString().slice(-6) // Last 6 digits of timestamp - CACHE BUST
     console.log(`🚀🚀🚀 DEPLOYMENT MARKER ${deploymentId} - APP LOADED - ${new Date().toISOString()}`)
-    console.log('🎯 V8.1 Features: Warehouse sync fixed, JS errors fixed, Full tour finalization working, Unique deployment markers')
+    console.log('🎯 V8.2 Features: Warehouse sync fixed, JS errors fixed, Full tour finalization working, Unique deployment markers')
     console.log(`🔥 INSTANT DEPLOYMENT CHECK: ${deploymentId} - If you see this, new code is running!`)
   }, [])
 
