@@ -89,9 +89,11 @@ export function ShipHeroTab() {
         const now = new Date()
         const minutesUntilExpiry = (expirationDate.getTime() - now.getTime()) / (1000 * 60)
         
-        // If token expires in less than 5 minutes or already expired, refresh it
-        if (minutesUntilExpiry < 5) {
-          console.log(`🔄 Access token expires in ${minutesUntilExpiry.toFixed(1)} minutes, auto-refreshing...`)
+        // If token expires in less than 1 day or already expired, refresh it (since tokens last 28 days)
+        const oneDayInMinutes = 24 * 60
+        if (minutesUntilExpiry < oneDayInMinutes) {
+          const daysUntilExpiry = minutesUntilExpiry / oneDayInMinutes
+          console.log(`🔄 Access token expires in ${daysUntilExpiry.toFixed(1)} days, auto-refreshing...`)
           try {
             await handleGenerateAccessToken()
             console.log('✅ Auto-refresh successful')

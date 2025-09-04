@@ -31,8 +31,8 @@ export class ShipHeroTokenManager {
     const now = new Date()
     const minutesUntilExpiry = (expirationDate.getTime() - now.getTime()) / (1000 * 60)
     
-    // Consider token invalid if it expires in less than 2 minutes
-    return minutesUntilExpiry > 2
+    // Consider token invalid if it expires in less than 1 day (since tokens last 28 days)
+    return minutesUntilExpiry > (24 * 60) // 1 day in minutes
   }
 
   /**
@@ -84,9 +84,9 @@ export class ShipHeroTokenManager {
         // Store new access token
         localStorage.setItem('shiphero_access_token', data.access_token)
         
-        // Calculate and store expiration (ShipHero tokens typically last 1 hour)
+        // Calculate and store expiration (ShipHero tokens last 28 days)
         const expirationDate = new Date()
-        expirationDate.setHours(expirationDate.getHours() + 1)
+        expirationDate.setDate(expirationDate.getDate() + 28)
         localStorage.setItem('shiphero_token_expires_at', expirationDate.toISOString())
         
         console.log('✅ Access token auto-refreshed successfully')
@@ -109,7 +109,7 @@ export class ShipHeroTokenManager {
       clearInterval(this.refreshInterval)
     }
 
-    // Check every 5 minutes
+    // Check every hour (since tokens last 28 days)
     this.refreshInterval = setInterval(async () => {
       const expiresAt = localStorage.getItem('shiphero_token_expires_at')
       if (expiresAt) {
@@ -117,15 +117,17 @@ export class ShipHeroTokenManager {
         const now = new Date()
         const minutesUntilExpiry = (expirationDate.getTime() - now.getTime()) / (1000 * 60)
         
-        // Refresh if expires in less than 10 minutes
-        if (minutesUntilExpiry < 10 && minutesUntilExpiry > 0) {
-          console.log(`🔄 Token expires in ${minutesUntilExpiry.toFixed(1)} minutes, refreshing...`)
+        // Refresh if expires in less than 2 days (since tokens last 28 days)
+        const twoDaysInMinutes = 2 * 24 * 60
+        if (minutesUntilExpiry < twoDaysInMinutes && minutesUntilExpiry > 0) {
+          const daysUntilExpiry = minutesUntilExpiry / (24 * 60)
+          console.log(`🔄 Token expires in ${daysUntilExpiry.toFixed(1)} days, refreshing...`)
           await this.refreshAccessToken()
         }
       }
-    }, 5 * 60 * 1000) // Check every 5 minutes
+    }, 60 * 60 * 1000) // Check every hour
 
-    console.log('🔄 Started automatic token refresh monitoring')
+    console.log('🔄 Started automatic token refresh monitoring (checking every hour)')
   }
 
   /**
