@@ -1114,11 +1114,13 @@ export class TourFinalizationService {
       guide += `- **Batch optimization** - multiple orders picked simultaneously\n`
       guide += `- **Route efficiency** - optimal path through warehouse\n`
       guide += `- **Order consolidation** - how items are sorted by destination\n`
-      guide += `- **Productivity metrics** - real-time performance tracking\n\n`
+      guide += `- **Productivity metrics** - real-time performance tracking\n`
+      guide += `- **Random demonstration orders** - use system-generated sample orders\n\n`
       guide += `### Key talking points:\n`
       guide += `- "Batch picking increases productivity by 3-5x"\n`
       guide += `- "Smart routing reduces travel time by up to 50%"\n`
-      guide += `- "System optimizes batches based on item locations"\n\n`
+      guide += `- "System optimizes batches based on item locations"\n`
+      guide += `- "Demonstration orders show real-world batch scenarios"\n\n`
       workflowCounter++
     }
     
@@ -1129,11 +1131,13 @@ export class TourFinalizationService {
       guide += `- **High-volume items** - how popular products are handled\n`
       guide += `- **Dedicated workflows** - specialized processes for single SKUs\n`
       guide += `- **Bulk handling** - efficient processing of large quantities\n`
-      guide += `- **Quality assurance** - verification for high-value items\n\n`
+      guide += `- **Quality assurance** - verification for high-value items\n`
+      guide += `- **Random demonstration orders** - use system-generated sample orders\n\n`
       guide += `### Key talking points:\n`
       guide += `- "Single-item batching perfect for high-volume SKUs"\n`
       guide += `- "Reduces handling time for popular products"\n`
-      guide += `- "Specialized workflow ensures consistency"\n\n`
+      guide += `- "Specialized workflow ensures consistency"\n`
+      guide += `- "Sample orders demonstrate real batching scenarios"\n\n`
       workflowCounter++
     }
     
@@ -1144,11 +1148,13 @@ export class TourFinalizationService {
       guide += `- **Large order processing** - how big shipments are handled\n`
       guide += `- **Carrier integration** - automatic shipping calculations\n`
       guide += `- **Loading optimization** - efficient truck loading\n`
-      guide += `- **Tracking systems** - real-time shipment visibility\n\n`
+      guide += `- **Tracking systems** - real-time shipment visibility\n`
+      guide += `- **Random demonstration orders** - use system-generated sample orders\n\n`
       guide += `### Key talking points:\n`
       guide += `- "Bulk shipping optimizes for large B2B orders"\n`
       guide += `- "System calculates best shipping methods automatically"\n`
-      guide += `- "Real-time tracking keeps customers informed"\n\n`
+      guide += `- "Real-time tracking keeps customers informed"\n`
+      guide += `- "Sample orders show various shipping scenarios"\n\n`
       workflowCounter++
     }
     
