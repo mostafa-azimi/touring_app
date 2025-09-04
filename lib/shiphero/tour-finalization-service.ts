@@ -327,18 +327,18 @@ export class TourFinalizationService {
     }
     
     // Create purchase order using selected SKUs
-    await this.createStandardReceivingPO(tourData)
+    await this.createStandardReceivingPO(tourData, "RECEIVE-TO-LIGHT")
 
     console.log("Executed: As-Is Workflow with selected SKUs")
   }
 
   /**
-   * MODULE 2: Creates a separate, unique Purchase Order for "Standard Receiving".
+   * MODULE 2: Creates a separate, unique Purchase Order for the selected receiving workflow.
    */
-  private async createStandardReceivingPO(tourData: TourData): Promise<void> {
+  private async createStandardReceivingPO(tourData: TourData, workflowName: string = "STANDARD-RECEIVING"): Promise<void> {
     // Use selected SKUs only - no hardcoded fallbacks
     if (tourData.selected_skus.length === 0) {
-      throw new Error("No SKUs selected for Standard Receiving PO. Please select SKUs when creating the tour.")
+      throw new Error(`No SKUs selected for ${workflowName} PO. Please select SKUs when creating the tour.`)
     }
     
     let skusToUse = tourData.selected_skus
@@ -351,10 +351,10 @@ export class TourFinalizationService {
       quantity: Math.floor(Math.random() * 10) + 5 // 5-14 quantity
     }))
 
-    console.log(`Creating Standard Receiving PO with ${poLineItems.length} SKUs:`, poLineItems.map(item => item.sku))
+    console.log(`Creating ${workflowName} PO with ${poLineItems.length} SKUs:`, poLineItems.map(item => item.sku))
 
     const poData = {
-      po_number: `STD-RCV-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}`,
+      po_number: `${workflowName}-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}`,
       po_date: new Date().toISOString().slice(0, 10),
       vendor_id: "1076735",
       warehouse_id: tourData.warehouse.shiphero_warehouse_id,
@@ -381,9 +381,9 @@ export class TourFinalizationService {
     const data = await this.createPurchaseOrderViaAPI(poData)
 
     if (data.data?.purchase_order_create?.purchase_order) {
-      console.log("Executed: Standard Receiving PO")
+      console.log(`Executed: ${workflowName} PO`)
     } else {
-      throw new Error(`Failed to create Standard Receiving PO: ${data.errors?.[0]?.message || 'Unknown error'}`)
+      throw new Error(`Failed to create ${workflowName} PO: ${data.errors?.[0]?.message || 'Unknown error'}`)
     }
   }
 
