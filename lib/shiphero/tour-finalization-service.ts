@@ -225,12 +225,23 @@ export class TourFinalizationService {
       // Fetch tour details once at the beginning
       const tourData = await this.getTourDetails(tourId)
 
-      // Logic Block 1: "As-Is" Workflow
-      if (selectedOptions.includes("receive_to_light") || selectedOptions.includes("pack_to_light")) {
+      // Logic Block 1: Receive-to-Light Workflow
+      if (selectedOptions.includes("receive_to_light")) {
         try {
-          await this.createAsIsWorkflowOrders(tourData)
+          await this.createReceiveToLightWorkflowOrders(tourData)
         } catch (error) {
-          const errorMsg = `As-Is Workflow failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          const errorMsg = `Receive-to-Light Workflow failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          console.error(errorMsg)
+          errors.push(errorMsg)
+        }
+      }
+
+      // Logic Block 1b: Pack-to-Light Workflow  
+      if (selectedOptions.includes("pack_to_light")) {
+        try {
+          await this.createPackToLightWorkflowOrders(tourData)
+        } catch (error) {
+          const errorMsg = `Pack-to-Light Workflow failed: ${error instanceof Error ? error.message : 'Unknown error'}`
           console.error(errorMsg)
           errors.push(errorMsg)
         }
@@ -310,26 +321,49 @@ export class TourFinalizationService {
   }
 
   /**
-   * MODULE 1: Creates Sales Orders for all participants and an aggregated Purchase Order.
-   * This is the original, "as-is" workflow, now using selected SKUs.
+   * MODULE 1: Creates Sales Orders for participants and Purchase Order for Receive-to-Light.
+   * Uses celebrity names for demo orders when no participants.
    */
-  private async createAsIsWorkflowOrders(tourData: TourData): Promise<void> {
-    console.log("Executing: As-Is Workflow using SELECTED SKUs")
-    console.log("🎯 Selected SKUs for As-Is workflow:", tourData.selected_skus)
+  private async createReceiveToLightWorkflowOrders(tourData: TourData): Promise<void> {
+    console.log("Executing: Receive-to-Light Workflow using SELECTED SKUs")
+    console.log("🎯 Selected SKUs for R2L workflow:", tourData.selected_skus)
     
     // Create participant orders first (using selected SKUs)
-    const participantOrders = await this.createParticipantOrders(tourData, "AS-IS")
+    const participantOrders = await this.createParticipantOrders(tourData, "R2L")
     
-    // If no participants, create demo orders for the host to demonstrate
+    // If no participants, create demo orders with celebrity names for demonstration
     if (participantOrders.length === 0) {
-      console.log("No participants - creating demo orders for host demonstration")
-      await this.createDemoOrders(tourData, "AS-IS-DEMO", 3)
+      console.log("No participants - creating demo orders with celebrity names for host demonstration")
+      await this.createDemoOrders(tourData, "R2L-DEMO", 3)
     }
     
     // Create purchase order using selected SKUs
-    await this.createStandardReceivingPO(tourData, "RECEIVE-TO-LIGHT")
+    await this.createStandardReceivingPO(tourData, "R2L")
 
-    console.log("Executed: As-Is Workflow with selected SKUs")
+    console.log("Executed: Receive-to-Light Workflow with selected SKUs")
+  }
+
+  /**
+   * MODULE 1b: Creates Sales Orders for participants and Purchase Order for Pack-to-Light.
+   * Uses participant names only (no celebrity names for pack-to-light).
+   */
+  private async createPackToLightWorkflowOrders(tourData: TourData): Promise<void> {
+    console.log("Executing: Pack-to-Light Workflow using SELECTED SKUs")
+    console.log("🎯 Selected SKUs for P2L workflow:", tourData.selected_skus)
+    
+    // Create participant orders first (using selected SKUs)
+    const participantOrders = await this.createParticipantOrders(tourData, "P2L")
+    
+    // If no participants, create simple demo orders (NO celebrity names for P2L)
+    if (participantOrders.length === 0) {
+      console.log("No participants - creating simple demo orders for host demonstration (no celebrities)")
+      await this.createSimpleDemoOrders(tourData, "P2L-DEMO", 3)
+    }
+    
+    // Create purchase order using selected SKUs
+    await this.createStandardReceivingPO(tourData, "P2L")
+
+    console.log("Executed: Pack-to-Light Workflow with selected SKUs")
   }
 
   /**
@@ -755,6 +789,104 @@ export class TourFinalizationService {
     
     const successful = results.filter(result => result.data?.order_create?.order)
     console.log(`✅ Created ${successful.length} demo orders with celebrity names`)
+    
+    return successful.map(result => result.data.order_create.order)
+  }
+
+  /**
+   * Helper method to create simple demo orders WITHOUT celebrity names (for Pack-to-Light)
+   */
+  private async createSimpleDemoOrders(tourData: TourData, orderPrefix: string, count: number): Promise<any[]> {
+    console.log(`Creating ${count} simple demo orders (no celebrity names)...`)
+    
+    if (tourData.selected_skus.length === 0) {
+      throw new Error("No SKUs selected for orders. Please select SKUs when creating the tour.")
+    }
+
+    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const orderPromises = []
+
+    for (let i = 0; i < count; i++) {
+      // Use simple demo customer names instead of celebrities
+      const demoCustomer = { first: "Demo", last: `Customer ${i + 1}` }
+      
+      // Use selected SKUs for demo orders, rotate through them
+      const selectedSkuIndex = i % tourData.selected_skus.length
+      const lineItems = [{
+        sku: tourData.selected_skus[selectedSkuIndex],
+        quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
+        price: "15.00",
+        product_name: `Product ${tourData.selected_skus[selectedSkuIndex]}`,
+        partner_line_item_id: `line-${i + 1}`,
+        fulfillment_status: "pending",
+        quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
+        warehouse_id: tourData.warehouse.shiphero_warehouse_id
+      }]
+
+      const orderData = {
+        order_number: `${orderPrefix}-${i + 1}`,
+        shop_name: "Touring App",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString(),
+        total_tax: "0.00",
+        subtotal: (lineItems[0].quantity * 15).toString(),
+        total_discounts: "0.00",
+        total_price: (lineItems[0].quantity * 15).toString(),
+        shipping_lines: {
+          title: "Standard Shipping",
+          price: "0.00",
+          carrier: "Demo Carrier",
+          method: "Standard"
+        },
+        shipping_address: {
+          first_name: demoCustomer.first,
+          last_name: demoCustomer.last,
+          company: "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state_code,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country_code,
+          phone: warehouseAddress.phone,
+          email: `demo.customer${i + 1}@example.com`
+        },
+        billing_address: {
+          first_name: demoCustomer.first,
+          last_name: demoCustomer.last,
+          company: "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state_code,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country_code,
+          phone: warehouseAddress.phone,
+          email: `demo.customer${i + 1}@example.com`
+        },
+        line_items: lineItems,
+        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        tags: ["demo", "simple", "tour"]
+      }
+
+      const promise = this.createSalesOrderViaAPI(orderData)
+      orderPromises.push(promise)
+    }
+
+    const results = await Promise.all(orderPromises)
+    
+    // Check for failures
+    const failures = results.filter(result => !result.data?.order_create?.order)
+    if (failures.length > 0) {
+      console.error(`Failed to create ${failures.length} simple demo orders:`, failures)
+    }
+    
+    const successful = results.filter(result => result.data?.order_create?.order)
+    console.log(`✅ Created ${successful.length} simple demo orders (no celebrities)`)
     
     return successful.map(result => result.data.order_create.order)
   }
