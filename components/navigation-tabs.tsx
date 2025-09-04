@@ -11,10 +11,25 @@ export function NavigationTabs() {
   const [activeTab, setActiveTab] = useState("schedule")
 
   useEffect(() => {
-    const deploymentId = 'V8.4-' + Date.now().toString().slice(-6) // Last 6 digits of timestamp - CACHE BUST
+    const deploymentId = 'V8.5-' + Date.now().toString().slice(-6) // Last 6 digits of timestamp - CACHE BUST
     console.log(`🚀🚀🚀 DEPLOYMENT MARKER ${deploymentId} - APP LOADED - ${new Date().toISOString()}`)
-    console.log('🎯 V8.4 Features: 28-day ShipHero token management, Optimized refresh timing, Better token persistence')
+    console.log('🎯 V8.5 Features: Debug localStorage persistence, Token storage diagnostics')
     console.log(`🔥 INSTANT DEPLOYMENT CHECK: ${deploymentId} - If you see this, new code is running!`)
+    
+    // Debug localStorage token persistence
+    const refreshToken = localStorage.getItem('shiphero_refresh_token')
+    const accessToken = localStorage.getItem('shiphero_access_token')
+    const expiresAt = localStorage.getItem('shiphero_token_expires_at')
+    
+    console.log('🔍 LOCALSTORAGE DEBUG ON APP LOAD:')
+    console.log('  Refresh Token:', refreshToken ? `${refreshToken.substring(0, 10)}...` : 'NOT FOUND')
+    console.log('  Access Token:', accessToken ? `${accessToken.substring(0, 20)}...` : 'NOT FOUND')
+    console.log('  Expires At:', expiresAt || 'NOT FOUND')
+    
+    if (refreshToken && !accessToken) {
+      console.log('⚠️ ISSUE DETECTED: Have refresh token but missing access token!')
+      console.log('💡 SOLUTION: Go to Settings tab and click "Generate New Access Token"')
+    }
     
     // Start automatic token refresh monitoring
     tokenManager.startAutoRefresh()

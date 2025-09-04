@@ -299,6 +299,25 @@ export function ShipHeroTab() {
           localStorage.setItem('shiphero_access_token', newAccessToken)
           console.log('✅ Access token stored in localStorage:', newAccessToken.substring(0, 20) + '...')
           
+          // Immediately verify storage
+          const storedToken = localStorage.getItem('shiphero_access_token')
+          console.log('🔍 VERIFICATION: Token immediately after storage:', storedToken ? `${storedToken.substring(0, 20)}...` : 'FAILED TO STORE!')
+          
+          // Test localStorage persistence
+          console.log('🧪 TESTING localStorage:')
+          localStorage.setItem('test_persistence', 'test_value_' + Date.now())
+          console.log('  Test value stored:', localStorage.getItem('test_persistence'))
+          
+          // Check all ShipHero keys
+          console.log('🔑 ALL SHIPHERO KEYS IN LOCALSTORAGE:')
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && key.includes('shiphero')) {
+              const value = localStorage.getItem(key)
+              console.log(`  ${key}:`, value ? `${value.substring(0, 20)}...` : 'null')
+            }
+          }
+          
           // Calculate expiration date
           const expirationDate = new Date(Date.now() + (expiresIn * 1000))
           
