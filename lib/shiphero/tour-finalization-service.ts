@@ -1,4 +1,3 @@
-import { createShipHeroClient } from './client'
 import { createClient } from '@/lib/supabase/client'
 import { getCelebrityNames } from '@/lib/celebrity-names'
 
@@ -212,7 +211,7 @@ export class TourFinalizationService {
     errors: string[]
     instructionGuide?: string
   }> {
-    console.log(`🎯 DEPLOYMENT MARKER V6 - TourFinalizationService.finalizeTour called`)
+    console.log(`🚀 DEPLOYMENT MARKER V7 - TourFinalizationService.finalizeTour called`)
     console.log(`📋 Tour ID: ${tourId}`)
     console.log(`🎯 Selected options:`, selectedOptions)
     
@@ -397,75 +396,6 @@ export class TourFinalizationService {
     console.log(`✅ Bulk Shipping completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
   }
 
-  /**
-   * LEGACY: Old bulk shipping method (kept for reference)
-   */
-  private async createBulkShippingSOsOld(tourData: TourData): Promise<void> {
-    const orderPromises = []
-    
-    for (let i = 1; i <= 10; i++) {
-      const mutation = `
-        mutation CreateOrder($data: OrderCreateInput!) {
-          order_create(data: $data) {
-            request_id
-            order {
-              id
-              legacy_id
-              order_number
-            }
-          }
-        }
-      `
-
-      const variables = {
-        data: {
-          order_number: `BULK-${tourData.id}-${i}`,
-          shop_name: "Touring App",
-          fulfillment_status: "pending",
-          order_date: new Date().toISOString(),
-          total_tax: "0.00",
-          subtotal: "0.00",
-          total_discounts: "0.00",
-          total_price: "0.00",
-          shipping_address: {
-            first_name: `Bulk Customer ${i}`,
-            last_name: "Test",
-            address1: `${100 + i} Bulk St`,
-            city: "Shippington",
-            state: "CA",
-            zip: `9021${i % 10}`,
-            country: "US"
-          },
-          line_items: [{
-            sku: "BULK-SHIP-SKU",
-            quantity: 1,
-            price: "0.00"
-          }]
-        }
-      }
-
-      const orderPromise = fetch('https://public-api.shiphero.com/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.shipHero.accessToken}`
-        },
-        body: JSON.stringify({ query: mutation, variables })
-      }).then(response => response.json())
-
-      orderPromises.push(orderPromise)
-    }
-
-    const results = await Promise.all(orderPromises)
-    
-    // Check for any failures
-    const failures = results.filter(result => !result.data?.order_create?.order)
-    if (failures.length > 0) {
-      throw new Error(`Failed to create ${failures.length} bulk shipping orders`)
-    }
-
-    console.log("Executed: Bulk Shipping SO Batch")
-  }
 
   /**
    * MODULE 4: Creates a batch of 5 single-item Sales Orders for "Single-Item Batch Picking".
@@ -482,79 +412,6 @@ export class TourFinalizationService {
     console.log(`✅ Single-Item Batch completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
   }
 
-  /**
-   * LEGACY: Old single-item batch method (kept for reference)
-   */
-  private async createSingleItemBatchSOsOld(tourData: TourData): Promise<void> {
-    const skusForBatch = [
-      "SINGLE-ITEM-A", "SINGLE-ITEM-B", "SINGLE-ITEM-A", "SINGLE-ITEM-C", "SINGLE-ITEM-B"
-    ]
-
-    const orderPromises = []
-    
-    for (let i = 0; i < skusForBatch.length; i++) {
-      const mutation = `
-        mutation CreateOrder($data: OrderCreateInput!) {
-          order_create(data: $data) {
-            request_id
-            order {
-              id
-              legacy_id
-              order_number
-            }
-          }
-        }
-      `
-
-      const variables = {
-        data: {
-          order_number: `SINGLE-${tourData.id}-${i + 1}`,
-          shop_name: "Touring App",
-          fulfillment_status: "pending",
-          order_date: new Date().toISOString(),
-          total_tax: "0.00",
-          subtotal: "0.00",
-          total_discounts: "0.00",
-          total_price: "0.00",
-          shipping_address: {
-            first_name: `Single-Item Customer ${i + 1}`,
-            last_name: "Test",
-            address1: `${200 + i} Single Ave`,
-            city: "Pickville",
-            state: "TX",
-            zip: `7500${i}`,
-            country: "US"
-          },
-          line_items: [{
-            sku: skusForBatch[i],
-            quantity: 1,
-            price: "0.00"
-          }]
-        }
-      }
-
-      const orderPromise = fetch('https://public-api.shiphero.com/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.shipHero.accessToken}`
-        },
-        body: JSON.stringify({ query: mutation, variables })
-      }).then(response => response.json())
-
-      orderPromises.push(orderPromise)
-    }
-
-    const results = await Promise.all(orderPromises)
-    
-    // Check for any failures
-    const failures = results.filter(result => !result.data?.order_create?.order)
-    if (failures.length > 0) {
-      throw new Error(`Failed to create ${failures.length} single-item batch orders`)
-    }
-
-    console.log("Executed: Single-Item Batch SOs")
-  }
 
   /**
    * MODULE 5: Creates a batch of 5 multi-item/SKU Sales Orders for "Multi-Item Batch Picking".
@@ -588,19 +445,6 @@ export class TourFinalizationService {
     for (let i = 0; i < count; i++) {
       const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
       
-      const mutation = `
-        mutation CreateOrder($data: OrderCreateInput!) {
-          order_create(data: $data) {
-            request_id
-            order {
-              id
-              legacy_id
-              order_number
-            }
-          }
-        }
-      `
-
       // Create multi-item orders using selected SKUs
       const numItems = Math.min(Math.floor(Math.random() * 3) + 2, tourData.selected_skus.length) // 2-4 items
       const lineItems = []
@@ -611,45 +455,65 @@ export class TourFinalizationService {
           sku: tourData.selected_skus[skuIndex],
           quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
           price: "12.00",
-          product_name: `Product ${tourData.selected_skus[skuIndex]}`
+          product_name: `Product ${tourData.selected_skus[skuIndex]}`,
+          partner_line_item_id: `multi-line-${i + 1}-${j + 1}`,
+          fulfillment_status: "pending",
+          quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
+          warehouse_id: tourData.warehouse.shiphero_warehouse_id
         })
       }
 
-      const variables = {
-        data: {
-          order_number: `${orderPrefix}-${i + 1}`,
-          shop_name: "Touring App",
-          fulfillment_status: "pending",
-          order_date: new Date().toISOString(),
-          total_tax: "0.00",
-          subtotal: (lineItems.reduce((sum, item) => sum + (item.quantity * 12), 0)).toString(),
-          total_discounts: "0.00",
-          total_price: (lineItems.reduce((sum, item) => sum + (item.quantity * 12), 0)).toString(),
-          shipping_address: {
-            first_name: celebrity.first,
-            last_name: celebrity.last,
-            company: "",
-            address1: warehouseAddress.address1,
-            address2: warehouseAddress.address2,
-            city: warehouseAddress.city,
-            state: warehouseAddress.state,
-            zip: warehouseAddress.zip,
-            country: warehouseAddress.country,
-            phone: warehouseAddress.phone,
-            email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
-          },
-          line_items: lineItems
-        }
+      const orderData = {
+        order_number: `${orderPrefix}-${i + 1}`,
+        shop_name: "Touring App",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString(),
+        total_tax: "0.00",
+        subtotal: (lineItems.reduce((sum, item) => sum + (item.quantity * 12), 0)).toString(),
+        total_discounts: "0.00",
+        total_price: (lineItems.reduce((sum, item) => sum + (item.quantity * 12), 0)).toString(),
+        shipping_lines: {
+          title: "Standard Shipping",
+          price: "0.00",
+          carrier: "Demo Carrier",
+          method: "Standard"
+        },
+        shipping_address: {
+          first_name: celebrity.first,
+          last_name: celebrity.last,
+          company: "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state_code,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country_code,
+          phone: warehouseAddress.phone,
+          email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+        },
+        billing_address: {
+          first_name: celebrity.first,
+          last_name: celebrity.last,
+          company: "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state_code,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country_code,
+          phone: warehouseAddress.phone,
+          email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+        },
+        line_items: lineItems,
+        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        tags: ["multi-item", "celebrity", "tour"]
       }
 
-      const promise = fetch('https://public-api.shiphero.com/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.shipHero.accessToken}`
-        },
-        body: JSON.stringify({ query: mutation, variables })
-      }).then(response => response.json())
+      const promise = this.createSalesOrderViaAPI(orderData)
 
       orderPromises.push(promise)
     }
@@ -709,62 +573,69 @@ export class TourFinalizationService {
     for (let i = 0; i < tourData.participants.length; i++) {
       const participant = tourData.participants[i]
       
-      const mutation = `
-        mutation CreateOrder($data: OrderCreateInput!) {
-          order_create(data: $data) {
-            request_id
-            order {
-              id
-              legacy_id
-              order_number
-            }
-          }
-        }
-      `
-
       // Use selected SKUs for participant orders
       const lineItems = tourData.selected_skus.slice(0, 3).map((sku, index) => ({
         sku: sku,
         quantity: 1,
         price: "10.00",
-        product_name: `Product ${sku}`
+        product_name: `Product ${sku}`,
+        partner_line_item_id: `participant-line-${i + 1}-${index + 1}`,
+        fulfillment_status: "pending",
+        quantity_pending_fulfillment: 1,
+        warehouse_id: tourData.warehouse.shiphero_warehouse_id
       }))
 
-      const variables = {
-        data: {
-          order_number: `${orderPrefix}-PARTICIPANT-${i + 1}`,
-          shop_name: "Touring App",
-          fulfillment_status: "pending",
-          order_date: new Date().toISOString(),
-          total_tax: "0.00",
-          subtotal: (lineItems.length * 10).toString(),
-          total_discounts: "0.00",
-          total_price: (lineItems.length * 10).toString(),
-          shipping_address: {
-            first_name: participant.first_name || "Participant",
-            last_name: participant.last_name || `${i + 1}`,
-            company: participant.company || "",
-            address1: warehouseAddress.address1,
-            address2: warehouseAddress.address2,
-            city: warehouseAddress.city,
-            state: warehouseAddress.state,
-            zip: warehouseAddress.zip,
-            country: warehouseAddress.country,
-            phone: warehouseAddress.phone,
-            email: participant.email || `participant${i + 1}@demo.com`
-          },
-          line_items: lineItems
-        }
+      const orderData = {
+        order_number: `${orderPrefix}-PARTICIPANT-${i + 1}`,
+        shop_name: "Touring App",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString(),
+        total_tax: "0.00",
+        subtotal: (lineItems.length * 10).toString(),
+        total_discounts: "0.00",
+        total_price: (lineItems.length * 10).toString(),
+        shipping_lines: {
+          title: "Standard Shipping",
+          price: "0.00",
+          carrier: "Demo Carrier",
+          method: "Standard"
+        },
+        shipping_address: {
+          first_name: participant.first_name || "Participant",
+          last_name: participant.last_name || `${i + 1}`,
+          company: participant.company || "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state_code,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country_code,
+          phone: warehouseAddress.phone,
+          email: participant.email || `participant${i + 1}@demo.com`
+        },
+        billing_address: {
+          first_name: participant.first_name || "Participant",
+          last_name: participant.last_name || `${i + 1}`,
+          company: participant.company || "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state_code,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country_code,
+          phone: warehouseAddress.phone,
+          email: participant.email || `participant${i + 1}@demo.com`
+        },
+        line_items: lineItems,
+        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        tags: ["participant", "tour"]
       }
 
-      const promise = fetch('https://public-api.shiphero.com/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.shipHero.accessToken}`
-        },
-        body: JSON.stringify({ query: mutation, variables })
-      }).then(response => response.json())
+      const promise = this.createSalesOrderViaAPI(orderData)
 
       orderPromises.push(promise)
     }
@@ -800,63 +671,70 @@ export class TourFinalizationService {
     for (let i = 0; i < count; i++) {
       const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
       
-      const mutation = `
-        mutation CreateOrder($data: OrderCreateInput!) {
-          order_create(data: $data) {
-            request_id
-            order {
-              id
-              legacy_id
-              order_number
-            }
-          }
-        }
-      `
-
       // Use selected SKUs for demo orders, rotate through them
       const selectedSkuIndex = i % tourData.selected_skus.length
       const lineItems = [{
         sku: tourData.selected_skus[selectedSkuIndex],
         quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
         price: "15.00",
-        product_name: `Product ${tourData.selected_skus[selectedSkuIndex]}`
+        product_name: `Product ${tourData.selected_skus[selectedSkuIndex]}`,
+        partner_line_item_id: `line-${i + 1}`,
+        fulfillment_status: "pending",
+        quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
+        warehouse_id: tourData.warehouse.shiphero_warehouse_id
       }]
 
-      const variables = {
-        data: {
-          order_number: `${orderPrefix}-${i + 1}`,
-          shop_name: "Touring App",
-          fulfillment_status: "pending",
-          order_date: new Date().toISOString(),
-          total_tax: "0.00",
-          subtotal: (lineItems[0].quantity * 15).toString(),
-          total_discounts: "0.00",
-          total_price: (lineItems[0].quantity * 15).toString(),
-          shipping_address: {
-            first_name: celebrity.first,
-            last_name: celebrity.last,
-            company: "",
-            address1: warehouseAddress.address1,
-            address2: warehouseAddress.address2,
-            city: warehouseAddress.city,
-            state: warehouseAddress.state,
-            zip: warehouseAddress.zip,
-            country: warehouseAddress.country,
-            phone: warehouseAddress.phone,
-            email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
-          },
-          line_items: lineItems
-        }
+      const orderData = {
+        order_number: `${orderPrefix}-${i + 1}`,
+        shop_name: "Touring App",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString(),
+        total_tax: "0.00",
+        subtotal: (lineItems[0].quantity * 15).toString(),
+        total_discounts: "0.00",
+        total_price: (lineItems[0].quantity * 15).toString(),
+        shipping_lines: {
+          title: "Standard Shipping",
+          price: "0.00",
+          carrier: "Demo Carrier",
+          method: "Standard"
+        },
+        shipping_address: {
+          first_name: celebrity.first,
+          last_name: celebrity.last,
+          company: "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state_code,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country_code,
+          phone: warehouseAddress.phone,
+          email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+        },
+        billing_address: {
+          first_name: celebrity.first,
+          last_name: celebrity.last,
+          company: "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state_code,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country_code,
+          phone: warehouseAddress.phone,
+          email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+        },
+        line_items: lineItems,
+        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        tags: ["demo", "celebrity", "tour"]
       }
 
-      const promise = fetch('https://public-api.shiphero.com/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.shipHero.accessToken}`
-        },
-        body: JSON.stringify({ query: mutation, variables })
-      }).then(response => response.json())
+      const promise = this.createSalesOrderViaAPI(orderData)
 
       orderPromises.push(promise)
     }
