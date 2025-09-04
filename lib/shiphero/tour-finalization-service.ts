@@ -203,6 +203,26 @@ export class TourFinalizationService {
   }
 
   /**
+   * Save instruction guide to database for persistence
+   */
+  private async saveInstructionGuide(tourId: string, instructionGuide: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('tours')
+      .update({ 
+        instruction_guide: instructionGuide,
+        instruction_guide_generated_at: new Date().toISOString()
+      })
+      .eq('id', tourId)
+
+    if (error) {
+      console.error('Failed to save instruction guide:', error)
+      // Don't throw error - this is not critical for tour finalization
+    } else {
+      console.log('✅ Instruction guide saved to database')
+    }
+  }
+
+  /**
    * Main controller for tour finalization
    */
   async finalizeTour(tourId: string, selectedOptions: WorkflowOption[]): Promise<{
@@ -330,6 +350,9 @@ export class TourFinalizationService {
       // Generate instruction guide
       const instructionGuide = await this.generateInstructionGuide(tourId)
       console.log("📋 Generated instruction guide:", instructionGuide.substring(0, 200) + "...")
+
+      // Save instruction guide to database
+      await this.saveInstructionGuide(tourId, instructionGuide)
 
       // Update tour status to finalized
       await this.updateTourStatus(tourId, "finalized")

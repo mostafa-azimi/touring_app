@@ -368,7 +368,7 @@ export function ViewToursPage() {
 
   const handleViewInstructions = async (tourId: string) => {
     try {
-      // Fetch tour data to regenerate instructions
+      // Fetch tour data including saved instruction guide
       const { data: tourData, error: tourError } = await supabase
         .from('tours')
         .select(`
@@ -377,6 +377,8 @@ export function ViewToursPage() {
           time,
           selected_workflows,
           selected_skus,
+          instruction_guide,
+          instruction_guide_generated_at,
           warehouse:warehouses(id, name, address, address2, city, state, zip, country, shiphero_warehouse_id),
           host:team_members(id, first_name, last_name, email),
           participants:tour_participants(id, first_name, last_name, email, company, title)
@@ -388,7 +390,17 @@ export function ViewToursPage() {
         throw new Error('Failed to fetch tour data')
       }
 
-      // Create a mock finalization result for viewing instructions
+      // Check if we have a saved instruction guide
+      if (!tourData.instruction_guide) {
+        toast({
+          title: "No Instructions Available",
+          description: "This tour was finalized before instruction guides were saved. Please re-finalize the tour to generate instructions.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Create finalization result with saved instruction guide
       const mockResult = {
         tourId: tourData.id,
         tourDate: tourData.date,
@@ -403,11 +415,16 @@ export function ViewToursPage() {
           sales_orders: [], // Would need to be stored in DB for full functionality
           purchase_orders: []
         },
-        instructions: `Instructions for Tour ${tourId}\n\nSelected Workflows: ${(tourData.selected_workflows || []).join(', ')}\nSelected SKUs: ${(tourData.selected_skus || []).join(', ')}\n\nFor detailed order numbers, please re-finalize the tour or contact support.`
+        instructions: tourData.instruction_guide // Use saved instruction guide
       }
 
       setFinalizationResult(mockResult)
       setShowFinalizationResults(true)
+
+      toast({
+        title: "Instructions Retrieved",
+        description: `Instruction guide generated on ${new Date(tourData.instruction_guide_generated_at).toLocaleDateString()}`,
+      })
     } catch (error: any) {
       toast({
         title: "Failed to Load Instructions",
