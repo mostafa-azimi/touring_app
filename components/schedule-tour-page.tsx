@@ -216,26 +216,32 @@ export function ScheduleTourPage() {
       
       console.log(`📊 Found ${existingWarehouses?.length || 0} existing warehouses in remote database`)
       
-      // If we have existing warehouses, use them
+      // If we have existing warehouses, use them but also check for updates from ShipHero
       if (existingWarehouses && existingWarehouses.length > 0) {
-        console.log('✅ Using existing warehouses from remote database')
+        console.log('✅ Found existing warehouses, setting them first')
         console.log('🔍 First warehouse:', existingWarehouses[0])
         setWarehouses(existingWarehouses)
-        return
+        
+        // Continue to check ShipHero for any new warehouses (don't return early)
+        console.log('🔄 Also checking ShipHero for any new warehouses...')
       }
       
-      // If no warehouses exist, sync from ShipHero
-      console.log('🔄 No warehouses found in remote database, syncing from ShipHero...')
+      // Sync from ShipHero (either for first time or to check for updates)
+      const hasExistingWarehouses = existingWarehouses && existingWarehouses.length > 0
+      console.log(hasExistingWarehouses ? '🔄 Checking ShipHero for new warehouses...' : '🔄 No warehouses found in remote database, syncing from ShipHero...')
+      
       const accessToken = localStorage.getItem('shiphero_access_token')
       
       if (!accessToken) {
         console.error('❌ No ShipHero access token available')
-        toast({
-          title: "Error",
-          description: "No ShipHero access token found. Please generate one in Settings.",
-          variant: "destructive",
-        })
-        setWarehouses([])
+        if (!hasExistingWarehouses) {
+          toast({
+            title: "Error",
+            description: "No ShipHero access token found. Please generate one in Settings.",
+            variant: "destructive",
+          })
+          setWarehouses([])
+        }
         return
       }
       
@@ -257,38 +263,63 @@ export function ScheduleTourPage() {
       
       if (shipHeroWarehouses.length === 0) {
         console.log('⚠️ No warehouses found in ShipHero')
-        setWarehouses([])
+        if (!hasExistingWarehouses) {
+          setWarehouses([])
+        }
         return
       }
       
-      console.log(`📦 Found ${shipHeroWarehouses.length} warehouses in ShipHero, creating in remote database...`)
+      console.log(`📦 Found ${shipHeroWarehouses.length} warehouses in ShipHero`)
       
-      // Create warehouses in remote database
-      const warehousesToCreate = shipHeroWarehouses.map(warehouse => ({
-        name: warehouse.address?.name || warehouse.identifier,
-        code: warehouse.identifier || '',
-        address: warehouse.address?.address1 || '',
-        address2: warehouse.address?.address2 || '',
-        city: warehouse.address?.city || '',
-        state: warehouse.address?.state || '',
-        zip: warehouse.address?.zip || '',
-        country: warehouse.address?.country || 'US',
-        shiphero_warehouse_id: warehouse.id
-      }))
+      // Check which warehouses are new (not in local database)
+      const existingShipHeroIds = new Set(existingWarehouses?.map(w => w.shiphero_warehouse_id) || [])
+      const newWarehouses = shipHeroWarehouses.filter(warehouse => !existingShipHeroIds.has(warehouse.id))
       
-      const { data: createdWarehouses, error: createError } = await supabase
-        .from('warehouses')
-        .insert(warehousesToCreate)
-        .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
-      
-      if (createError) {
-        console.error('❌ Error creating warehouses in remote database:', createError)
-        throw new Error('Failed to create warehouses in remote database')
+      if (newWarehouses.length > 0) {
+        console.log(`🆕 Found ${newWarehouses.length} new warehouses to add to remote database...`)
+        
+        const warehousesToCreate = newWarehouses.map(warehouse => ({
+          name: warehouse.address?.name || warehouse.identifier,
+          code: warehouse.identifier || '',
+          address: warehouse.address?.address1 || '',
+          address2: warehouse.address?.address2 || '',
+          city: warehouse.address?.city || '',
+          state: warehouse.address?.state || '',
+          zip: warehouse.address?.zip || '',
+          country: warehouse.address?.country || 'US',
+          shiphero_warehouse_id: warehouse.id
+        }))
+        
+        const { data: createdWarehouses, error: createError } = await supabase
+          .from('warehouses')
+          .insert(warehousesToCreate)
+          .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
+        
+        if (createError) {
+          console.error('❌ Error creating new warehouses in remote database:', createError)
+          console.log('❌ Create error details:', createError)
+          // Don't throw error, just log it - we still have existing warehouses
+        } else {
+          console.log(`✅ Created ${createdWarehouses?.length || 0} new warehouses in remote database`)
+          
+          // Merge existing and new warehouses
+          const allWarehouses = [...(existingWarehouses || []), ...(createdWarehouses || [])]
+          setWarehouses(allWarehouses)
+          
+          toast({
+            title: "Warehouses Updated",
+            description: `Added ${createdWarehouses?.length || 0} new warehouses from ShipHero`,
+            variant: "default",
+          })
+        }
+      } else {
+        console.log('✅ All ShipHero warehouses already exist in remote database')
+        if (hasExistingWarehouses) {
+          // Warehouses already set above, no need to update
+        } else {
+          setWarehouses(existingWarehouses || [])
+        }
       }
-      
-      console.log(`✅ Created ${createdWarehouses?.length || 0} warehouses in remote database`)
-      console.log('🔍 First created warehouse:', createdWarehouses?.[0])
-      setWarehouses(createdWarehouses || [])
       
     } catch (error) {
       console.error("❌ Error in fetchWarehouses:", error)
