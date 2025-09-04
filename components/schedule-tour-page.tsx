@@ -198,109 +198,85 @@ export function ScheduleTourPage() {
 
   const fetchWarehouses = async () => {
     try {
-      // First try to load from ShipHero if access token exists
-      const accessToken = localStorage.getItem('shiphero_access_token')
+      // Always load from local database first to get proper UUIDs
+      console.log('Loading warehouses from local database...')
+      const { data: localWarehouses, error: dbError } = await supabase
+        .from('warehouses')
+        .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
+        .order('name')
       
-      if (accessToken) {
-        console.log('Loading warehouses from ShipHero...')
-        const response = await fetch('/api/shiphero/warehouses', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        })
-
-        if (response.ok) {
-          const result = await response.json()
-          const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
-          
-          // Get existing warehouses from local database
-          console.log('🔍 Fetching existing warehouses from local database...')
-          const { data: existingWarehouses, error: dbError } = await supabase
-            .from('warehouses')
-            .select('id, shiphero_warehouse_id, name')
-          
-          console.log('📊 Existing warehouses in database:', existingWarehouses)
-          
-          if (dbError) {
-            console.error('❌ Error fetching local warehouses:', dbError)
-            throw new Error('Failed to fetch local warehouses')
-          }
-          
-          const warehousesToUpsert = []
-          const transformedWarehouses = []
-          
-          for (const shipHeroWarehouse of shipHeroWarehouses) {
-            console.log(`🏢 Processing ShipHero warehouse: ${shipHeroWarehouse.id}`)
-            
-            // Check if warehouse exists in local database
-            let localWarehouse = existingWarehouses?.find(w => w.shiphero_warehouse_id === shipHeroWarehouse.id)
-            console.log(`🔍 Local warehouse match:`, localWarehouse)
-            
-            const warehouseData = {
-              name: shipHeroWarehouse.address?.name || shipHeroWarehouse.identifier,
-              code: shipHeroWarehouse.identifier || '',
-              address: shipHeroWarehouse.address?.address1 || '',
-              address2: shipHeroWarehouse.address?.address2 || '',
-              city: shipHeroWarehouse.address?.city || '',
-              state: shipHeroWarehouse.address?.state || '',
-              zip: shipHeroWarehouse.address?.zip || '',
-              country: shipHeroWarehouse.address?.country || 'US',
-              shiphero_warehouse_id: shipHeroWarehouse.id
-            }
-            
-            if (!localWarehouse) {
-              // Need to create warehouse in local database
-              console.log(`➕ Adding warehouse to upsert queue: ${warehouseData.name}`)
-              warehousesToUpsert.push(warehouseData)
-            }
-            
-            // Use local UUID if exists, otherwise will be created
-            const transformedWarehouse = {
-              ...warehouseData,
-              id: localWarehouse?.id || 'temp-' + shipHeroWarehouse.id, // Temporary ID until upserted
-              full_address: shipHeroWarehouse.address
-            }
-            console.log(`📦 Transformed warehouse:`, transformedWarehouse)
-            transformedWarehouses.push(transformedWarehouse)
-          }
-          
-          // Insert missing warehouses
-          if (warehousesToUpsert.length > 0) {
-            console.log(`Creating ${warehousesToUpsert.length} new warehouses in local database`)
-            const { data: newWarehouses, error: upsertError } = await supabase
-              .from('warehouses')
-              .insert(warehousesToUpsert)
-              .select('id, shiphero_warehouse_id')
-            
-            if (upsertError) {
-              console.error('Error creating warehouses:', upsertError)
-              throw new Error('Failed to create warehouses in local database')
-            }
-            
-            // Update transformed warehouses with real UUIDs
-            transformedWarehouses.forEach(tw => {
-              if (tw.id.startsWith('temp-')) {
-                const newWarehouse = newWarehouses?.find(nw => nw.shiphero_warehouse_id === tw.shiphero_warehouse_id)
-                if (newWarehouse) {
-                  tw.id = newWarehouse.id
-                }
-              }
-            })
-          }
-          
-          setWarehouses(transformedWarehouses)
-          console.log(`✅ Loaded ${transformedWarehouses.length} warehouses from ShipHero:`, transformedWarehouses.map(w => w.name))
-          return
-        }
+      if (dbError) {
+        console.error('Error fetching local warehouses:', dbError)
+        throw new Error('Failed to fetch local warehouses')
       }
       
-      // Fallback to Supabase warehouses if ShipHero fails or no token
-      console.log('Loading warehouses from Supabase (fallback)...')
-      const { data, error } = await supabase.from("warehouses").select("id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id").order("name")
-      if (error) throw error
-      setWarehouses(data || [])
+      console.log(`✅ Loaded ${localWarehouses?.length || 0} warehouses from local database`)
+      
+      // If we have local warehouses, use them
+      if (localWarehouses && localWarehouses.length > 0) {
+        setWarehouses(localWarehouses)
+        return
+      }
+      
+      // If no local warehouses, try to sync from ShipHero
+      const accessToken = localStorage.getItem('shiphero_access_token')
+      if (!accessToken) {
+        console.log('No access token available, using empty warehouse list')
+        setWarehouses([])
+        return
+      }
+      
+      console.log('No local warehouses found, syncing from ShipHero...')
+      const response = await fetch('/api/shiphero/warehouses', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        console.log('ShipHero request failed, using empty warehouse list')
+        setWarehouses([])
+        return
+      }
+
+      const result = await response.json()
+      const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
+      
+      if (shipHeroWarehouses.length === 0) {
+        console.log('No ShipHero warehouses found')
+        setWarehouses([])
+        return
+      }
+      
+      // Create warehouses in local database
+      const warehousesToCreate = shipHeroWarehouses.map(warehouse => ({
+        name: warehouse.address?.name || warehouse.identifier,
+        code: warehouse.identifier || '',
+        address: warehouse.address?.address1 || '',
+        address2: warehouse.address?.address2 || '',
+        city: warehouse.address?.city || '',
+        state: warehouse.address?.state || '',
+        zip: warehouse.address?.zip || '',
+        country: warehouse.address?.country || 'US',
+        shiphero_warehouse_id: warehouse.id
+      }))
+      
+      console.log(`Creating ${warehousesToCreate.length} warehouses in local database...`)
+      const { data: createdWarehouses, error: createError } = await supabase
+        .from('warehouses')
+        .insert(warehousesToCreate)
+        .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
+      
+      if (createError) {
+        console.error('Error creating warehouses:', createError)
+        setWarehouses([])
+        return
+      }
+      
+      console.log(`✅ Created ${createdWarehouses?.length || 0} warehouses`)
+      setWarehouses(createdWarehouses || [])
       
     } catch (error) {
       console.error("Error fetching warehouses:", error)
@@ -309,6 +285,7 @@ export function ScheduleTourPage() {
         description: "Failed to load warehouses. Please check your ShipHero connection or try again.",
         variant: "destructive",
       })
+      setWarehouses([])
     }
   }
 
@@ -405,6 +382,15 @@ export function ScheduleTourPage() {
       console.log('👤 Host ID format:', typeof formData.host_id, formData.host_id)
       console.log('🎯 Selected workflows:', selectedWorkflows)
       console.log('📦 Selected SKUs:', selectedSkus)
+      
+      // DETAILED DEBUGGING - Show exactly what's being sent
+      console.log('🚨 DETAILED DEBUG - Raw form data:')
+      console.log('  warehouse_id:', JSON.stringify(formData.warehouse_id))
+      console.log('  host_id:', JSON.stringify(formData.host_id))
+      console.log('  selected_workflows type:', typeof selectedWorkflows, Array.isArray(selectedWorkflows))
+      console.log('  selected_skus type:', typeof selectedSkus, Array.isArray(selectedSkus))
+      console.log('🚨 DETAILED DEBUG - Payload being sent to Supabase:')
+      console.log(JSON.stringify(tourInsertData, null, 2))
 
       // Validate data before sending
       if (!formData.warehouse_id) {
@@ -440,7 +426,11 @@ export function ScheduleTourPage() {
         .select()
         .single()
 
-      if (tourError) throw tourError
+      if (tourError) {
+        console.error('🚨 Supabase tour creation error:', tourError)
+        console.error('🚨 Error details:', JSON.stringify(tourError, null, 2))
+        throw tourError
+      }
 
       // Add participants - no need to parse names anymore
       const participantInserts = participants.map((participant) => ({
