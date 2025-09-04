@@ -113,8 +113,8 @@ export function ScheduleTourPage() {
   const [formData, setFormData] = useState({
     warehouse_id: "",
     host_id: "",
-    date: "",
-    time: "",
+    date: "2025-11-15", // Default to mid-November for easier testing
+    time: "09:00", // Default to 9:00 AM
   })
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const [isUploadingCSV, setIsUploadingCSV] = useState(false)
@@ -536,7 +536,7 @@ export function ScheduleTourPage() {
       })
 
             // Reset form
-      setFormData({ warehouse_id: "", host_id: "", date: "", time: "" })
+      setFormData({ warehouse_id: "", host_id: "", date: "2025-11-15", time: "09:00" })
       setParticipants([])
       setSwagPreview([])
       setSelectedWorkflows([])
@@ -691,7 +691,7 @@ export function ScheduleTourPage() {
       })
 
       // Reset form
-      setFormData({ warehouse_id: "", host_id: "", date: "", time: "" })
+      setFormData({ warehouse_id: "", host_id: "", date: "2025-11-15", time: "09:00" })
       setParticipants([])
 
     } catch (error: any) {
