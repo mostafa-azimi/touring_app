@@ -78,14 +78,14 @@ const workflowOptions = [
   {
     id: "bulk_shipping" as WorkflowOption,
     name: "Bulk Shipping",
-    description: "Creates participant orders + random demonstration orders using selected SKUs (all ship to warehouse)",
+    description: "Creates identical orders with same SKUs shipping to different customer addresses (demonstrates bulk processing efficiency)",
     category: "Sales Orders",
     badge: "Enhanced"
   },
   {
     id: "single_item_batch" as WorkflowOption,
     name: "Single-Item Batch",
-    description: "Creates participant orders + random demonstration orders optimized for single-item batch picking",
+    description: "Creates single line-item orders with different SKUs shipping to different customer addresses (demonstrates single-item batch efficiency)",
     category: "Sales Orders",
     badge: "Enhanced"
   },

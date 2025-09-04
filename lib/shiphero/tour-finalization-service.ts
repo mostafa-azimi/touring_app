@@ -1128,16 +1128,16 @@ export class TourFinalizationService {
       guide += `## 📦 DEMONSTRATION ${workflowCounter}: SINGLE-ITEM BATCH PICKING\n`
       guide += `**Time:** 8 minutes | **Location:** High-volume pick area\n\n`
       guide += `### What to show:\n`
-      guide += `- **High-volume items** - how popular products are handled\n`
-      guide += `- **Dedicated workflows** - specialized processes for single SKUs\n`
-      guide += `- **Bulk handling** - efficient processing of large quantities\n`
-      guide += `- **Quality assurance** - verification for high-value items\n`
-      guide += `- **Random demonstration orders** - use system-generated sample orders\n\n`
+      guide += `- **Single line-item orders** - one SKU per order, different products\n`
+      guide += `- **Different SKUs per order** - variety of products being picked\n`
+      guide += `- **Multiple customer addresses** - different shipping destinations\n`
+      guide += `- **Batch picking efficiency** - grouping different single-item orders\n`
+      guide += `- **Route optimization** - efficient path through different product locations\n\n`
       guide += `### Key talking points:\n`
-      guide += `- "Single-item batching perfect for high-volume SKUs"\n`
-      guide += `- "Reduces handling time for popular products"\n`
-      guide += `- "Specialized workflow ensures consistency"\n`
-      guide += `- "Sample orders demonstrate real batching scenarios"\n\n`
+      guide += `- "Single-item batch perfect for diverse product orders"\n`
+      guide += `- "Different SKUs, different customers - optimized picking"\n`
+      guide += `- "System batches single-item orders for efficiency"\n`
+      guide += `- "Demonstrates handling variety in single-item scenarios"\n\n`
       workflowCounter++
     }
     
@@ -1145,16 +1145,16 @@ export class TourFinalizationService {
       guide += `## 🚛 DEMONSTRATION ${workflowCounter}: BULK SHIPPING\n`
       guide += `**Time:** 10 minutes | **Location:** Shipping dock\n\n`
       guide += `### What to show:\n`
-      guide += `- **Large order processing** - how big shipments are handled\n`
-      guide += `- **Carrier integration** - automatic shipping calculations\n`
-      guide += `- **Loading optimization** - efficient truck loading\n`
-      guide += `- **Tracking systems** - real-time shipment visibility\n`
-      guide += `- **Random demonstration orders** - use system-generated sample orders\n\n`
+      guide += `- **Identical orders processing** - same SKUs going to different customers\n`
+      guide += `- **Bulk processing efficiency** - handling multiple identical orders simultaneously\n`
+      guide += `- **Address differentiation** - same products, different shipping destinations\n`
+      guide += `- **Batch consolidation** - grouping identical SKUs for efficient picking\n`
+      guide += `- **Shipping optimization** - best methods for bulk identical orders\n\n`
       guide += `### Key talking points:\n`
-      guide += `- "Bulk shipping optimizes for large B2B orders"\n`
-      guide += `- "System calculates best shipping methods automatically"\n`
-      guide += `- "Real-time tracking keeps customers informed"\n`
-      guide += `- "Sample orders show various shipping scenarios"\n\n`
+      guide += `- "Bulk shipping perfect for identical products to multiple customers"\n`
+      guide += `- "System groups identical SKUs for maximum efficiency"\n`
+      guide += `- "Same products, different addresses - optimized routing"\n`
+      guide += `- "Demonstrates bulk processing for high-volume scenarios"\n\n`
       workflowCounter++
     }
     
