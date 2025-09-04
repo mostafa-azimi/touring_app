@@ -38,6 +38,7 @@ export function ShipHeroTab() {
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [hosts, setHosts] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
+  const [allProducts, setAllProducts] = useState<any[]>([]) // Store all products for filtering
   const [adhocOrderData, setAdhocOrderData] = useState({
     warehouseId: '',
     hostId: '',
@@ -59,7 +60,37 @@ export function ShipHeroTab() {
 
   const { toast } = useToast()
 
+  // Filter products by selected warehouse
+  const filterProductsByWarehouse = (warehouseId: string) => {
+    if (!warehouseId || !allProducts.length) {
+      setProducts([])
+      return
+    }
 
+    // Find the selected warehouse to get its ShipHero ID
+    const selectedWarehouse = warehouses.find(w => w.id === warehouseId)
+    if (!selectedWarehouse) {
+      setProducts([])
+      return
+    }
+
+    // Filter products that belong to this warehouse
+    const filteredProducts = allProducts.filter(product => {
+      // Check if product has inventory for this specific warehouse
+      return product.warehouse_id === selectedWarehouse.shiphero_warehouse_id
+    })
+
+    console.log('🏭 Filtering products by warehouse:', {
+      warehouseId,
+      warehouseName: selectedWarehouse.name,
+      shipHeroWarehouseId: selectedWarehouse.shiphero_warehouse_id,
+      totalProducts: allProducts.length,
+      filteredProducts: filteredProducts.length,
+      sampleFiltered: filteredProducts.slice(0, 3).map(p => ({ sku: p.sku, available: p.available }))
+    })
+
+    setProducts(filteredProducts)
+  }
 
   useEffect(() => {
     const savedToken = localStorage.getItem('shiphero_refresh_token') || ''
@@ -227,14 +258,21 @@ export function ShipHeroTab() {
       const productsResult = await productsResponse.json()
       const shipHeroProducts = productsResult.products || []
       
-      const transformedProducts = shipHeroProducts.map((product: any) => ({
-        id: product.sku,
-        name: product.name,
-        sku: product.sku,
-        available: product.inventory?.available || 0,
-        warehouse_name: product.inventory?.warehouse_name || 'Unknown'
-      }))
-      setProducts(transformedProducts)
+      const transformedProducts = shipHeroProducts
+        .filter((product: any) => product.active) // Only show active products
+        .map((product: any) => ({
+          id: product.sku,
+          name: product.name,
+          sku: product.sku,
+          available: product.inventory?.available || 0,
+          warehouse_name: product.inventory?.warehouse_name || 'Unknown',
+          warehouse_id: product.inventory?.warehouse_id || null
+        }))
+      
+      // Store all products for filtering
+      setAllProducts(transformedProducts)
+      // Initially show no products until a warehouse is selected
+      setProducts([])
 
       const loadTime = Date.now() - startTime
       console.log(`✅ Adhoc order data loaded in ${loadTime}ms`, {
@@ -1161,14 +1199,17 @@ export function ShipHeroTab() {
                   <Label htmlFor="warehouse-select">Warehouse *</Label>
                   <Select
                     value={adhocOrderData.warehouseId}
-                    onValueChange={(value) => setAdhocOrderData({ ...adhocOrderData, warehouseId: value })}
+                    onValueChange={(value) => {
+                      setAdhocOrderData({ ...adhocOrderData, warehouseId: value, productIds: [] })
+                      filterProductsByWarehouse(value)
+                    }}
                   >
-                    <SelectTrigger id="warehouse-select">
+                    <SelectTrigger id="warehouse-select" className="cursor-pointer">
                       <SelectValue placeholder="Select warehouse" />
                     </SelectTrigger>
                     <SelectContent>
                       {warehouses.map((warehouse) => (
-                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                        <SelectItem key={warehouse.id} value={warehouse.id} className="cursor-pointer">
                           {warehouse.name} ({warehouse.code})
                         </SelectItem>
                       ))}
@@ -1198,6 +1239,15 @@ export function ShipHeroTab() {
 
               <div className="grid gap-2">
                 <Label>Products *</Label>
+                {!adhocOrderData.warehouseId ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-slate-50">
+                    👆 Select a warehouse first to see available products
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-slate-50">
+                    No active products found for the selected warehouse
+                  </div>
+                ) : (
                 <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
                   {products.map((product) => (
                     <label key={product.id} className="flex items-center space-x-2 cursor-pointer">
@@ -1228,6 +1278,7 @@ export function ShipHeroTab() {
                     </label>
                   ))}
                 </div>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -1349,14 +1400,17 @@ export function ShipHeroTab() {
                   <Label htmlFor="po-warehouse-select">Warehouse *</Label>
                   <Select
                     value={adhocPOData.warehouseId}
-                    onValueChange={(value) => setAdhocPOData({ ...adhocPOData, warehouseId: value })}
+                    onValueChange={(value) => {
+                      setAdhocPOData({ ...adhocPOData, warehouseId: value, productIds: [], productQuantities: {} })
+                      filterProductsByWarehouse(value)
+                    }}
                   >
-                    <SelectTrigger id="po-warehouse-select">
+                    <SelectTrigger id="po-warehouse-select" className="cursor-pointer">
                       <SelectValue placeholder="Select warehouse" />
                     </SelectTrigger>
                     <SelectContent>
                       {warehouses.map((warehouse) => (
-                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                        <SelectItem key={warehouse.id} value={warehouse.id} className="cursor-pointer">
                           {warehouse.name} ({warehouse.code})
                         </SelectItem>
                       ))}
@@ -1386,6 +1440,15 @@ export function ShipHeroTab() {
 
               <div className="grid gap-2">
                 <Label>Products *</Label>
+                {!adhocPOData.warehouseId ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-slate-50">
+                    👆 Select a warehouse first to see available products
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-slate-50">
+                    No active products found for the selected warehouse
+                  </div>
+                ) : (
                 <div className="space-y-3">
                   {products.map((product) => (
                     <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
@@ -1451,6 +1514,7 @@ export function ShipHeroTab() {
                     </div>
                   ))}
                 </div>
+                )}
               </div>
 
               <div className="grid gap-2">
