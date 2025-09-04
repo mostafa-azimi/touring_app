@@ -118,14 +118,14 @@ export function ScheduleTourPage() {
   })
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const [isUploadingCSV, setIsUploadingCSV] = useState(false)
-  const [selectedWorkflows, setSelectedWorkflows] = useState<WorkflowOption[]>([])
+  const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([])
   const [selectedSkus, setSelectedSkus] = useState<string[]>([])
   const [availableSkus, setAvailableSkus] = useState<any[]>([])
   const [isLoadingSkus, setIsLoadingSkus] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
 
-  const handleWorkflowChange = (optionId: WorkflowOption, checked: boolean) => {
+  const handleWorkflowChange = (optionId: string, checked: boolean) => {
     if (checked) {
       setSelectedWorkflows(prev => [...prev, optionId])
     } else {
@@ -378,10 +378,11 @@ export function ScheduleTourPage() {
       setSwagPreview([])
       setSelectedWorkflows([])
       setSelectedSkus([])
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Tour creation error:', error)
       toast({
         title: "Error",
-        description: "Failed to schedule tour. Please try again.",
+        description: `Failed to schedule tour: ${error.message || error.toString()}`,
         variant: "destructive",
       })
     } finally {
