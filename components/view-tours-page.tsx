@@ -300,7 +300,7 @@ export function ViewToursPage() {
         await fetchTours()
         
         // Update selected tour if it's currently open by fetching fresh data
-        if (selectedTour && selectedTour.id === tourToFinalize) {
+        if (selectedTour && selectedTour.id === tourId) {
           const { data: updatedTourData } = await supabase
             .from("tours")
             .select(`
@@ -320,7 +320,7 @@ export function ViewToursPage() {
               host:team_members(id, first_name, last_name, email),
               participants:tour_participants(id, first_name, last_name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
             `)
-            .eq('id', tourToFinalize)
+            .eq('id', tourId)
             .single()
           
           if (updatedTourData) {
