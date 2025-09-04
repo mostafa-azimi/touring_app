@@ -81,9 +81,9 @@ export function ProductsTab() {
       }
 
       if (result.success && result.products) {
-        // Sort products by available quantity (highest to lowest)
+        // Sort products alphabetically by SKU for easier browsing (show ALL products)
         const sortedProducts = result.products.sort((a: Product, b: Product) => 
-          b.inventory.available - a.inventory.available
+          a.sku.localeCompare(b.sku)
         )
         
         setProducts(sortedProducts)
@@ -93,14 +93,15 @@ export function ProductsTab() {
         if (!autoRefresh) {
           toast({
             title: "Products Loaded",
-            description: `Found ${result.products.length} products (${result.products.filter((p: Product) => p.inventory.available > 0).length} with available inventory)`,
+            description: `Found ${result.products.length} total products (${result.products.filter((p: Product) => p.inventory.available > 0).length} with available inventory)`,
           })
         }
 
-        console.log('✅ Products loaded and sorted by available quantity:', {
+        console.log('✅ Products loaded and sorted alphabetically by SKU:', {
           totalProducts: sortedProducts.length,
           productsWithInventory: sortedProducts.filter((p: Product) => p.inventory.available > 0).length,
-          topAvailableQuantities: sortedProducts.slice(0, 5).map(p => `${p.sku}: ${p.inventory.available}`)
+          productsWithoutInventory: sortedProducts.filter((p: Product) => p.inventory.available === 0).length,
+          firstFewSKUs: sortedProducts.slice(0, 5).map(p => `${p.sku}: ${p.inventory.available} avail`)
         })
       } else {
         throw new Error('Invalid response format')
@@ -168,7 +169,7 @@ export function ProductsTab() {
             Product Catalog
           </CardTitle>
           <CardDescription>
-            View all products from your ShipHero account with real-time inventory levels
+            View ALL products from your ShipHero account with real-time inventory levels (sorted alphabetically by SKU)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
