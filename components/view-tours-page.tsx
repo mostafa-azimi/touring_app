@@ -257,7 +257,7 @@ export function ViewToursPage() {
   }
 
   const handleFinalizeTour = async (tourId: string) => {
-    console.log('🎯 DEPLOYMENT MARKER V6 - Finalize button clicked - TIMESTAMP:', new Date().toISOString())
+    console.log('🚀 DEPLOYMENT MARKER V7 - Finalize button clicked - TIMESTAMP:', new Date().toISOString())
     console.log('🚀 FINALIZE TOUR CLICKED - tourId:', tourId)
     setIsFinalizingTour(true)
     setFinalizingTourId(tourId)
