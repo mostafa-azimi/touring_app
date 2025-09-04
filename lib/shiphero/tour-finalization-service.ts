@@ -158,12 +158,16 @@ export class TourFinalizationService {
     errors: string[]
     instructionGuide?: string
   }> {
-    console.log(`Finalizing tour ${tourId} with options:`, selectedOptions)
+    console.log(`🔥 TourFinalizationService.finalizeTour called`)
+    console.log(`📋 Tour ID: ${tourId}`)
+    console.log(`🎯 Selected options:`, selectedOptions)
     
     const errors: string[] = []
 
     try {
+      console.log('🔌 Initializing ShipHero client...')
       await this.initializeShipHero()
+      console.log('✅ ShipHero client initialized')
       
       // Fetch tour details once at the beginning
       const tourData = await this.getTourDetails(tourId)

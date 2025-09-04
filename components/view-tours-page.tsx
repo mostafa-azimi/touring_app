@@ -258,10 +258,12 @@ export function ViewToursPage() {
   }
 
   const handleFinalizeTour = async (tourId: string) => {
+    console.log('🚀 FINALIZE TOUR CLICKED - tourId:', tourId)
     setIsFinalizingTour(true)
     setFinalizingTourId(tourId)
     
     try {
+      console.log('📋 Fetching tour data for workflows...')
       // Get the tour to check for pre-selected workflows
       const { data: tourData, error: tourError } = await supabase
         .from('tours')
@@ -269,11 +271,15 @@ export function ViewToursPage() {
         .eq('id', tourId)
         .single()
 
+      console.log('📊 Tour data response:', { tourData, tourError })
+
       if (tourError) throw new Error(`Failed to fetch tour: ${tourError.message}`)
 
       const selectedWorkflows = tourData.selected_workflows || []
+      console.log('🎯 Selected workflows from tour:', selectedWorkflows)
       
       if (selectedWorkflows.length === 0) {
+        console.log('⚠️ No workflows selected, showing toast')
         toast({
           title: "No Workflows Selected",
           description: "This tour has no workflows selected. Please edit the tour to add training workflows before finalizing.",
@@ -282,10 +288,12 @@ export function ViewToursPage() {
         return
       }
 
-      console.log(`Finalizing tour ${tourId} with pre-selected workflows:`, selectedWorkflows)
+      console.log(`🔥 Starting finalization for tour ${tourId} with workflows:`, selectedWorkflows)
       
       const finalizationService = new TourFinalizationService()
+      console.log('🛠️ TourFinalizationService created, calling finalizeTour...')
       const result = await finalizationService.finalizeTour(tourId, selectedWorkflows)
+      console.log('✅ Finalization result:', result)
       
       if (result.success) {
         // Refresh tours to get updated order information
@@ -335,13 +343,15 @@ export function ViewToursPage() {
       }
       
     } catch (error: any) {
-      console.error('Tour finalization error:', error)
+      console.error('❌ ERROR finalizing tour:', error)
+      console.error('❌ Error details:', JSON.stringify(error, null, 2))
       toast({
         title: "Tour Finalization Failed",
         description: error.message || "Failed to finalize tour. Please try again.",
         variant: "destructive",
       })
     } finally {
+      console.log('🏁 Finalization process complete, cleaning up state')
       setIsFinalizingTour(false)
       setFinalizingTourId(null)
     }
