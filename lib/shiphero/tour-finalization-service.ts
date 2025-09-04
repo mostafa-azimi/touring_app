@@ -166,7 +166,7 @@ export class TourFinalizationService {
     errors: string[]
     instructionGuide?: string
   }> {
-    console.log(`🚀 DEPLOYMENT MARKER V3 - TourFinalizationService.finalizeTour called`)
+    console.log(`⚡ DEPLOYMENT MARKER V4 - TourFinalizationService.finalizeTour called`)
     console.log(`📋 Tour ID: ${tourId}`)
     console.log(`🎯 Selected options:`, selectedOptions)
     
@@ -266,23 +266,19 @@ export class TourFinalizationService {
 
   /**
    * MODULE 1: Creates Sales Orders for all participants and an aggregated Purchase Order.
-   * This is the original, "as-is" workflow.
+   * This is the original, "as-is" workflow, now using selected SKUs.
    */
   private async createAsIsWorkflowOrders(tourData: TourData): Promise<void> {
-    // Use the existing order service for the as-is workflow
-    console.log("Executing: As-Is Workflow using existing order service")
+    console.log("Executing: As-Is Workflow using SELECTED SKUs")
+    console.log("🎯 Selected SKUs for As-Is workflow:", tourData.selected_skus)
     
-    const salesResult = await this.orderService.createSalesOrdersForTour(tourData.id)
-    if (!salesResult.success) {
-      throw new Error(`Sales orders failed: ${salesResult.message}`)
-    }
+    // Create participant orders first (using selected SKUs)
+    await this.createParticipantOrders(tourData, "AS-IS")
+    
+    // Create purchase order using selected SKUs
+    await this.createStandardReceivingPO(tourData)
 
-    const poResult = await this.orderService.createPurchaseOrderForTour(tourData.id)
-    if (!poResult.success) {
-      throw new Error(`Purchase order failed: ${poResult.message}`)
-    }
-
-    console.log("Executed: As-Is Workflow")
+    console.log("Executed: As-Is Workflow with selected SKUs")
   }
 
   /**
