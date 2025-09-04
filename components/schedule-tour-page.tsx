@@ -121,6 +121,7 @@ export function ScheduleTourPage() {
   const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([])
   const [selectedSkus, setSelectedSkus] = useState<string[]>([])
   const [availableSkus, setAvailableSkus] = useState<any[]>([])
+  const [allSkus, setAllSkus] = useState<any[]>([]) // Store all SKUs for filtering
   const [isLoadingSkus, setIsLoadingSkus] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
@@ -139,6 +140,38 @@ export function ScheduleTourPage() {
     } else {
       setSelectedSkus(prev => prev.filter(s => s !== sku))
     }
+  }
+
+  // Filter SKUs by selected warehouse
+  const filterSkusByWarehouse = (warehouseId: string) => {
+    if (!warehouseId || !allSkus.length) {
+      setAvailableSkus([])
+      return
+    }
+
+    // Find the selected warehouse to get its ShipHero ID
+    const selectedWarehouse = warehouses.find(w => w.id === warehouseId)
+    if (!selectedWarehouse) {
+      setAvailableSkus([])
+      return
+    }
+
+    // Filter SKUs that belong to this warehouse
+    const filteredSkus = allSkus.filter(product => {
+      // Check if product has inventory for this specific warehouse
+      return product.inventory?.warehouse_id === selectedWarehouse.shiphero_warehouse_id
+    })
+
+    console.log('🏭 Filtering SKUs by warehouse:', {
+      warehouseId,
+      warehouseName: selectedWarehouse.name,
+      shipHeroWarehouseId: selectedWarehouse.shiphero_warehouse_id,
+      totalSkus: allSkus.length,
+      filteredSkus: filteredSkus.length,
+      sampleFiltered: filteredSkus.slice(0, 3).map(p => ({ sku: p.sku, available: p.inventory?.available }))
+    })
+
+    setAvailableSkus(filteredSkus)
   }
 
   const loadAvailableSkus = async () => {
@@ -170,12 +203,20 @@ export function ScheduleTourPage() {
       
       if (result.success && result.products) {
         // Show only active products and sort alphabetically by SKU
-        const availableProducts = result.products
+        const allActiveProducts = result.products
           .filter((product: any) => product.active === true)
           .sort((a: any, b: any) => a.sku.localeCompare(b.sku))
         
-        setAvailableSkus(availableProducts)
-        console.log(`Loaded ${availableProducts.length} active SKUs for tour selection`)
+        // Store all SKUs for filtering
+        setAllSkus(allActiveProducts)
+        // Initially show no SKUs until a warehouse is selected
+        setAvailableSkus([])
+        console.log(`Loaded ${allActiveProducts.length} active SKUs for tour selection`)
+        
+        // If warehouse is already selected, filter immediately
+        if (formData.warehouse_id) {
+          filterSkusByWarehouse(formData.warehouse_id)
+        }
       } else {
         throw new Error('Invalid response format')
       }
@@ -702,7 +743,11 @@ export function ScheduleTourPage() {
                 <Label htmlFor="warehouse">Warehouse *</Label>
                 <Select
                   value={formData.warehouse_id}
-                  onValueChange={(value) => setFormData({ ...formData, warehouse_id: value })}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, warehouse_id: value })
+                    setSelectedSkus([]) // Clear selected SKUs when warehouse changes
+                    filterSkusByWarehouse(value) // Filter SKUs by selected warehouse
+                  }}
                 >
                   <SelectTrigger id="warehouse" className="cursor-pointer">
                     <SelectValue placeholder="Select a warehouse" />
@@ -1015,13 +1060,6 @@ export function ScheduleTourPage() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => setSelectedSkus(availableSkus.slice(0, 10).map(p => p.sku))}
-                        className="text-xs px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
-                      >
-                        Select First 10
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => setSelectedSkus([])}
                         className="text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors"
                       >
@@ -1031,6 +1069,15 @@ export function ScheduleTourPage() {
                   </div>
 
                   {/* ShipHero-style product grid - no max height, no scrolling */}
+                  {!formData.warehouse_id ? (
+                    <div className="text-sm text-muted-foreground p-8 border rounded-lg bg-slate-50 text-center">
+                      👆 Select a warehouse first to see available products for this tour
+                    </div>
+                  ) : availableSkus.length === 0 ? (
+                    <div className="text-sm text-muted-foreground p-8 border rounded-lg bg-slate-50 text-center">
+                      {isLoadingSkus ? "Loading products..." : "No active products found for the selected warehouse"}
+                    </div>
+                  ) : (
                   <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {availableSkus.map(product => (
                       <div 
@@ -1075,14 +1122,7 @@ export function ScheduleTourPage() {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {availableSkus.length === 0 && !isLoadingSkus && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>SKUs are loading automatically...</p>
-                  <p className="text-xs">Requires ShipHero access token in Settings</p>
+                  )}
                 </div>
               )}
             </div>

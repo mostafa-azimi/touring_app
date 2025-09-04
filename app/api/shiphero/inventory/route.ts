@@ -199,38 +199,51 @@ export async function GET(request: NextRequest) {
         // Exclude kits and build kits
         return !node.kit && !node.kit_build
       })
-      ?.map((edge: any) => {
+      ?.flatMap((edge: any) => {
         const warehouseProducts = edge.node.warehouse_products || []
         
-        // If product has warehouse_products, use the first one
-        // If no warehouse_products, show the product anyway with zero inventory
-        const warehouseProduct = warehouseProducts[0] || {
-          warehouse_id: null,
-          warehouse_identifier: null,
-          available: 0,
-          on_hand: 0,
-          allocated: 0
-        }
-        
-        // Get warehouse name from our lookup map
-        const warehouseInfo = warehouseProduct.warehouse_id ? 
-          warehouseMap.get(warehouseProduct.warehouse_id) : null
-        
-        return {
-          sku: edge.node.sku,
-          name: edge.node.name,
-          active: edge.node.active,
-          price: edge.node.price,
-          kit: edge.node.kit,
-          kit_build: edge.node.kit_build,
-          inventory: {
-            available: warehouseProduct.available || 0,
-            on_hand: warehouseProduct.on_hand || 0,
-            allocated: warehouseProduct.allocated || 0,
-            warehouse_id: warehouseProduct.warehouse_id,
-            warehouse_identifier: warehouseProduct.warehouse_identifier,
-            warehouse_name: warehouseInfo?.name || (warehouseProduct.warehouse_id ? 'Unknown Warehouse' : 'No Warehouse')
-          }
+        // If product has warehouse_products, create an entry for each warehouse
+        if (warehouseProducts.length > 0) {
+          return warehouseProducts.map((warehouseProduct: any) => {
+            // Get warehouse name from our lookup map
+            const warehouseInfo = warehouseProduct.warehouse_id ? 
+              warehouseMap.get(warehouseProduct.warehouse_id) : null
+            
+            return {
+              sku: edge.node.sku,
+              name: edge.node.name,
+              active: edge.node.active,
+              price: edge.node.price,
+              kit: edge.node.kit,
+              kit_build: edge.node.kit_build,
+              inventory: {
+                available: warehouseProduct.available || 0,
+                on_hand: warehouseProduct.on_hand || 0,
+                allocated: warehouseProduct.allocated || 0,
+                warehouse_id: warehouseProduct.warehouse_id,
+                warehouse_identifier: warehouseProduct.warehouse_identifier,
+                warehouse_name: warehouseInfo?.name || (warehouseProduct.warehouse_id ? 'Unknown Warehouse' : 'No Warehouse')
+              }
+            }
+          })
+        } else {
+          // If no warehouse_products, show the product anyway with zero inventory
+          return [{
+            sku: edge.node.sku,
+            name: edge.node.name,
+            active: edge.node.active,
+            price: edge.node.price,
+            kit: edge.node.kit,
+            kit_build: edge.node.kit_build,
+            inventory: {
+              available: 0,
+              on_hand: 0,
+              allocated: 0,
+              warehouse_id: null,
+              warehouse_identifier: null,
+              warehouse_name: 'No Warehouse'
+            }
+          }]
         }
       }) || []
 
