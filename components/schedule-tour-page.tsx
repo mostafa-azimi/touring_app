@@ -169,13 +169,12 @@ export function ScheduleTourPage() {
       const result = await response.json()
       
       if (result.success && result.products) {
-        // Filter products with available inventory and sort by availability
+        // Show ALL products (not just available inventory) and sort alphabetically by SKU
         const availableProducts = result.products
-          .filter((product: any) => product.inventory?.available > 0)
-          .sort((a: any, b: any) => b.inventory.available - a.inventory.available)
+          .sort((a: any, b: any) => a.sku.localeCompare(b.sku))
         
         setAvailableSkus(availableProducts)
-        console.log(`Loaded ${availableProducts.length} available SKUs`)
+        console.log(`Loaded ${availableProducts.length} total SKUs (all products, not just available inventory)`)
       } else {
         throw new Error('Invalid response format')
       }

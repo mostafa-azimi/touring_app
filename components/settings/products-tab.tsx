@@ -81,9 +81,9 @@ export function ProductsTab() {
       }
 
       if (result.success && result.products) {
-        // Sort products alphabetically by SKU for easier browsing (show ALL products)
+        // Sort products by available quantity (highest to lowest)
         const sortedProducts = result.products.sort((a: Product, b: Product) => 
-          a.sku.localeCompare(b.sku)
+          b.inventory.available - a.inventory.available
         )
         
         setProducts(sortedProducts)
@@ -93,15 +93,14 @@ export function ProductsTab() {
         if (!autoRefresh) {
           toast({
             title: "Products Loaded",
-            description: `Found ${result.products.length} total products (${result.products.filter((p: Product) => p.inventory.available > 0).length} with available inventory)`,
+            description: `Found ${result.products.length} products (${result.products.filter((p: Product) => p.inventory.available > 0).length} with available inventory)`,
           })
         }
 
-        console.log('✅ Products loaded and sorted alphabetically by SKU:', {
+        console.log('✅ Products loaded and sorted by available quantity:', {
           totalProducts: sortedProducts.length,
           productsWithInventory: sortedProducts.filter((p: Product) => p.inventory.available > 0).length,
-          productsWithoutInventory: sortedProducts.filter((p: Product) => p.inventory.available === 0).length,
-          firstFewSKUs: sortedProducts.slice(0, 5).map(p => `${p.sku}: ${p.inventory.available} avail`)
+          topAvailableQuantities: sortedProducts.slice(0, 5).map(p => `${p.sku}: ${p.inventory.available}`)
         })
       } else {
         throw new Error('Invalid response format')
@@ -169,7 +168,7 @@ export function ProductsTab() {
             Product Catalog
           </CardTitle>
           <CardDescription>
-            View ALL products from your ShipHero account with real-time inventory levels (sorted alphabetically by SKU)
+            View all products from your ShipHero account with real-time inventory levels
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
