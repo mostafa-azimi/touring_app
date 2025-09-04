@@ -676,14 +676,22 @@ export function ScheduleTourPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Schedule a New Tour
-          </CardTitle>
-          <CardDescription>Create a new warehouse tour and manage participants</CardDescription>
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* ShipHero-style page header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-800 mb-2 flex items-center gap-3">
+          <Calendar className="h-6 w-6 text-blue-600" />
+          Schedule a New Tour
+        </h1>
+        <p className="text-slate-600">Create a new warehouse tour and configure training workflows and products for realistic demonstrations.</p>
+      </div>
+
+      <Card className="shadow-sm border-slate-200">
+        <CardHeader className="bg-slate-50 border-b border-slate-200">
+          <CardTitle className="text-lg font-semibold text-slate-800">Tour Configuration</CardTitle>
+          <CardDescription className="text-slate-600">
+            Fill out the tour details, select training workflows, and choose products for demonstrations.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -992,26 +1000,78 @@ export function ScheduleTourPage() {
               )}
 
               {availableSkus.length > 0 && !isLoadingSkus && (
-                <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
-                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <div className="space-y-4">
+                  {/* ShipHero-style header with counts */}
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border">
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm font-medium text-slate-700">
+                        {availableSkus.length} Products Available
+                      </div>
+                      <div className="text-sm text-slate-500">
+                        {selectedSkus.length} Selected
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSkus(availableSkus.slice(0, 10).map(p => p.sku))}
+                        className="text-xs px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
+                      >
+                        Select First 10
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSkus([])}
+                        className="text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ShipHero-style product grid - no max height, no scrolling */}
+                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {availableSkus.map(product => (
-                      <div key={product.sku} className="flex items-start space-x-2 p-2 rounded border hover:bg-muted/50">
+                      <div 
+                        key={product.sku} 
+                        className={`
+                          relative flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200
+                          ${selectedSkus.includes(product.sku) 
+                            ? 'border-blue-200 bg-blue-50 shadow-sm' 
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                          }
+                        `}
+                      >
                         <Checkbox
                           id={product.sku}
                           checked={selectedSkus.includes(product.sku)}
                           onCheckedChange={(checked) => handleSkuChange(product.sku, checked as boolean)}
-                          className="mt-0.5"
+                          className="mt-1"
                         />
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <Label htmlFor={product.sku} className="font-medium cursor-pointer text-xs block truncate">
+                        <div className="flex-1 min-w-0">
+                          <Label 
+                            htmlFor={product.sku} 
+                            className="font-semibold cursor-pointer text-sm block text-slate-800 mb-1"
+                          >
                             {product.sku}
                           </Label>
-                          <p className="text-xs text-muted-foreground line-clamp-2 leading-tight">
+                          <p className="text-xs text-slate-600 mb-2 line-clamp-2 leading-relaxed">
                             {product.name}
                           </p>
-                          <p className="text-xs text-green-600">
-                            {product.inventory?.available || 0}
-                          </p>
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs font-medium px-2 py-1 rounded ${
+                              (product.inventory?.available || 0) > 0 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {product.inventory?.available || 0} available
+                            </span>
+                            {product.active && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                Active
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
