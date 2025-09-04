@@ -289,7 +289,7 @@ export function ScheduleTourPage() {
       
       // Fallback to Supabase warehouses if ShipHero fails or no token
       console.log('Loading warehouses from Supabase (fallback)...')
-      const { data, error } = await supabase.from("warehouses").select("id, name, code, address, address2, city, state, zip, country").order("name")
+      const { data, error } = await supabase.from("warehouses").select("id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id").order("name")
       if (error) throw error
       setWarehouses(data || [])
       
@@ -396,6 +396,33 @@ export function ScheduleTourPage() {
       console.log('👤 Host ID format:', typeof formData.host_id, formData.host_id)
       console.log('🎯 Selected workflows:', selectedWorkflows)
       console.log('📦 Selected SKUs:', selectedSkus)
+
+      // Validate data before sending
+      if (!formData.warehouse_id) {
+        throw new Error('Warehouse ID is required')
+      }
+      if (!formData.host_id) {
+        throw new Error('Host ID is required')
+      }
+      if (!formData.date) {
+        throw new Error('Date is required')
+      }
+      if (!formData.time) {
+        throw new Error('Time is required')
+      }
+
+      // Check if warehouse_id looks like a UUID (should be if from our database)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!uuidRegex.test(formData.warehouse_id)) {
+        console.error('❌ Invalid warehouse ID format:', formData.warehouse_id)
+        throw new Error(`Invalid warehouse ID format: ${formData.warehouse_id}. Expected UUID format.`)
+      }
+      if (!uuidRegex.test(formData.host_id)) {
+        console.error('❌ Invalid host ID format:', formData.host_id)
+        throw new Error(`Invalid host ID format: ${formData.host_id}. Expected UUID format.`)
+      }
+
+      console.log('✅ Data validation passed, creating tour...')
 
       // Create the tour
       const { data: tourData, error: tourError } = await supabase
