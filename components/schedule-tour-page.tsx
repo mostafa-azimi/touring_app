@@ -230,7 +230,8 @@ export function ScheduleTourPage() {
       const hasExistingWarehouses = existingWarehouses && existingWarehouses.length > 0
       console.log(hasExistingWarehouses ? '🔄 Checking ShipHero for new warehouses...' : '🔄 No warehouses found in remote database, syncing from ShipHero...')
       
-      const accessToken = localStorage.getItem('shiphero_access_token')
+      const { tokenManager } = await import('@/lib/shiphero/token-manager')
+      const accessToken = await tokenManager.getValidAccessToken()
       
       if (!accessToken) {
         console.error('❌ No ShipHero access token available')

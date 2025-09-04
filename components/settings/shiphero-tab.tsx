@@ -82,10 +82,32 @@ export function ShipHeroTab() {
       expiresAt: savedExpiresAt
     })
 
+    // Auto-refresh token if it's expired or about to expire
+    const autoRefreshToken = async () => {
+      if (savedToken && savedExpiresAt) {
+        const expirationDate = new Date(savedExpiresAt)
+        const now = new Date()
+        const minutesUntilExpiry = (expirationDate.getTime() - now.getTime()) / (1000 * 60)
+        
+        // If token expires in less than 5 minutes or already expired, refresh it
+        if (minutesUntilExpiry < 5) {
+          console.log(`🔄 Access token expires in ${minutesUntilExpiry.toFixed(1)} minutes, auto-refreshing...`)
+          try {
+            await handleGenerateAccessToken()
+            console.log('✅ Auto-refresh successful')
+          } catch (error) {
+            console.error('❌ Auto-refresh failed:', error)
+          }
+        }
+      }
+    }
+
     // Load data when component mounts (only if access token exists)
     if (savedAccessToken) {
       console.log('🔄 Access token found, loading adhoc order data...')
-      loadAdhocOrderData()
+      autoRefreshToken().then(() => {
+        loadAdhocOrderData()
+      })
     } else {
       console.log('⚠️ No access token found, skipping adhoc order data load')
     }
