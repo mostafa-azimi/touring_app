@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Simple in-memory cache for inventory data
+interface CacheEntry {
+  data: any
+  timestamp: number
+  accessToken: string
+}
+
+const inventoryCache = new Map<string, CacheEntry>()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
 export async function GET(request: NextRequest) {
   console.log('📦 ShipHero Inventory API called')
   
@@ -20,6 +30,22 @@ export async function GET(request: NextRequest) {
         { error: 'No ShipHero access token available' },
         { status: 401 }
       )
+    }
+
+    // Check cache first for faster loading
+    const cacheKey = `inventory_${accessToken.substring(0, 10)}`
+    const cachedEntry = inventoryCache.get(cacheKey)
+    const now = Date.now()
+    
+    if (cachedEntry && (now - cachedEntry.timestamp) < CACHE_DURATION && cachedEntry.accessToken === accessToken) {
+      console.log('🚀 Returning cached inventory data (faster loading)')
+      return NextResponse.json({
+        success: true,
+        products: cachedEntry.data.products,
+        total: cachedEntry.data.total,
+        cached: true,
+        cacheAge: Math.round((now - cachedEntry.timestamp) / 1000)
+      })
     }
 
     // First, get warehouse information to map warehouse_id to warehouse name
@@ -222,10 +248,26 @@ export async function GET(request: NextRequest) {
       sampleWarehouses: products.slice(0, 5).map(p => p.inventory.warehouse_name)
     })
 
+    // Cache the result for faster subsequent loads
+    inventoryCache.set(cacheKey, {
+      data: { products, total: products.length },
+      timestamp: now,
+      accessToken
+    })
+
+    // Clean up old cache entries (simple cleanup)
+    for (const [key, entry] of inventoryCache.entries()) {
+      if ((now - entry.timestamp) > CACHE_DURATION * 2) {
+        inventoryCache.delete(key)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       products,
-      total: products.length
+      total: products.length,
+      cached: false,
+      cacheAge: 0
     })
 
   } catch (error: any) {
