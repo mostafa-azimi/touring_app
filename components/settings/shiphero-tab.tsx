@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { generateSalesOrderName, generatePurchaseOrderName } from "@/lib/shiphero/naming-utils"
-import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
 
 export function ShipHeroTab() {
   const [refreshToken, setRefreshToken] = useState("")

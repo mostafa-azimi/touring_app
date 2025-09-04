@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { Eye, Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
 import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
 
 interface Tour {

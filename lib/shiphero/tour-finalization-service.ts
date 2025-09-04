@@ -1,6 +1,5 @@
 import { createShipHeroClient } from './client'
 import { createClient } from '@/lib/supabase/client'
-import { ShipHeroOrderService } from './order-service'
 import { getCelebrityNames } from '@/lib/celebrity-names'
 
 export interface TourData {
@@ -40,12 +39,10 @@ export type WorkflowOption =
 
 export class TourFinalizationService {
   private supabase
-  private orderService: ShipHeroOrderService
   private shipHero: any
 
   constructor() {
     this.supabase = createClient()
-    this.orderService = new ShipHeroOrderService()
   }
 
   /**
@@ -166,7 +163,7 @@ export class TourFinalizationService {
     errors: string[]
     instructionGuide?: string
   }> {
-    console.log(`🧹 DEPLOYMENT MARKER V5 - TourFinalizationService.finalizeTour called`)
+    console.log(`🎯 DEPLOYMENT MARKER V6 - TourFinalizationService.finalizeTour called`)
     console.log(`📋 Tour ID: ${tourId}`)
     console.log(`🎯 Selected options:`, selectedOptions)
     
@@ -285,10 +282,12 @@ export class TourFinalizationService {
    * MODULE 2: Creates a separate, unique Purchase Order for "Standard Receiving".
    */
   private async createStandardReceivingPO(tourData: TourData): Promise<void> {
-    // Use selected SKUs or fallback to demo SKUs
-    let skusToUse = tourData.selected_skus.length > 0 
-      ? tourData.selected_skus 
-      : ["DEMO-SKU-01", "DEMO-SKU-02", "DEMO-SKU-03"]
+    // Use selected SKUs only - no hardcoded fallbacks
+    if (tourData.selected_skus.length === 0) {
+      throw new Error("No SKUs selected for Standard Receiving PO. Please select SKUs when creating the tour.")
+    }
+    
+    let skusToUse = tourData.selected_skus
     
     // Limit to first 6 SKUs to keep PO manageable
     skusToUse = skusToUse.slice(0, 6)
@@ -540,8 +539,7 @@ export class TourFinalizationService {
     console.log(`Creating ${count} multi-item demo orders with celebrity names...`)
     
     if (tourData.selected_skus.length === 0) {
-      console.log("No SKUs selected, using fallback SKUs")
-      tourData.selected_skus = ["DEMO-SKU-A", "DEMO-SKU-B", "DEMO-SKU-C"]
+      throw new Error("No SKUs selected for Multi-Item Demo Orders. Please select SKUs when creating the tour.")
     }
 
     const celebrities = getCelebrityNames(count)
@@ -663,8 +661,7 @@ export class TourFinalizationService {
     }
 
     if (tourData.selected_skus.length === 0) {
-      console.log("No SKUs selected, using fallback SKU")
-      tourData.selected_skus = ["FALLBACK-ITEM"]
+      throw new Error("No SKUs selected for orders. Please select SKUs when creating the tour.")
     }
 
     const warehouseAddress = this.getWarehouseShippingAddress(tourData)
@@ -754,8 +751,7 @@ export class TourFinalizationService {
     console.log(`Creating ${count} demo orders with celebrity names...`)
     
     if (tourData.selected_skus.length === 0) {
-      console.log("No SKUs selected, using fallback SKU")
-      tourData.selected_skus = ["FALLBACK-ITEM"]
+      throw new Error("No SKUs selected for orders. Please select SKUs when creating the tour.")
     }
 
     const celebrities = getCelebrityNames(count)
