@@ -10,8 +10,8 @@ export function NavigationTabs() {
   const [activeTab, setActiveTab] = useState("schedule")
 
   useEffect(() => {
-    console.log('🚀🚀🚀 DEPLOYMENT MARKER V7 - APP LOADED - TIMESTAMP:', new Date().toISOString())
-    console.log('🎯 V7 Features: CORS Fixed, All SKUs from UI, No hardcoded items')
+    console.log('🚀🚀🚀 DEPLOYMENT MARKER V8 - APP LOADED - TIMESTAMP:', new Date().toISOString())
+    console.log('🎯 V8 Features: Warehouse sync fixed, JS errors fixed, Full tour finalization working')
   }, [])
 
   return (
