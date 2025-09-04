@@ -74,7 +74,56 @@ export class TourFinalizationService {
     }
 
     const tokenData = await tokenResponse.json()
-    this.shipHero = createShipHeroClient(tokenData.access_token)
+    // Store access token for API route calls instead of direct GraphQL
+    this.shipHero = { accessToken: tokenData.access_token }
+  }
+
+  /**
+   * Helper method to create sales orders via Next.js API route
+   */
+  private async createSalesOrderViaAPI(orderData: any): Promise<any> {
+    const response = await fetch('/api/shiphero/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.shipHero.accessToken}`
+      },
+      body: JSON.stringify({
+        type: 'sales_order',
+        data: orderData
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to create sales order: ${response.status} ${errorText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Helper method to create purchase orders via Next.js API route
+   */
+  private async createPurchaseOrderViaAPI(poData: any): Promise<any> {
+    const response = await fetch('/api/shiphero/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.shipHero.accessToken}`
+      },
+      body: JSON.stringify({
+        type: 'purchase_order',
+        data: poData
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to create purchase order: ${response.status} ${errorText}`)
+    }
+
+    return response.json()
   }
 
   /**
@@ -299,42 +348,32 @@ export class TourFinalizationService {
 
     console.log(`Creating Standard Receiving PO with ${poLineItems.length} SKUs:`, poLineItems.map(item => item.sku))
 
-    const mutation = `
-      mutation CreatePurchaseOrder($data: PurchaseOrderCreateInput!) {
-        purchase_order_create(data: $data) {
-          request_id
-          purchase_order {
-            id
-            legacy_id
-            po_number
-          }
-        }
-      }
-    `
-
-    const variables = {
-      data: {
-        po_number: `STD-RCV-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}`,
+    const poData = {
+      po_number: `STD-RCV-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}`,
+      po_date: new Date().toISOString().slice(0, 10),
+      vendor_id: "1076735",
+      warehouse_id: tourData.warehouse.shiphero_warehouse_id,
+      subtotal: "0.00",
+      tax: "0.00", 
+      shipping_price: "0.00",
+      total_price: "0.00",
+      fulfillment_status: "pending",
+      discount: "0.00",
+      line_items: poLineItems.map(item => ({
+        sku: item.sku,
+        quantity: item.quantity,
+        expected_weight_in_lbs: "1",
         vendor_id: "1076735",
-        warehouse_id: tourData.warehouse.shiphero_warehouse_id,
-        line_items: poLineItems.map(item => ({
-          sku: item.sku,
-          quantity: item.quantity,
-          expected_weight_in_lbs: "1"
-        }))
-      }
+        quantity_received: 0,
+        quantity_rejected: 0,
+        price: "0.00",
+        product_name: item.sku,
+        fulfillment_status: "pending",
+        sell_ahead: 0
+      }))
     }
 
-    const result = await fetch('https://public-api.shiphero.com/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.shipHero.accessToken}`
-      },
-      body: JSON.stringify({ query: mutation, variables })
-    })
-
-    const data = await result.json()
+    const data = await this.createPurchaseOrderViaAPI(poData)
 
     if (data.data?.purchase_order_create?.purchase_order) {
       console.log("Executed: Standard Receiving PO")
