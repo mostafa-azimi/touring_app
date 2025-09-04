@@ -318,7 +318,13 @@ export class TourFinalizationService {
     console.log("🎯 Selected SKUs for As-Is workflow:", tourData.selected_skus)
     
     // Create participant orders first (using selected SKUs)
-    await this.createParticipantOrders(tourData, "AS-IS")
+    const participantOrders = await this.createParticipantOrders(tourData, "AS-IS")
+    
+    // If no participants, create demo orders for the host to demonstrate
+    if (participantOrders.length === 0) {
+      console.log("No participants - creating demo orders for host demonstration")
+      await this.createDemoOrders(tourData, "AS-IS-DEMO", 3)
+    }
     
     // Create purchase order using selected SKUs
     await this.createStandardReceivingPO(tourData)
