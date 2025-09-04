@@ -83,8 +83,13 @@ export function ShipHeroTab() {
       expiresAt: savedExpiresAt
     })
 
-    // Load data when component mounts
-    loadAdhocOrderData()
+    // Load data when component mounts (only if access token exists)
+    if (savedAccessToken) {
+      console.log('🔄 Access token found, loading adhoc order data...')
+      loadAdhocOrderData()
+    } else {
+      console.log('⚠️ No access token found, skipping adhoc order data load')
+    }
   }, [])
 
   // Update countdown every second for live timer
