@@ -232,7 +232,7 @@ export function ScheduleTourPage() {
           }))
           
           setWarehouses(transformedWarehouses)
-          console.log(`Loaded ${transformedWarehouses.length} warehouses from ShipHero`)
+          console.log(`✅ Loaded ${transformedWarehouses.length} warehouses from ShipHero:`, transformedWarehouses.map(w => w.name))
           return
         }
       }
@@ -577,11 +577,14 @@ export function ScheduleTourPage() {
                     <SelectValue placeholder="Select a warehouse" />
                   </SelectTrigger>
                   <SelectContent>
-                    {warehouses.map((warehouse) => (
-                      <SelectItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name}
-                      </SelectItem>
-                    ))}
+                    {warehouses.map((warehouse) => {
+                      console.log('Rendering warehouse:', warehouse.name, warehouse.id)
+                      return (
+                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                          {warehouse.name}
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
                 {selectedWarehouse && (

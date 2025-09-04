@@ -156,6 +156,7 @@ export class TourFinalizationService {
     success: boolean
     message: string
     errors: string[]
+    instructionGuide?: string
   }> {
     console.log(`Finalizing tour ${tourId} with options:`, selectedOptions)
     
@@ -222,17 +223,22 @@ export class TourFinalizationService {
         }
       }
 
+      // Generate instruction guide
+      const instructionGuide = await this.generateInstructionGuide(tourId)
+      console.log("📋 Generated instruction guide:", instructionGuide.substring(0, 200) + "...")
+
       // Update tour status to finalized
       await this.updateTourStatus(tourId, "finalized")
 
       const successMessage = errors.length > 0 
-        ? `Tour finalized with ${errors.length} workflow error(s)`
-        : "Tour finalized successfully with all selected workflows"
+        ? `Tour finalized with ${errors.length} workflow error(s). Instruction guide generated.`
+        : "Tour finalized successfully with all selected workflows. Instruction guide generated."
 
       return {
         success: errors.length === 0,
         message: successMessage,
-        errors
+        errors,
+        instructionGuide
       }
 
     } catch (error) {
@@ -271,14 +277,20 @@ export class TourFinalizationService {
    * MODULE 2: Creates a separate, unique Purchase Order for "Standard Receiving".
    */
   private async createStandardReceivingPO(tourData: TourData): Promise<void> {
-    const poLineItems = [
-      { sku: "STANDARD-RECEIVING-01", quantity: 8 },
-      { sku: "STANDARD-RECEIVING-02", quantity: 5 },
-      { sku: "STANDARD-RECEIVING-03", quantity: 3 },
-      { sku: "STANDARD-RECEIVING-04", quantity: 1 },
-      { sku: "STANDARD-RECEIVING-05", quantity: 2 },
-      { sku: "STANDARD-RECEIVING-06", quantity: 4 },
-    ]
+    // Use selected SKUs or fallback to demo SKUs
+    let skusToUse = tourData.selected_skus.length > 0 
+      ? tourData.selected_skus 
+      : ["STANDARD-RECEIVING-01", "STANDARD-RECEIVING-02", "STANDARD-RECEIVING-03"]
+    
+    // Limit to first 6 SKUs to keep PO manageable
+    skusToUse = skusToUse.slice(0, 6)
+    
+    const poLineItems = skusToUse.map((sku, index) => ({
+      sku: sku,
+      quantity: Math.floor(Math.random() * 10) + 5 // 5-14 quantity
+    }))
+
+    console.log(`Creating Standard Receiving PO with ${poLineItems.length} SKUs:`, poLineItems.map(item => item.sku))
 
     const mutation = `
       mutation CreatePurchaseOrder($data: PurchaseOrderCreateInput!) {
@@ -328,6 +340,21 @@ export class TourFinalizationService {
    * MODULE 3: Creates a batch of 10 Sales Orders for "Bulk Shipping".
    */
   private async createBulkShippingSOs(tourData: TourData): Promise<void> {
+    console.log("🎯 Starting Bulk Shipping workflow...")
+    
+    // Step 1: Create participant orders first
+    const participantOrders = await this.createParticipantOrders(tourData, "BULK")
+    
+    // Step 2: Create demo orders with celebrity names
+    const demoOrders = await this.createDemoOrders(tourData, "BULK-DEMO", 10)
+    
+    console.log(`✅ Bulk Shipping completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
+  }
+
+  /**
+   * LEGACY: Old bulk shipping method (kept for reference)
+   */
+  private async createBulkShippingSOsOld(tourData: TourData): Promise<void> {
     const orderPromises = []
     
     for (let i = 1; i <= 10; i++) {
@@ -398,6 +425,21 @@ export class TourFinalizationService {
    * MODULE 4: Creates a batch of 5 single-item Sales Orders for "Single-Item Batch Picking".
    */
   private async createSingleItemBatchSOs(tourData: TourData): Promise<void> {
+    console.log("🎯 Starting Single-Item Batch workflow...")
+    
+    // Step 1: Create participant orders first
+    const participantOrders = await this.createParticipantOrders(tourData, "SINGLE")
+    
+    // Step 2: Create demo orders with celebrity names (5 single-item orders)
+    const demoOrders = await this.createDemoOrders(tourData, "SINGLE-DEMO", 5)
+    
+    console.log(`✅ Single-Item Batch completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
+  }
+
+  /**
+   * LEGACY: Old single-item batch method (kept for reference)
+   */
+  private async createSingleItemBatchSOsOld(tourData: TourData): Promise<void> {
     const skusForBatch = [
       "SINGLE-ITEM-A", "SINGLE-ITEM-B", "SINGLE-ITEM-A", "SINGLE-ITEM-C", "SINGLE-ITEM-B"
     ]
@@ -472,6 +514,119 @@ export class TourFinalizationService {
    * MODULE 5: Creates a batch of 5 multi-item/SKU Sales Orders for "Multi-Item Batch Picking".
    */
   private async createMultiItemBatchSOs(tourData: TourData): Promise<void> {
+    console.log("🎯 Starting Multi-Item Batch workflow...")
+    
+    // Step 1: Create participant orders first (they already get multiple SKUs from helper method)
+    const participantOrders = await this.createParticipantOrders(tourData, "MULTI")
+    
+    // Step 2: Create demo orders with celebrity names and multiple SKUs
+    const demoOrders = await this.createMultiItemDemoOrders(tourData, "MULTI-DEMO", 5)
+    
+    console.log(`✅ Multi-Item Batch completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
+  }
+
+  /**
+   * Helper method specifically for multi-item demo orders
+   */
+  private async createMultiItemDemoOrders(tourData: TourData, orderPrefix: string, count: number): Promise<any[]> {
+    console.log(`Creating ${count} multi-item demo orders with celebrity names...`)
+    
+    if (tourData.selected_skus.length === 0) {
+      console.log("No SKUs selected, using fallback SKUs")
+      tourData.selected_skus = ["MULTI-ITEM-X", "MULTI-ITEM-Y", "MULTI-ITEM-Z"]
+    }
+
+    const celebrities = getCelebrityNames(count)
+    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const orderPromises = []
+
+    for (let i = 0; i < count; i++) {
+      const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
+      
+      const mutation = `
+        mutation CreateOrder($data: OrderCreateInput!) {
+          order_create(data: $data) {
+            request_id
+            order {
+              id
+              legacy_id
+              order_number
+            }
+          }
+        }
+      `
+
+      // Create multi-item orders using selected SKUs
+      const numItems = Math.min(Math.floor(Math.random() * 3) + 2, tourData.selected_skus.length) // 2-4 items
+      const lineItems = []
+      
+      for (let j = 0; j < numItems; j++) {
+        const skuIndex = (i + j) % tourData.selected_skus.length
+        lineItems.push({
+          sku: tourData.selected_skus[skuIndex],
+          quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
+          price: "12.00",
+          product_name: `Product ${tourData.selected_skus[skuIndex]}`
+        })
+      }
+
+      const variables = {
+        data: {
+          order_number: `${orderPrefix}-${i + 1}`,
+          shop_name: "Touring App",
+          fulfillment_status: "pending",
+          order_date: new Date().toISOString(),
+          total_tax: "0.00",
+          subtotal: (lineItems.reduce((sum, item) => sum + (item.quantity * 12), 0)).toString(),
+          total_discounts: "0.00",
+          total_price: (lineItems.reduce((sum, item) => sum + (item.quantity * 12), 0)).toString(),
+          shipping_address: {
+            first_name: celebrity.first,
+            last_name: celebrity.last,
+            company: "",
+            address1: warehouseAddress.address1,
+            address2: warehouseAddress.address2,
+            city: warehouseAddress.city,
+            state: warehouseAddress.state,
+            zip: warehouseAddress.zip,
+            country: warehouseAddress.country,
+            phone: warehouseAddress.phone,
+            email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+          },
+          line_items: lineItems
+        }
+      }
+
+      const promise = fetch('https://public-api.shiphero.com/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.shipHero.accessToken}`
+        },
+        body: JSON.stringify({ query: mutation, variables })
+      }).then(response => response.json())
+
+      orderPromises.push(promise)
+    }
+
+    const results = await Promise.all(orderPromises)
+    
+    // Check for failures
+    const failures = results.filter(result => !result.data?.order_create?.order)
+    if (failures.length > 0) {
+      console.error(`Failed to create ${failures.length} multi-item demo orders:`, failures)
+    }
+    
+    const successful = results.filter(result => result.data?.order_create?.order)
+    console.log(`✅ Created ${successful.length} multi-item demo orders with celebrity names`)
+    
+    return successful.map(result => result.data.order_create.order)
+  }
+
+  /**
+   * LEGACY: Old multi-item batch method (kept for reference)
+   */
+  private async createMultiItemBatchSOsOld(tourData: TourData): Promise<void> {
     const orderDefinitions = [
       [{ sku: "MULTI-ITEM-X", quantity: 1 }, { sku: "MULTI-ITEM-Y", quantity: 2 }], // Order 1
       [{ sku: "MULTI-ITEM-Z", quantity: 1 }],                                     // Order 2
@@ -544,5 +699,329 @@ export class TourFinalizationService {
     }
 
     console.log("Executed: Multi-Item Batch SOs")
+  }
+
+  /**
+   * Helper method to get warehouse shipping address
+   */
+  private getWarehouseShippingAddress(tourData: TourData) {
+    const address = tourData.warehouse.address
+    return {
+      first_name: "Warehouse",
+      last_name: "Demo",
+      address1: address?.address1 || address?.address || "123 Warehouse St",
+      address2: address?.address2 || "",
+      city: address?.city || "Demo City",
+      state: address?.state || "CA",
+      zip: address?.zip || "90210",
+      country: address?.country || "US",
+      phone: address?.phone || "555-0123"
+    }
+  }
+
+  /**
+   * Helper method to create participant orders using selected SKUs
+   */
+  private async createParticipantOrders(tourData: TourData, orderPrefix: string): Promise<any[]> {
+    console.log(`Creating orders for ${tourData.participants.length} participants first...`)
+    
+    if (tourData.participants.length === 0) {
+      console.log("No participants found, skipping participant orders")
+      return []
+    }
+
+    if (tourData.selected_skus.length === 0) {
+      console.log("No SKUs selected, using fallback SKU")
+      tourData.selected_skus = ["FALLBACK-ITEM"]
+    }
+
+    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const orderPromises = []
+
+    for (let i = 0; i < tourData.participants.length; i++) {
+      const participant = tourData.participants[i]
+      
+      const mutation = `
+        mutation CreateOrder($data: OrderCreateInput!) {
+          order_create(data: $data) {
+            request_id
+            order {
+              id
+              legacy_id
+              order_number
+            }
+          }
+        }
+      `
+
+      // Use selected SKUs for participant orders
+      const lineItems = tourData.selected_skus.slice(0, 3).map((sku, index) => ({
+        sku: sku,
+        quantity: 1,
+        price: "10.00",
+        product_name: `Product ${sku}`
+      }))
+
+      const variables = {
+        data: {
+          order_number: `${orderPrefix}-PARTICIPANT-${i + 1}`,
+          shop_name: "Touring App",
+          fulfillment_status: "pending",
+          order_date: new Date().toISOString(),
+          total_tax: "0.00",
+          subtotal: (lineItems.length * 10).toString(),
+          total_discounts: "0.00",
+          total_price: (lineItems.length * 10).toString(),
+          shipping_address: {
+            first_name: participant.first_name || "Participant",
+            last_name: participant.last_name || `${i + 1}`,
+            company: participant.company || "",
+            address1: warehouseAddress.address1,
+            address2: warehouseAddress.address2,
+            city: warehouseAddress.city,
+            state: warehouseAddress.state,
+            zip: warehouseAddress.zip,
+            country: warehouseAddress.country,
+            phone: warehouseAddress.phone,
+            email: participant.email || `participant${i + 1}@demo.com`
+          },
+          line_items: lineItems
+        }
+      }
+
+      const promise = fetch('https://public-api.shiphero.com/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.shipHero.accessToken}`
+        },
+        body: JSON.stringify({ query: mutation, variables })
+      }).then(response => response.json())
+
+      orderPromises.push(promise)
+    }
+
+    const results = await Promise.all(orderPromises)
+    
+    // Check for failures
+    const failures = results.filter(result => !result.data?.order_create?.order)
+    if (failures.length > 0) {
+      console.error(`Failed to create ${failures.length} participant orders:`, failures)
+    }
+    
+    const successful = results.filter(result => result.data?.order_create?.order)
+    console.log(`✅ Created ${successful.length} participant orders`)
+    
+    return successful.map(result => result.data.order_create.order)
+  }
+
+  /**
+   * Helper method to create demo orders using celebrity names and selected SKUs
+   */
+  private async createDemoOrders(tourData: TourData, orderPrefix: string, count: number): Promise<any[]> {
+    console.log(`Creating ${count} demo orders with celebrity names...`)
+    
+    if (tourData.selected_skus.length === 0) {
+      console.log("No SKUs selected, using fallback SKU")
+      tourData.selected_skus = ["FALLBACK-ITEM"]
+    }
+
+    const celebrities = getCelebrityNames(count)
+    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const orderPromises = []
+
+    for (let i = 0; i < count; i++) {
+      const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
+      
+      const mutation = `
+        mutation CreateOrder($data: OrderCreateInput!) {
+          order_create(data: $data) {
+            request_id
+            order {
+              id
+              legacy_id
+              order_number
+            }
+          }
+        }
+      `
+
+      // Use selected SKUs for demo orders, rotate through them
+      const selectedSkuIndex = i % tourData.selected_skus.length
+      const lineItems = [{
+        sku: tourData.selected_skus[selectedSkuIndex],
+        quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
+        price: "15.00",
+        product_name: `Product ${tourData.selected_skus[selectedSkuIndex]}`
+      }]
+
+      const variables = {
+        data: {
+          order_number: `${orderPrefix}-${i + 1}`,
+          shop_name: "Touring App",
+          fulfillment_status: "pending",
+          order_date: new Date().toISOString(),
+          total_tax: "0.00",
+          subtotal: (lineItems[0].quantity * 15).toString(),
+          total_discounts: "0.00",
+          total_price: (lineItems[0].quantity * 15).toString(),
+          shipping_address: {
+            first_name: celebrity.first,
+            last_name: celebrity.last,
+            company: "",
+            address1: warehouseAddress.address1,
+            address2: warehouseAddress.address2,
+            city: warehouseAddress.city,
+            state: warehouseAddress.state,
+            zip: warehouseAddress.zip,
+            country: warehouseAddress.country,
+            phone: warehouseAddress.phone,
+            email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+          },
+          line_items: lineItems
+        }
+      }
+
+      const promise = fetch('https://public-api.shiphero.com/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.shipHero.accessToken}`
+        },
+        body: JSON.stringify({ query: mutation, variables })
+      }).then(response => response.json())
+
+      orderPromises.push(promise)
+    }
+
+    const results = await Promise.all(orderPromises)
+    
+    // Check for failures
+    const failures = results.filter(result => !result.data?.order_create?.order)
+    if (failures.length > 0) {
+      console.error(`Failed to create ${failures.length} demo orders:`, failures)
+    }
+    
+    const successful = results.filter(result => result.data?.order_create?.order)
+    console.log(`✅ Created ${successful.length} demo orders with celebrity names`)
+    
+    return successful.map(result => result.data.order_create.order)
+  }
+
+  /**
+   * Generate comprehensive instruction guide for the tour
+   */
+  async generateInstructionGuide(tourId: string): Promise<string> {
+    console.log("📋 Generating instruction guide...")
+    
+    const tourData = await this.getTourDetails(tourId)
+    const selectedWorkflows = tourData.selected_workflows
+    
+    let guide = `# 🎯 Tour Instruction Guide\n\n`
+    guide += `**Tour ID:** ${tourData.id}\n`
+    guide += `**Warehouse:** ${tourData.warehouse.name}\n`
+    guide += `**Host:** ${tourData.host.name}\n`
+    guide += `**Participants:** ${tourData.participants.length}\n`
+    guide += `**Selected SKUs:** ${tourData.selected_skus.join(', ')}\n`
+    guide += `**Date:** ${new Date().toLocaleDateString()}\n\n`
+    
+    guide += `## 📦 Order Creation Summary\n\n`
+    
+    if (selectedWorkflows.includes("receive_to_light") || selectedWorkflows.includes("pack_to_light")) {
+      guide += `### ✅ As-Is Workflow (Receive to Light / Pack to Light)\n`
+      guide += `- **Participant Orders:** BULK-PARTICIPANT-1 to BULK-PARTICIPANT-${tourData.participants.length}\n`
+      guide += `- **Purpose:** Use these orders for standard receiving and packing demonstrations\n`
+      guide += `- **SKUs Used:** ${tourData.selected_skus.slice(0, 3).join(', ')}\n\n`
+    }
+    
+    if (selectedWorkflows.includes("standard_receiving")) {
+      guide += `### 📥 Standard Receiving Purchase Order\n`
+      guide += `- **PO Number:** STD-RCV-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}\n`
+      guide += `- **Purpose:** Demonstrate standard receiving workflow\n`
+      guide += `- **SKUs:** ${tourData.selected_skus.slice(0, 6).join(', ')}\n`
+      guide += `- **Quantities:** 5-14 units each (randomized)\n\n`
+    }
+    
+    if (selectedWorkflows.includes("bulk_shipping")) {
+      guide += `### 📦 Bulk Shipping Orders\n`
+      guide += `- **Participant Orders:** BULK-PARTICIPANT-1 to BULK-PARTICIPANT-${tourData.participants.length}\n`
+      guide += `- **Demo Orders:** BULK-DEMO-1 to BULK-DEMO-10 (Celebrity names)\n`
+      guide += `- **Purpose:** Demonstrate bulk shipping and batch processing\n`
+      guide += `- **All orders ship to warehouse address to prevent actual shipping**\n\n`
+    }
+    
+    if (selectedWorkflows.includes("single_item_batch")) {
+      guide += `### 🎯 Single-Item Batch Picking\n`
+      guide += `- **Participant Orders:** SINGLE-PARTICIPANT-1 to SINGLE-PARTICIPANT-${tourData.participants.length}\n`
+      guide += `- **Demo Orders:** SINGLE-DEMO-1 to SINGLE-DEMO-5 (Celebrity names)\n`
+      guide += `- **Purpose:** Demonstrate single-item batch picking efficiency\n`
+      guide += `- **Strategy:** Use these orders to show batch picking of same SKUs\n\n`
+    }
+    
+    if (selectedWorkflows.includes("multi_item_batch")) {
+      guide += `### 🎯 Multi-Item Batch Picking\n`
+      guide += `- **Participant Orders:** MULTI-PARTICIPANT-1 to MULTI-PARTICIPANT-${tourData.participants.length}\n`
+      guide += `- **Demo Orders:** MULTI-DEMO-1 to MULTI-DEMO-5 (Celebrity names)\n`
+      guide += `- **Purpose:** Demonstrate complex multi-SKU batch picking\n`
+      guide += `- **Strategy:** Each order contains 2-4 different SKUs for complexity\n\n`
+    }
+    
+    guide += `## 🎭 Celebrity Names Used\n`
+    guide += `Demo orders use famous celebrity names for realistic appearance:\n`
+    guide += `Taylor Swift, Dwayne Johnson, Beyoncé Knowles, Ryan Reynolds, Zendaya Coleman, etc.\n\n`
+    
+    guide += `## 🏢 Shipping Addresses\n`
+    guide += `**ALL ORDERS** use the warehouse address as shipping destination:\n`
+    guide += `${tourData.warehouse.address?.address1 || tourData.warehouse.address?.address || 'Warehouse Address'}\n`
+    guide += `${tourData.warehouse.address?.city || 'City'}, ${tourData.warehouse.address?.state || 'ST'} ${tourData.warehouse.address?.zip || '00000'}\n\n`
+    
+    guide += `## 📋 Training Workflow Steps\n\n`
+    
+    if (selectedWorkflows.includes("standard_receiving")) {
+      guide += `### 1️⃣ Standard Receiving Demo\n`
+      guide += `- Use PO: STD-RCV-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}\n`
+      guide += `- Show receiving process with selected SKUs\n`
+      guide += `- Demonstrate putaway and location assignment\n\n`
+    }
+    
+    if (selectedWorkflows.includes("receive_to_light") || selectedWorkflows.includes("pack_to_light")) {
+      guide += `### 2️⃣ Receive to Light / Pack to Light\n`
+      guide += `- Use participant orders first: BULK-PARTICIPANT-1 onwards\n`
+      guide += `- Demonstrate light-guided processes\n`
+      guide += `- Show efficiency improvements\n\n`
+    }
+    
+    if (selectedWorkflows.includes("bulk_shipping")) {
+      guide += `### 3️⃣ Bulk Shipping Demo\n`
+      guide += `- Start with participant orders: BULK-PARTICIPANT-*\n`
+      guide += `- Then use celebrity demo orders: BULK-DEMO-*\n`
+      guide += `- Show batch processing and efficiency gains\n\n`
+    }
+    
+    if (selectedWorkflows.includes("single_item_batch")) {
+      guide += `### 4️⃣ Single-Item Batch Picking\n`
+      guide += `- Use SINGLE-PARTICIPANT-* and SINGLE-DEMO-* orders\n`
+      guide += `- Group orders by SKU for batch efficiency\n`
+      guide += `- Demonstrate pick path optimization\n\n`
+    }
+    
+    if (selectedWorkflows.includes("multi_item_batch")) {
+      guide += `### 5️⃣ Multi-Item Batch Picking\n`
+      guide += `- Use MULTI-PARTICIPANT-* and MULTI-DEMO-* orders\n`
+      guide += `- Show complex batch picking with multiple SKUs\n`
+      guide += `- Demonstrate advanced sorting and fulfillment\n\n`
+    }
+    
+    guide += `## ⚠️ Important Notes\n`
+    guide += `- **Participant orders are created FIRST** before demo orders\n`
+    guide += `- **No physical shipping** - all addresses point to warehouse\n`
+    guide += `- **Selected SKUs** are used instead of hardcoded items\n`
+    guide += `- **Celebrity names** make demos more engaging and realistic\n`
+    guide += `- **Order numbers** are prefixed for easy identification\n\n`
+    
+    guide += `Generated on: ${new Date().toLocaleString()}\n`
+    
+    console.log("📋 Instruction guide generated successfully")
+    return guide
   }
 }
