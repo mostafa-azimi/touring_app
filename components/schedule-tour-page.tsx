@@ -363,13 +363,9 @@ export function ScheduleTourPage() {
       return
     }
 
+    // Allow tours without participants for testing
     if (participants.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please add at least one participant",
-        variant: "destructive",
-      })
-      return
+      console.log('⚠️ Creating tour without participants (testing mode)')
     }
 
     setIsLoading(true)

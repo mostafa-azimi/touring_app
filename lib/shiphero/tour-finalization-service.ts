@@ -166,7 +166,7 @@ export class TourFinalizationService {
     errors: string[]
     instructionGuide?: string
   }> {
-    console.log(`⚡ DEPLOYMENT MARKER V4 - TourFinalizationService.finalizeTour called`)
+    console.log(`🧹 DEPLOYMENT MARKER V5 - TourFinalizationService.finalizeTour called`)
     console.log(`📋 Tour ID: ${tourId}`)
     console.log(`🎯 Selected options:`, selectedOptions)
     
@@ -288,7 +288,7 @@ export class TourFinalizationService {
     // Use selected SKUs or fallback to demo SKUs
     let skusToUse = tourData.selected_skus.length > 0 
       ? tourData.selected_skus 
-      : ["STANDARD-RECEIVING-01", "STANDARD-RECEIVING-02", "STANDARD-RECEIVING-03"]
+      : ["DEMO-SKU-01", "DEMO-SKU-02", "DEMO-SKU-03"]
     
     // Limit to first 6 SKUs to keep PO manageable
     skusToUse = skusToUse.slice(0, 6)
@@ -541,7 +541,7 @@ export class TourFinalizationService {
     
     if (tourData.selected_skus.length === 0) {
       console.log("No SKUs selected, using fallback SKUs")
-      tourData.selected_skus = ["MULTI-ITEM-X", "MULTI-ITEM-Y", "MULTI-ITEM-Z"]
+      tourData.selected_skus = ["DEMO-SKU-A", "DEMO-SKU-B", "DEMO-SKU-C"]
     }
 
     const celebrities = getCelebrityNames(count)
@@ -631,83 +631,7 @@ export class TourFinalizationService {
     return successful.map(result => result.data.order_create.order)
   }
 
-  /**
-   * LEGACY: Old multi-item batch method (kept for reference)
-   */
-  private async createMultiItemBatchSOsOld(tourData: TourData): Promise<void> {
-    const orderDefinitions = [
-      [{ sku: "MULTI-ITEM-X", quantity: 1 }, { sku: "MULTI-ITEM-Y", quantity: 2 }], // Order 1
-      [{ sku: "MULTI-ITEM-Z", quantity: 1 }],                                     // Order 2
-      [{ sku: "MULTI-ITEM-X", quantity: 3 }, { sku: "MULTI-ITEM-Z", quantity: 1 }], // Order 3
-      [{ sku: "MULTI-ITEM-Y", quantity: 1 }, { sku: "MULTI-ITEM-A", quantity: 1 }], // Order 4
-      [{ sku: "MULTI-ITEM-X", quantity: 2 }],                                     // Order 5
-    ]
-
-    const orderPromises = []
-    
-    for (let i = 0; i < orderDefinitions.length; i++) {
-      const mutation = `
-        mutation CreateOrder($data: OrderCreateInput!) {
-          order_create(data: $data) {
-            request_id
-            order {
-              id
-              legacy_id
-              order_number
-            }
-          }
-        }
-      `
-
-      const variables = {
-        data: {
-          order_number: `MULTI-${tourData.id}-${i + 1}`,
-          shop_name: "Touring App",
-          fulfillment_status: "pending",
-          order_date: new Date().toISOString(),
-          total_tax: "0.00",
-          subtotal: "0.00",
-          total_discounts: "0.00",
-          total_price: "0.00",
-          shipping_address: {
-            first_name: `Multi-Item Customer ${i + 1}`,
-            last_name: "Test",
-            address1: `${300 + i} Multi Rd`,
-            city: "Sortburg",
-            state: "FL",
-            zip: `3310${i}`,
-            country: "US"
-          },
-          line_items: orderDefinitions[i].map(item => ({
-            sku: item.sku,
-            quantity: item.quantity,
-            price: "0.00"
-          }))
-        }
-      }
-
-      const orderPromise = fetch('https://public-api.shiphero.com/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.shipHero.accessToken}`
-        },
-        body: JSON.stringify({ query: mutation, variables })
-      }).then(response => response.json())
-
-      orderPromises.push(orderPromise)
-    }
-
-    const results = await Promise.all(orderPromises)
-    
-    // Check for any failures
-    const failures = results.filter(result => !result.data?.order_create?.order)
-    if (failures.length > 0) {
-      throw new Error(`Failed to create ${failures.length} multi-item batch orders`)
-    }
-
-    console.log("Executed: Multi-Item Batch SOs")
-  }
+  // REMOVED: Legacy createMultiItemBatchSOsOld method - replaced with selected SKU approach
 
   /**
    * Helper method to get warehouse shipping address
