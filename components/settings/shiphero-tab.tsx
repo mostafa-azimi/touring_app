@@ -891,8 +891,7 @@ export function ShipHeroTab() {
                       title: "✅ Refresh Token Saved",
                       description: "Your ShipHero refresh token has been saved securely. Generate a new access token to start the 28-day countdown.",
                     })
-                    // Clear the input field after saving
-                    setRefreshToken("")
+                    // Keep the token in the input field for easy access token generation
                   }}
                   disabled={!refreshToken.trim()}
                   variant={tokenSaved ? "default" : "outline"}

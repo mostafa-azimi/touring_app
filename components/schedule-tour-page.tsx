@@ -57,44 +57,44 @@ const workflowOptions = [
   {
     id: "receive_to_light" as WorkflowOption,
     name: "Receive to Light",
-    description: "Creates sales orders for participants + aggregated purchase order (receive to light workflow)",
+    description: "Creates participant orders using selected SKUs for light-guided receiving demonstrations",
     category: "As-Is Workflows",
-    badge: "Original"
+    badge: "Enhanced"
   },
   {
     id: "pack_to_light" as WorkflowOption,
     name: "Pack to Light",
-    description: "Creates sales orders for participants + aggregated purchase order (pack to light workflow)",
+    description: "Creates participant orders using selected SKUs for light-guided packing demonstrations",
     category: "As-Is Workflows",
-    badge: "Original"
+    badge: "Enhanced"
   },
   {
     id: "standard_receiving" as WorkflowOption,
     name: "Standard Receiving",
-    description: "Creates a dedicated purchase order with 6 specific SKUs for receiving workflow training",
+    description: "Creates a purchase order using your selected SKUs with realistic quantities for receiving training",
     category: "Purchase Orders",
-    badge: "Training"
+    badge: "Enhanced"
   },
   {
     id: "bulk_shipping" as WorkflowOption,
     name: "Bulk Shipping",
-    description: "Creates 10 sales orders with same SKU but different addresses for bulk shipping training",
+    description: "Creates participant orders + 10 celebrity demo orders using selected SKUs (all ship to warehouse)",
     category: "Sales Orders",
-    badge: "Training"
+    badge: "Enhanced"
   },
   {
     id: "single_item_batch" as WorkflowOption,
     name: "Single-Item Batch",
-    description: "Creates 5 single-item orders for batch picking training (SKUs can repeat)",
+    description: "Creates participant orders + 5 celebrity demo orders optimized for single-item batch picking",
     category: "Sales Orders",
-    badge: "Training"
+    badge: "Enhanced"
   },
   {
     id: "multi_item_batch" as WorkflowOption,
     name: "Multi-Item Batch",
-    description: "Creates 5 multi-item orders for complex batch picking training",
+    description: "Creates participant orders + 5 celebrity multi-SKU orders for complex batch picking training",
     category: "Sales Orders",
-    badge: "Training"
+    badge: "Enhanced"
   }
 ]
 
