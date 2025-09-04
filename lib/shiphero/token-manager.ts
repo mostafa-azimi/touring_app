@@ -64,8 +64,6 @@ export class ShipHeroTokenManager {
     }
 
     try {
-      console.log('🔄 Auto-refreshing ShipHero access token...')
-      
       const response = await fetch('/api/shiphero/refresh-token', {
         method: 'POST',
         headers: {
@@ -89,7 +87,6 @@ export class ShipHeroTokenManager {
         expirationDate.setDate(expirationDate.getDate() + 28)
         localStorage.setItem('shiphero_token_expires_at', expirationDate.toISOString())
         
-        console.log('✅ Access token auto-refreshed successfully')
         return true
       } else {
         throw new Error('No access token in response')
@@ -120,14 +117,11 @@ export class ShipHeroTokenManager {
         // Refresh if expires in less than 2 days (since tokens last 28 days)
         const twoDaysInMinutes = 2 * 24 * 60
         if (minutesUntilExpiry < twoDaysInMinutes && minutesUntilExpiry > 0) {
-          const daysUntilExpiry = minutesUntilExpiry / (24 * 60)
-          console.log(`🔄 Token expires in ${daysUntilExpiry.toFixed(1)} days, refreshing...`)
           await this.refreshAccessToken()
         }
       }
     }, 60 * 60 * 1000) // Check every hour
 
-    console.log('🔄 Started automatic token refresh monitoring (checking every hour)')
   }
 
   /**
@@ -137,7 +131,6 @@ export class ShipHeroTokenManager {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval)
       this.refreshInterval = null
-      console.log('⏹️ Stopped automatic token refresh monitoring')
     }
   }
 }

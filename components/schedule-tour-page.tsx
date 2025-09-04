@@ -200,7 +200,6 @@ export function ScheduleTourPage() {
 
   const fetchWarehouses = async () => {
     try {
-      console.log('🚀 DEPLOYMENT MARKER V8.2 - Schedule Tour page loaded - TIMESTAMP:', new Date().toISOString())
       console.log('🏢 Loading warehouses from REMOTE database...')
       
       // First, load existing warehouses from remote database

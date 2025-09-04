@@ -74,13 +74,6 @@ export function ShipHeroTab() {
       calculateCountdown(savedExpiresAt)
     }
 
-    // Log what tokens we have on startup
-    console.log('🔄 Component initialized with tokens:', {
-      hasRefreshToken: !!savedToken,
-      hasAccessToken: !!savedAccessToken,
-      accessTokenStart: savedAccessToken ? savedAccessToken.substring(0, 20) + '...' : 'none',
-      expiresAt: savedExpiresAt
-    })
 
     // Auto-refresh token if it's expired or about to expire
     const autoRefreshToken = async () => {
@@ -89,16 +82,13 @@ export function ShipHeroTab() {
         const now = new Date()
         const minutesUntilExpiry = (expirationDate.getTime() - now.getTime()) / (1000 * 60)
         
-        // If token expires in less than 1 day or already expired, refresh it (since tokens last 28 days)
+        // If token expires in less than 1 day or already expired, refresh it
         const oneDayInMinutes = 24 * 60
         if (minutesUntilExpiry < oneDayInMinutes) {
-          const daysUntilExpiry = minutesUntilExpiry / oneDayInMinutes
-          console.log(`🔄 Access token expires in ${daysUntilExpiry.toFixed(1)} days, auto-refreshing...`)
           try {
             await handleGenerateAccessToken()
-            console.log('✅ Auto-refresh successful')
           } catch (error) {
-            console.error('❌ Auto-refresh failed:', error)
+            console.error('Failed to auto-refresh access token:', error)
           }
         }
       }
@@ -106,12 +96,9 @@ export function ShipHeroTab() {
 
     // Load data when component mounts (only if access token exists)
     if (savedAccessToken) {
-      console.log('🔄 Access token found, loading adhoc order data...')
       autoRefreshToken().then(() => {
         loadAdhocOrderData()
       })
-    } else {
-      console.log('⚠️ No access token found, skipping adhoc order data load')
     }
   }, [])
 
@@ -297,26 +284,6 @@ export function ShipHeroTab() {
         if (newAccessToken) {
           // Store the access token in localStorage
           localStorage.setItem('shiphero_access_token', newAccessToken)
-          console.log('✅ Access token stored in localStorage:', newAccessToken.substring(0, 20) + '...')
-          
-          // Immediately verify storage
-          const storedToken = localStorage.getItem('shiphero_access_token')
-          console.log('🔍 VERIFICATION: Token immediately after storage:', storedToken ? `${storedToken.substring(0, 20)}...` : 'FAILED TO STORE!')
-          
-          // Test localStorage persistence
-          console.log('🧪 TESTING localStorage:')
-          localStorage.setItem('test_persistence', 'test_value_' + Date.now())
-          console.log('  Test value stored:', localStorage.getItem('test_persistence'))
-          
-          // Check all ShipHero keys
-          console.log('🔑 ALL SHIPHERO KEYS IN LOCALSTORAGE:')
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i)
-            if (key && key.includes('shiphero')) {
-              const value = localStorage.getItem(key)
-              console.log(`  ${key}:`, value ? `${value.substring(0, 20)}...` : 'null')
-            }
-          }
           
           // Calculate expiration date
           const expirationDate = new Date(Date.now() + (expiresIn * 1000))
