@@ -216,12 +216,15 @@ export function ScheduleTourPage() {
           const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
           
           // Get existing warehouses from local database
+          console.log('🔍 Fetching existing warehouses from local database...')
           const { data: existingWarehouses, error: dbError } = await supabase
             .from('warehouses')
             .select('id, shiphero_warehouse_id, name')
           
+          console.log('📊 Existing warehouses in database:', existingWarehouses)
+          
           if (dbError) {
-            console.error('Error fetching local warehouses:', dbError)
+            console.error('❌ Error fetching local warehouses:', dbError)
             throw new Error('Failed to fetch local warehouses')
           }
           
@@ -229,8 +232,11 @@ export function ScheduleTourPage() {
           const transformedWarehouses = []
           
           for (const shipHeroWarehouse of shipHeroWarehouses) {
+            console.log(`🏢 Processing ShipHero warehouse: ${shipHeroWarehouse.id}`)
+            
             // Check if warehouse exists in local database
             let localWarehouse = existingWarehouses?.find(w => w.shiphero_warehouse_id === shipHeroWarehouse.id)
+            console.log(`🔍 Local warehouse match:`, localWarehouse)
             
             const warehouseData = {
               name: shipHeroWarehouse.address?.name || shipHeroWarehouse.identifier,
@@ -246,15 +252,18 @@ export function ScheduleTourPage() {
             
             if (!localWarehouse) {
               // Need to create warehouse in local database
+              console.log(`➕ Adding warehouse to upsert queue: ${warehouseData.name}`)
               warehousesToUpsert.push(warehouseData)
             }
             
             // Use local UUID if exists, otherwise will be created
-            transformedWarehouses.push({
+            const transformedWarehouse = {
               ...warehouseData,
               id: localWarehouse?.id || 'temp-' + shipHeroWarehouse.id, // Temporary ID until upserted
               full_address: shipHeroWarehouse.address
-            })
+            }
+            console.log(`📦 Transformed warehouse:`, transformedWarehouse)
+            transformedWarehouses.push(transformedWarehouse)
           }
           
           // Insert missing warehouses
