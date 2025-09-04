@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -101,6 +101,9 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
             <CheckCircle className="h-6 w-6 text-green-600" />
             Tour Finalized Successfully
           </DialogTitle>
+          <DialogDescription>
+            Your tour has been finalized with all selected workflows. Review the instructions below and print or save for reference.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 print:space-y-4">

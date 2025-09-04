@@ -1026,10 +1026,17 @@ export class TourFinalizationService {
 
     const results = await Promise.all(orderPromises)
     
-    // Check for failures
+    // Check for failures and log detailed errors
     const failures = results.filter(result => !result.data?.order_create?.order)
     if (failures.length > 0) {
-      console.error(`Failed to create ${failures.length} host demo orders:`, failures)
+      console.error(`Failed to create ${failures.length} host demo orders:`)
+      failures.forEach((failure, index) => {
+        console.error(`  Order ${index + 1} error:`, {
+          errors: failure.errors,
+          data: failure.data,
+          fullResponse: failure
+        })
+      })
     }
     
     const successful = results.filter(result => result.data?.order_create?.order)
@@ -1039,119 +1046,152 @@ export class TourFinalizationService {
   }
 
   /**
-   * Generate comprehensive instruction guide for the tour
+   * Generate host-friendly tour guide with step-by-step instructions
    */
   async generateInstructionGuide(tourId: string): Promise<string> {
-    console.log("📋 Generating instruction guide...")
+    console.log("📋 Generating host-friendly instruction guide...")
     
     const tourData = await this.getTourDetails(tourId)
     const selectedWorkflows = tourData.selected_workflows
     
-    let guide = `# 🎯 Tour Instruction Guide\n\n`
-    guide += `**Tour ID:** ${tourData.id}\n`
+    let guide = `# 🎯 WAREHOUSE TOUR GUIDE\n\n`
+    guide += `## 📋 Tour Overview\n`
+    guide += `**Date:** ${new Date().toLocaleDateString()}\n`
     guide += `**Warehouse:** ${tourData.warehouse.name}\n`
     guide += `**Host:** ${tourData.host.name}\n`
     guide += `**Participants:** ${tourData.participants.length}\n`
+    guide += `**Duration:** Approximately 45-60 minutes\n\n`
+    
+    guide += `## 🚀 WELCOME & INTRODUCTION (5 minutes)\n`
+    guide += `1. **Welcome participants** and introduce yourself\n`
+    guide += `2. **Safety briefing** - warehouse safety rules and procedures\n`
+    guide += `3. **Tour overview** - explain what they'll see and experience\n`
+    guide += `4. **Q&A expectations** - encourage questions throughout\n\n`
+    
+    guide += `## 🏢 WAREHOUSE OVERVIEW (10 minutes)\n`
+    guide += `1. **Facility tour** - show the physical layout\n`
+    guide += `2. **Technology stack** - introduce ShipHero and warehouse systems\n`
+    guide += `3. **Daily operations** - explain typical workflow and volume\n`
+    guide += `4. **Team structure** - roles and responsibilities\n\n`
+    
+    // Add specific workflow demonstrations
+    let workflowCounter = 1
+    
+    if (selectedWorkflows.includes('receive_to_light')) {
+      guide += `## 📦 DEMONSTRATION ${workflowCounter}: RECEIVE-TO-LIGHT (R2L)\n`
+      guide += `**Time:** 10 minutes | **Location:** Receiving area\n\n`
+      guide += `### What to show:\n`
+      guide += `- **Light-guided receiving** - how lights direct workers to correct locations\n`
+      guide += `- **Accuracy improvements** - reduced errors with visual guidance\n`
+      guide += `- **Speed benefits** - faster putaway with directed workflows\n`
+      guide += `- **Real-time updates** - inventory updates as items are received\n\n`
+      guide += `### Key talking points:\n`
+      guide += `- "This system eliminates guesswork in receiving"\n`
+      guide += `- "Lights guide workers to exact locations, reducing training time"\n`
+      guide += `- "Real-time inventory updates prevent stock discrepancies"\n\n`
+      workflowCounter++
+    }
+    
+    if (selectedWorkflows.includes('pack_to_light')) {
+      guide += `## 📋 DEMONSTRATION ${workflowCounter}: PACK-TO-LIGHT (P2L)\n`
+      guide += `**Time:** 12 minutes | **Location:** Packing stations\n\n`
+      guide += `### What to show:\n`
+      guide += `- **Order picking process** - how orders are selected and routed\n`
+      guide += `- **Light-guided packing** - lights indicate items and quantities\n`
+      guide += `- **Quality control** - built-in verification steps\n`
+      guide += `- **Shipping integration** - automatic label generation\n\n`
+      guide += `### Key talking points:\n`
+      guide += `- "Pack-to-Light reduces picking errors by up to 99.9%"\n`
+      guide += `- "Workers can focus on speed while lights ensure accuracy"\n`
+      guide += `- "Orders are automatically verified before shipping"\n\n`
+      workflowCounter++
+    }
+    
+    if (selectedWorkflows.includes('multi_item_batch')) {
+      guide += `## 🛒 DEMONSTRATION ${workflowCounter}: MULTI-ITEM BATCH PICKING\n`
+      guide += `**Time:** 10 minutes | **Location:** Pick zones\n\n`
+      guide += `### What to show:\n`
+      guide += `- **Batch optimization** - multiple orders picked simultaneously\n`
+      guide += `- **Route efficiency** - optimal path through warehouse\n`
+      guide += `- **Order consolidation** - how items are sorted by destination\n`
+      guide += `- **Productivity metrics** - real-time performance tracking\n\n`
+      guide += `### Key talking points:\n`
+      guide += `- "Batch picking increases productivity by 3-5x"\n`
+      guide += `- "Smart routing reduces travel time by up to 50%"\n`
+      guide += `- "System optimizes batches based on item locations"\n\n`
+      workflowCounter++
+    }
+    
+    if (selectedWorkflows.includes('single_item_batch')) {
+      guide += `## 📦 DEMONSTRATION ${workflowCounter}: SINGLE-ITEM BATCH PICKING\n`
+      guide += `**Time:** 8 minutes | **Location:** High-volume pick area\n\n`
+      guide += `### What to show:\n`
+      guide += `- **High-volume items** - how popular products are handled\n`
+      guide += `- **Dedicated workflows** - specialized processes for single SKUs\n`
+      guide += `- **Bulk handling** - efficient processing of large quantities\n`
+      guide += `- **Quality assurance** - verification for high-value items\n\n`
+      guide += `### Key talking points:\n`
+      guide += `- "Single-item batching perfect for high-volume SKUs"\n`
+      guide += `- "Reduces handling time for popular products"\n`
+      guide += `- "Specialized workflow ensures consistency"\n\n`
+      workflowCounter++
+    }
+    
+    if (selectedWorkflows.includes('bulk_shipping')) {
+      guide += `## 🚛 DEMONSTRATION ${workflowCounter}: BULK SHIPPING\n`
+      guide += `**Time:** 10 minutes | **Location:** Shipping dock\n\n`
+      guide += `### What to show:\n`
+      guide += `- **Large order processing** - how big shipments are handled\n`
+      guide += `- **Carrier integration** - automatic shipping calculations\n`
+      guide += `- **Loading optimization** - efficient truck loading\n`
+      guide += `- **Tracking systems** - real-time shipment visibility\n\n`
+      guide += `### Key talking points:\n`
+      guide += `- "Bulk shipping optimizes for large B2B orders"\n`
+      guide += `- "System calculates best shipping methods automatically"\n`
+      guide += `- "Real-time tracking keeps customers informed"\n\n`
+      workflowCounter++
+    }
+    
+    guide += `## 💻 SHIPHERO DASHBOARD DEMO (8 minutes)\n`
+    guide += `**Location:** Office area or mobile device\n\n`
+    guide += `### What to show:\n`
+    guide += `- **Real-time inventory** - live stock levels and locations\n`
+    guide += `- **Order management** - from receipt to fulfillment\n`
+    guide += `- **Analytics dashboard** - performance metrics and insights\n`
+    guide += `- **Mobile integration** - warehouse operations on mobile devices\n\n`
+    guide += `### Key talking points:\n`
+    guide += `- "Complete visibility into all warehouse operations"\n`
+    guide += `- "Data-driven decisions with real-time analytics"\n`
+    guide += `- "Mobile-first design for modern workforce"\n\n`
+    
+    guide += `## 🤝 Q&A AND WRAP-UP (5-10 minutes)\n`
+    guide += `1. **Open discussion** - answer specific questions\n`
+    guide += `2. **Next steps** - how to get started with ShipHero\n`
+    guide += `3. **Contact information** - provide follow-up resources\n`
+    guide += `4. **Thank participants** - appreciate their time\n\n`
+    
+    guide += `## 📞 FOLLOW-UP ACTIONS\n`
+    guide += `- [ ] Send thank you email with tour summary\n`
+    guide += `- [ ] Provide pricing and implementation timeline\n`
+    guide += `- [ ] Schedule follow-up demo if requested\n`
+    guide += `- [ ] Connect with technical team for detailed questions\n\n`
+    
+    guide += `## 🎯 KEY SUCCESS METRICS TO HIGHLIGHT\n`
+    guide += `- **99.9% accuracy** with light-guided systems\n`
+    guide += `- **50% reduction** in training time for new workers\n`
+    guide += `- **3-5x productivity** increase with batch picking\n`
+    guide += `- **Real-time visibility** into all operations\n`
+    guide += `- **Seamless integration** with existing systems\n\n`
+    
+    guide += `## 📦 PRODUCTS FOR DEMONSTRATION\n`
     guide += `**Selected SKUs:** ${tourData.selected_skus.join(', ')}\n`
-    guide += `**Date:** ${new Date().toLocaleDateString()}\n\n`
+    guide += `*Use these products throughout all demonstrations for consistency*\n\n`
     
-    guide += `## 📦 Order Creation Summary\n\n`
+    guide += `---\n`
+    guide += `*Generated on: ${new Date().toLocaleString()}*\n`
+    guide += `*Tour ID: ${tourData.id}*\n`
     
-    if (selectedWorkflows.includes("receive_to_light") || selectedWorkflows.includes("pack_to_light")) {
-      guide += `### ✅ As-Is Workflow (Receive to Light / Pack to Light)\n`
-      guide += `- **Participant Orders:** BULK-PARTICIPANT-1 to BULK-PARTICIPANT-${tourData.participants.length}\n`
-      guide += `- **Purpose:** Use these orders for standard receiving and packing demonstrations\n`
-      guide += `- **SKUs Used:** ${tourData.selected_skus.slice(0, 3).join(', ')}\n\n`
-    }
-    
-    if (selectedWorkflows.includes("standard_receiving")) {
-      guide += `### 📥 Standard Receiving Purchase Order\n`
-      guide += `- **PO Number:** STD-RCV-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}\n`
-      guide += `- **Purpose:** Demonstrate standard receiving workflow\n`
-      guide += `- **SKUs:** ${tourData.selected_skus.slice(0, 6).join(', ')}\n`
-      guide += `- **Quantities:** 5-14 units each (randomized)\n\n`
-    }
-    
-    if (selectedWorkflows.includes("bulk_shipping")) {
-      guide += `### 📦 Bulk Shipping Orders\n`
-      guide += `- **Participant Orders:** BULK-PARTICIPANT-1 to BULK-PARTICIPANT-${tourData.participants.length}\n`
-      guide += `- **Demo Orders:** BULK-DEMO-1 to BULK-DEMO-10 (Celebrity names)\n`
-      guide += `- **Purpose:** Demonstrate bulk shipping and batch processing\n`
-      guide += `- **All orders ship to warehouse address to prevent actual shipping**\n\n`
-    }
-    
-    if (selectedWorkflows.includes("single_item_batch")) {
-      guide += `### 🎯 Single-Item Batch Picking\n`
-      guide += `- **Participant Orders:** SINGLE-PARTICIPANT-1 to SINGLE-PARTICIPANT-${tourData.participants.length}\n`
-      guide += `- **Demo Orders:** SINGLE-DEMO-1 to SINGLE-DEMO-5 (Celebrity names)\n`
-      guide += `- **Purpose:** Demonstrate single-item batch picking efficiency\n`
-      guide += `- **Strategy:** Use these orders to show batch picking of same SKUs\n\n`
-    }
-    
-    if (selectedWorkflows.includes("multi_item_batch")) {
-      guide += `### 🎯 Multi-Item Batch Picking\n`
-      guide += `- **Participant Orders:** MULTI-PARTICIPANT-1 to MULTI-PARTICIPANT-${tourData.participants.length}\n`
-      guide += `- **Demo Orders:** MULTI-DEMO-1 to MULTI-DEMO-5 (Celebrity names)\n`
-      guide += `- **Purpose:** Demonstrate complex multi-SKU batch picking\n`
-      guide += `- **Strategy:** Each order contains 2-4 different SKUs for complexity\n\n`
-    }
-    
-    guide += `## 🎭 Celebrity Names Used\n`
-    guide += `Demo orders use famous celebrity names for realistic appearance:\n`
-    guide += `Taylor Swift, Dwayne Johnson, Beyoncé Knowles, Ryan Reynolds, Zendaya Coleman, etc.\n\n`
-    
-    guide += `## 🏢 Shipping Addresses\n`
-    guide += `**ALL ORDERS** use the warehouse address as shipping destination:\n`
-    guide += `${tourData.warehouse.address?.address1 || tourData.warehouse.address?.address || 'Warehouse Address'}\n`
-    guide += `${tourData.warehouse.address?.city || 'City'}, ${tourData.warehouse.address?.state || 'ST'} ${tourData.warehouse.address?.zip || '00000'}\n\n`
-    
-    guide += `## 📋 Training Workflow Steps\n\n`
-    
-    if (selectedWorkflows.includes("standard_receiving")) {
-      guide += `### 1️⃣ Standard Receiving Demo\n`
-      guide += `- Use PO: STD-RCV-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}\n`
-      guide += `- Show receiving process with selected SKUs\n`
-      guide += `- Demonstrate putaway and location assignment\n\n`
-    }
-    
-    if (selectedWorkflows.includes("receive_to_light") || selectedWorkflows.includes("pack_to_light")) {
-      guide += `### 2️⃣ Receive to Light / Pack to Light\n`
-      guide += `- Use participant orders first: BULK-PARTICIPANT-1 onwards\n`
-      guide += `- Demonstrate light-guided processes\n`
-      guide += `- Show efficiency improvements\n\n`
-    }
-    
-    if (selectedWorkflows.includes("bulk_shipping")) {
-      guide += `### 3️⃣ Bulk Shipping Demo\n`
-      guide += `- Start with participant orders: BULK-PARTICIPANT-*\n`
-      guide += `- Then use celebrity demo orders: BULK-DEMO-*\n`
-      guide += `- Show batch processing and efficiency gains\n\n`
-    }
-    
-    if (selectedWorkflows.includes("single_item_batch")) {
-      guide += `### 4️⃣ Single-Item Batch Picking\n`
-      guide += `- Use SINGLE-PARTICIPANT-* and SINGLE-DEMO-* orders\n`
-      guide += `- Group orders by SKU for batch efficiency\n`
-      guide += `- Demonstrate pick path optimization\n\n`
-    }
-    
-    if (selectedWorkflows.includes("multi_item_batch")) {
-      guide += `### 5️⃣ Multi-Item Batch Picking\n`
-      guide += `- Use MULTI-PARTICIPANT-* and MULTI-DEMO-* orders\n`
-      guide += `- Show complex batch picking with multiple SKUs\n`
-      guide += `- Demonstrate advanced sorting and fulfillment\n\n`
-    }
-    
-    guide += `## ⚠️ Important Notes\n`
-    guide += `- **Participant orders are created FIRST** before demo orders\n`
-    guide += `- **No physical shipping** - all addresses point to warehouse\n`
-    guide += `- **Selected SKUs** are used instead of hardcoded items\n`
-    guide += `- **Celebrity names** make demos more engaging and realistic\n`
-    guide += `- **Order numbers** are prefixed for easy identification\n\n`
-    
-    guide += `Generated on: ${new Date().toLocaleString()}\n`
-    
-    console.log("📋 Instruction guide generated successfully")
+    console.log("📋 Host-friendly instruction guide generated successfully")
     return guide
   }
 }
