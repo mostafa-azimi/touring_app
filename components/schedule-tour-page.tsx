@@ -1036,30 +1036,33 @@ export function ScheduleTourPage() {
                       <div 
                         key={product.sku} 
                         className={`
-                          relative flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200
+                          relative flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer
                           ${selectedSkus.includes(product.sku) 
-                            ? 'border-blue-200 bg-blue-50 shadow-sm' 
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                            ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200' 
+                            : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25'
                           }
                         `}
+                        onClick={() => handleSkuChange(product.sku, !selectedSkus.includes(product.sku))}
                       >
-                        <Checkbox
-                          id={product.sku}
-                          checked={selectedSkus.includes(product.sku)}
-                          onCheckedChange={(checked) => handleSkuChange(product.sku, checked as boolean)}
-                          className="mt-1"
-                        />
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            id={product.sku}
+                            checked={selectedSkus.includes(product.sku)}
+                            onCheckedChange={(checked) => handleSkuChange(product.sku, checked as boolean)}
+                            className="mt-1"
+                          />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <Label 
                             htmlFor={product.sku} 
-                            className="font-semibold cursor-pointer text-sm block text-slate-800 mb-1"
+                            className="font-semibold text-sm block text-slate-800 mb-1 pointer-events-none"
                           >
                             {product.sku}
                           </Label>
                           <p className="text-xs text-slate-600 mb-2 line-clamp-2 leading-relaxed">
                             {product.name}
                           </p>
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center">
                             <span className={`text-xs font-medium px-2 py-1 rounded ${
                               (product.inventory?.available || 0) > 0 
                                 ? 'bg-green-100 text-green-700' 
@@ -1067,11 +1070,6 @@ export function ScheduleTourPage() {
                             }`}>
                               {product.inventory?.available || 0} available
                             </span>
-                            {product.inventory?.warehouse_name && (
-                              <span className="text-xs text-slate-500 truncate max-w-24" title={product.inventory.warehouse_name}>
-                                {product.inventory.warehouse_name}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
