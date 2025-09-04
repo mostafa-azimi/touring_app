@@ -400,13 +400,13 @@ export class TourFinalizationService {
     // Create participant orders first (using selected SKUs)
     const participantOrders = await this.createParticipantOrders(tourData, "P2L")
     
-    // If no participants, create demo orders using host name
+    // If no participants, create a sales order for the host for demonstration
     if (participantOrders.length === 0) {
-      console.log("No participants - creating demo orders using host name for demonstration")
-      await this.createHostDemoOrders(tourData, "P2L-HOST", 3)
+      console.log("No participants - creating sales order for host using selected SKUs")
+      await this.createHostSalesOrder(tourData, "P2L-HOST")
     }
     
-    // Create purchase order using selected SKUs
+    // Create purchase order using selected SKUs (sum of all participants + host)
     await this.createStandardReceivingPO(tourData, "P2L")
 
     console.log("Executed: Pack-to-Light Workflow with selected SKUs")
@@ -935,6 +935,71 @@ export class TourFinalizationService {
     console.log(`✅ Created ${successful.length} simple demo orders (no celebrities)`)
     
     return successful.map(result => result.data.order_create.order)
+  }
+
+  /**
+   * Helper method to create a single sales order for the host (for Pack-to-Light when no participants)
+   */
+  private async createHostSalesOrder(tourData: TourData, orderPrefix: string): Promise<any> {
+    console.log(`Creating host sales order using: ${tourData.host.name}`)
+    
+    if (tourData.selected_skus.length === 0) {
+      throw new Error("No SKUs selected for orders. Please select SKUs when creating the tour.")
+    }
+
+    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    
+    // Create line items for all selected SKUs
+    const lineItems = tourData.selected_skus.map((sku, index) => ({
+      sku: sku,
+      quantity: 1, // Simple quantity of 1 for host demo
+      price: "15.00",
+      product_name: `Product ${sku}`,
+      partner_line_item_id: `host-line-${index + 1}`,
+      fulfillment_status: "pending",
+      quantity_pending_fulfillment: 1,
+      warehouse_id: tourData.warehouse.shiphero_warehouse_id
+    }))
+
+    const orderData = {
+      order_number: `${orderPrefix}-${tourData.host.first_name || 'HOST'}`,
+      shop_name: "Touring App",
+      email: "host@example.com",
+      phone: "555-0123",
+      shipping_address: {
+        first_name: tourData.host.first_name || "Host",
+        last_name: tourData.host.last_name || "Demo",
+        address1: warehouseAddress.address1,
+        address2: warehouseAddress.address2 || "",
+        city: warehouseAddress.city,
+        state: warehouseAddress.state,
+        zip: warehouseAddress.zip,
+        country: warehouseAddress.country,
+        phone: "555-0123"
+      },
+      billing_address: {
+        first_name: tourData.host.first_name || "Host",
+        last_name: tourData.host.last_name || "Demo",
+        address1: warehouseAddress.address1,
+        address2: warehouseAddress.address2 || "",
+        city: warehouseAddress.city,
+        state: warehouseAddress.state,
+        zip: warehouseAddress.zip,
+        country: warehouseAddress.country,
+        phone: "555-0123"
+      },
+      line_items: lineItems,
+      tags: ["host", "tour", "pack-to-light"]
+    }
+
+    try {
+      const result = await this.createSalesOrderViaAPI(orderData)
+      console.log(`✅ Created host sales order: ${orderData.order_number}`)
+      return result
+    } catch (error) {
+      console.error(`❌ Failed to create host sales order:`, error)
+      throw error
+    }
   }
 
   /**
