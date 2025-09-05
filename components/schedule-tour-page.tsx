@@ -57,14 +57,14 @@ const workflowOptions = [
   {
     id: "standard_receiving" as WorkflowOption,
     name: "Standard Receiving",
-    description: "Creates a purchase order using your selected SKUs with realistic quantities for receiving training",
+    description: "Creates one purchase order using your selected SKUs and quantities for receiving training",
     category: "Inbound",
     badge: "Standard"
   },
   {
     id: "receive_to_light" as WorkflowOption,
     name: "Receive to Light",
-    description: "Creates participant orders using selected SKUs for light-guided receiving demonstrations",
+    description: "Creates one purchase order using your selected SKUs and quantities for light-guided receiving training",
     category: "Inbound",
     badge: "Attainable Automation"
   },

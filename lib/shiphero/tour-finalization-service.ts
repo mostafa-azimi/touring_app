@@ -317,7 +317,7 @@ export class TourFinalizationService {
       // Logic Block 2: "Standard Receiving" PO
       if (selectedOptions.includes("standard_receiving")) {
         try {
-          await this.createStandardReceivingPO(tourData)
+          await this.createStandardReceivingWorkflow(tourData)
         } catch (error) {
           const errorMsg = `Standard Receiving PO failed: ${error instanceof Error ? error.message : 'Unknown error'}`
           console.error(errorMsg)
@@ -413,21 +413,63 @@ export class TourFinalizationService {
    * R2L is just receiving - no sales orders needed.
    */
   private async createReceiveToLightWorkflowOrders(tourData: TourData): Promise<void> {
-    console.log("Executing: Receive-to-Light Workflow (PO ONLY) using SELECTED SKUs")
-    console.log("🎯 Selected SKUs for R2L workflow:", tourData.selected_skus)
+    console.log("Executing: Receive-to-Light Workflow (PO ONLY)")
     
-    // Calculate quantities needed based on P2L workflow requirements
-    const quantitiesNeeded = this.calculateR2LQuantitiesFromP2L(tourData)
+    // Get workflow configuration
+    const workflowConfig = tourData.workflow_configs?.['receive_to_light']
+    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
     
-    // R2L is just receiving - create purchase order with calculated quantities
-    await this.createSmartReceivingPO(tourData, "R2L", quantitiesNeeded)
+    console.log("🎯 Selected SKUs for R2L workflow:", workflowSkus)
+    
+    if (workflowSkus.length === 0) {
+      throw new Error("No SKUs selected for Receive-to-Light workflow. Please select SKUs when creating the tour.")
+    }
+    
+    // Use workflow-specific SKUs with specified quantities
+    const quantities: { [sku: string]: number } = {}
+    workflowSkus.forEach(sku => {
+      // Use the quantity specified in workflow config, default to 10
+      quantities[sku] = 10 // Fixed quantity for receiving
+    })
+    
+    // R2L is just receiving - create purchase order with workflow quantities
+    await this.createSmartReceivingPO(tourData, "R2L", quantities)
 
     console.log("Executed: Receive-to-Light Workflow - PO created for receiving")
   }
 
   /**
-   * MODULE 1b: Creates Sales Orders for participants/host and Purchase Order for Pack-to-Light.
-   * Uses participant and host names (no celebrity names for pack-to-light).
+   * MODULE 2: Creates Purchase Order ONLY for Standard Receiving (receiving workflow).
+   * Standard Receiving is just receiving - no sales orders needed.
+   */
+  private async createStandardReceivingWorkflow(tourData: TourData): Promise<void> {
+    console.log("Executing: Standard Receiving Workflow (PO ONLY)")
+    
+    // Get workflow configuration
+    const workflowConfig = tourData.workflow_configs?.['standard_receiving']
+    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
+    
+    console.log("🎯 Selected SKUs for Standard Receiving workflow:", workflowSkus)
+    
+    if (workflowSkus.length === 0) {
+      throw new Error("No SKUs selected for Standard Receiving workflow. Please select SKUs when creating the tour.")
+    }
+    
+    // Use workflow-specific SKUs with specified quantities
+    const quantities: { [sku: string]: number } = {}
+    workflowSkus.forEach(sku => {
+      quantities[sku] = 10 // Fixed quantity for receiving
+    })
+    
+    // Standard Receiving is just receiving - create purchase order
+    await this.createSmartReceivingPO(tourData, "STANDARD-RECEIVING", quantities)
+
+    console.log("Executed: Standard Receiving Workflow - PO created for receiving")
+  }
+
+  /**
+   * MODULE 1b: Creates Sales Orders for participants/host for Pack-to-Light.
+   * Uses participant and host names (fulfillment workflow only).
    */
   private async createPackToLightWorkflowOrders(tourData: TourData): Promise<void> {
     console.log("Executing: Pack-to-Light Workflow using SELECTED SKUs")
@@ -446,60 +488,6 @@ export class TourFinalizationService {
     console.log("Executed: Pack-to-Light Workflow with selected SKUs (Sales Orders Only)")
   }
 
-  /**
-   * MODULE 2: Creates a separate, unique Purchase Order for the selected receiving workflow.
-   */
-  private async createStandardReceivingPO(tourData: TourData, workflowName: string = "STANDARD-RECEIVING"): Promise<void> {
-    // Use selected SKUs only - no hardcoded fallbacks
-    if (tourData.selected_skus.length === 0) {
-      throw new Error(`No SKUs selected for ${workflowName} PO. Please select SKUs when creating the tour.`)
-    }
-    
-    let skusToUse = tourData.selected_skus
-    
-    // Limit to first 6 SKUs to keep PO manageable
-    skusToUse = skusToUse.slice(0, 6)
-    
-    const poLineItems = skusToUse.map((sku, index) => ({
-      sku: sku,
-      quantity: 10 // Fixed quantity for demo purposes
-    }))
-
-    console.log(`Creating ${workflowName} PO with ${poLineItems.length} SKUs:`, poLineItems.map(item => item.sku))
-
-    const poData = {
-      po_number: `${workflowName}-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}`,
-      po_date: new Date().toISOString().slice(0, 10),
-      vendor_id: "1076735",
-      warehouse_id: tourData.warehouse.shiphero_warehouse_id,
-      subtotal: "0.00",
-      tax: "0.00", 
-      shipping_price: "0.00",
-      total_price: "0.00",
-      fulfillment_status: "pending",
-      discount: "0.00",
-      line_items: poLineItems.map(item => ({
-        sku: item.sku,
-        quantity: item.quantity,
-        expected_weight_in_lbs: "1",
-        vendor_id: "1076735",
-        quantity_received: 0,
-        quantity_rejected: 0,
-        price: "0.00",
-        product_name: item.sku,
-        fulfillment_status: "pending",
-        sell_ahead: 0
-      }))
-    }
-
-    const data = await this.createPurchaseOrderViaAPI(poData)
-
-    if (data.data?.purchase_order_create?.purchase_order) {
-      console.log(`Executed: ${workflowName} PO`)
-    } else {
-      throw new Error(`Failed to create ${workflowName} PO: ${data.errors?.[0]?.message || 'Unknown error'}`)
-    }
-  }
 
   /**
    * MODULE 3: Creates a batch of Sales Orders for "Bulk Shipping".
@@ -711,35 +699,6 @@ export class TourFinalizationService {
     }
   }
 
-  /**
-   * Calculate R2L PO quantities based on what P2L workflow will need
-   */
-  private calculateR2LQuantitiesFromP2L(tourData: TourData): { [sku: string]: number } {
-    const quantities: { [sku: string]: number } = {}
-    
-    // Initialize all selected SKUs with 0
-    tourData.selected_skus.forEach(sku => {
-      quantities[sku] = 0
-    })
-    
-    // Calculate quantities needed for participants
-    const participantCount = tourData.participants.length
-    if (participantCount > 0) {
-      // Each participant gets up to 3 SKUs, 1 unit each
-      const skusPerParticipant = Math.min(3, tourData.selected_skus.length)
-      tourData.selected_skus.slice(0, skusPerParticipant).forEach(sku => {
-        quantities[sku] += participantCount // 1 unit per participant
-      })
-    } else {
-      // If no participants, host gets all selected SKUs, 1 unit each
-      tourData.selected_skus.forEach(sku => {
-        quantities[sku] += 1 // 1 unit for host demo
-      })
-    }
-    
-    console.log("🧮 Calculated R2L quantities based on P2L needs:", quantities)
-    return quantities
-  }
 
   /**
    * Create smart receiving PO with calculated quantities
