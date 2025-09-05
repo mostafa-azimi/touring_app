@@ -265,7 +265,7 @@ export function ScheduleTourPage() {
     }))
   }
 
-  const handleWorkflowSkuChange = (workflowId: string, sku: string, checked: boolean) => {
+  const handleWorkflowSkuChange = useCallback((workflowId: string, sku: string, checked: boolean) => {
     setWorkflowConfigs(prev => ({
       ...prev,
       [workflowId]: {
@@ -275,7 +275,7 @@ export function ScheduleTourPage() {
           : (prev[workflowId]?.selectedSkus || []).filter(s => s !== sku)
       }
     }))
-  }
+  }, [])
 
   const loadAllSkus = async () => {
     setIsLoadingSkus(true)
@@ -627,7 +627,7 @@ export function ScheduleTourPage() {
   // Stable callback for workflow SKU changes to prevent infinite re-renders
   const handleWorkflowSkuChangeCallback = useCallback((workflowId: string, sku: string, checked: boolean) => {
     handleWorkflowSkuChange(workflowId, sku, checked)
-  }, [])
+  }, [handleWorkflowSkuChange])
 
   // Memoize workflow SKUs to prevent infinite re-renders
   const workflowSkusMap = useMemo(() => {
