@@ -382,6 +382,9 @@ export class TourFinalizationService {
       const sales_orders = createdOrders.filter(order => order.type === 'sales_order')
       const purchase_orders = createdOrders.filter(order => order.type === 'purchase_order')
 
+      // Generate instruction guide (disabled as requested)
+      const instruction_guide = "Instruction guide generation disabled."
+      
       return {
         success: true,
         message: `Tour finalized successfully! Created ${sales_orders.length} sales orders and ${purchase_orders.length} purchase orders.`,
@@ -612,34 +615,46 @@ export class TourFinalizationService {
       
       // Create line items using the same format as adhoc sales orders
       const skuIndex = i % workflowSkus.length
+      const selectedSku = workflowSkus[skuIndex]
       const lineItems = [{
-        sku: workflowSkus[skuIndex],
-        quantity: "1"
+        sku: selectedSku,
+        quantity: 1,
+        price: "0.00"
       }]
 
+      const orderNumber = `${orderPrefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
+      
       const orderData = {
-        order_number: `${orderPrefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`,
+        order_number: orderNumber,
         shop_name: "ShipHero Tour Demo",
         fulfillment_status: "pending",
-        order_date: new Date().toISOString(),
+        order_date: new Date().toISOString().split('T')[0], // Date only format like adhoc
         total_tax: "0.00",
-        subtotal: "10.00", 
+        subtotal: "0.00", 
         total_discounts: "0.00",
-        total_price: "10.00",
-        auto_print_return_label: false,
+        total_price: "0.00",
+        
+        shipping_lines: {
+          title: "Generic Shipping",
+          price: "0.00",
+          carrier: "Generic Carrier",
+          method: "Generic Label"
+        },
         
         shipping_address: {
-          first_name: recipient.first_name,
-          last_name: recipient.last_name,
-          company: recipient.company,
+          first_name: tourData.warehouse.name,
+          last_name: "Warehouse",
+          company: tourData.warehouse.name,
           address1: tourData.warehouse.address,
           address2: tourData.warehouse.address2 || "",
           city: tourData.warehouse.city,
-          state: tourData.warehouse.state,
+          state: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          state_code: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
           zip: tourData.warehouse.zip,
           country: "US",
+          country_code: "US",
           email: recipient.email,
-          phone: "555-0123"
+          phone: "5555555555"
         },
         
         billing_address: {
@@ -649,22 +664,28 @@ export class TourFinalizationService {
           address1: tourData.warehouse.address,
           address2: tourData.warehouse.address2 || "",
           city: tourData.warehouse.city,
-          state: tourData.warehouse.state,
+          state: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          state_code: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
           zip: tourData.warehouse.zip,
           country: "US",
+          country_code: "US",
           email: recipient.email,
-          phone: "555-0123"
+          phone: "5555555555"
         },
         
-        line_items: lineItems,
+        line_items: lineItems.map((item, index) => ({
+          sku: item.sku,
+          partner_line_item_id: `${orderNumber}-${index + 1}`,
+          quantity: item.quantity,
+          price: item.price,
+          product_name: item.sku,
+          fulfillment_status: "pending",
+          quantity_pending_fulfillment: item.quantity,
+          warehouse_id: item.warehouse_id
+        })),
         
-        shipping_lines: [{
-          title: "Tour Demo Shipping",
-          price: "0.00"
-        }],
-        
-        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`]
+        required_ship_date: new Date().toISOString().split('T')[0],
+        tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`, tourData.warehouse.code].filter(Boolean)
       }
 
       console.log(`📦 Creating order ${i + 1}/${orderCount} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)
