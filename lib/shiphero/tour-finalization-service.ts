@@ -1576,60 +1576,83 @@ export class TourFinalizationService {
   }
 
   /**
-   * Helper method to create demo orders with celebrity names for various workflows
+   * Helper method to create demo orders using the proven adhoc sales order format
    */
   private async createDemoOrders(tourData: TourData, orderPrefix: string, orderCount: number, workflowSkus: string[]): Promise<any[]> {
-    console.log(`Creating ${orderCount} demo orders with celebrity names for ${orderPrefix}...`)
+    console.log(`Creating ${orderCount} demo orders using proven adhoc format for ${orderPrefix}...`)
     
     if (workflowSkus.length === 0) {
       throw new Error(`No SKUs selected for ${orderPrefix}. Please select SKUs when creating the tour.`)
     }
 
     const celebrities = getCelebrityNames(orderCount)
-    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
     const orderPromises = []
 
     for (let i = 0; i < orderCount; i++) {
       const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
       
-      // Create single-item orders using workflow SKUs (rotating through them)
+      // Create line items using the same format as adhoc sales orders
       const skuIndex = i % workflowSkus.length
       const lineItems = [{
         sku: workflowSkus[skuIndex],
-        quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
-        price: "12.00",
-        product_name: `Product ${workflowSkus[skuIndex]}`,
-        partner_line_item_id: `${orderPrefix.toLowerCase()}-${Date.now()}-${i + 1}`,
+        partner_line_item_id: `${orderPrefix}-${i + 1}`,
+        quantity: 1, // Keep it simple like adhoc orders
+        price: "0.00", // Match adhoc order pricing
+        product_name: workflowSkus[skuIndex],
         fulfillment_status: "pending",
-        quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
+        quantity_pending_fulfillment: 1,
         warehouse_id: tourData.warehouse.shiphero_warehouse_id
       }]
 
+      // Use the same order data structure as proven adhoc sales orders
       const orderData = {
         order_number: `${orderPrefix}-${Date.now()}-${i + 1}`,
-        shop_name: "Tour Demo Orders",
+        shop_name: `Warehouse Tours - ${orderPrefix}`,
         fulfillment_status: "pending",
-        order_date: new Date().toISOString().split('T')[0],
+        order_date: tourData.date,
         total_tax: "0.00",
-        subtotal: "12.00",
+        subtotal: "0.00",
         total_discounts: "0.00",
-        total_price: "12.00",
+        total_price: "0.00",
+        shipping_lines: {
+          title: "Generic Shipping",
+          price: "0.00",
+          carrier: "Generic Carrier",
+          method: "Generic Label"
+        },
         shipping_address: {
           first_name: celebrity.first,
           last_name: celebrity.last,
-          company: "Demo Company",
-          address1: warehouseAddress.address,
-          address2: warehouseAddress.address2,
-          city: warehouseAddress.city,
-          state: warehouseAddress.state,
-          state_code: warehouseAddress.state,
-          zip: warehouseAddress.zip,
-          country: warehouseAddress.country,
-          country_code: warehouseAddress.country,
-          phone: warehouseAddress.phone,
-          email: `demo.${orderPrefix.toLowerCase()}.${i + 1}@example.com`
+          company: `${orderPrefix} Demo`,
+          address1: tourData.warehouse.address,
+          address2: tourData.warehouse.address2 || '',
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          state_code: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: 'US',
+          country_code: 'US',
+          email: `demo.${orderPrefix.toLowerCase()}.${i + 1}@example.com`,
+          phone: "5555555555"
         },
-        line_items: lineItems
+        billing_address: {
+          first_name: celebrity.first,
+          last_name: celebrity.last,
+          company: `${orderPrefix} Demo`,
+          address1: tourData.warehouse.address,
+          address2: tourData.warehouse.address2 || '',
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          state_code: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: 'US',
+          country_code: 'US',
+          email: `demo.${orderPrefix.toLowerCase()}.${i + 1}@example.com`,
+          phone: "5555555555"
+        },
+        line_items: lineItems,
+        required_ship_date: tourData.date,
+        tags: [tourData.warehouse.code || ""].filter(Boolean)
       }
 
       const promise = this.createSalesOrderViaAPI(orderData)
@@ -1637,9 +1660,9 @@ export class TourFinalizationService {
     }
 
     const results = await Promise.all(orderPromises)
-    const successfulOrders = results.filter(result => result.success)
+    const successfulOrders = results.filter(result => result.data?.order_create?.order)
     
-    console.log(`✅ Created ${successfulOrders.length}/${orderCount} ${orderPrefix} demo orders`)
+    console.log(`✅ Created ${successfulOrders.length}/${orderCount} ${orderPrefix} demo orders using proven format`)
     
     if (successfulOrders.length < orderCount) {
       const failedCount = orderCount - successfulOrders.length
@@ -1650,7 +1673,7 @@ export class TourFinalizationService {
   }
 
   /**
-   * Helper method to create orders for tour participants
+   * Helper method to create orders for tour participants using proven adhoc format
    */
   private async createParticipantOrders(tourData: TourData, orderPrefix: string): Promise<any[]> {
     if (!tourData.participants || tourData.participants.length === 0) {
@@ -1658,52 +1681,75 @@ export class TourFinalizationService {
       return []
     }
 
-    console.log(`Creating orders for ${tourData.participants.length} participants first...`)
+    console.log(`Creating orders for ${tourData.participants.length} participants using proven adhoc format...`)
     
-    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
     const orderPromises = []
 
     for (let i = 0; i < tourData.participants.length; i++) {
       const participant = tourData.participants[i]
       
-      // Create single-item orders using first available SKU
-      const sku = tourData.selected_skus[0] // Use first SKU for participants
+      // Use first available SKU for participants, same as adhoc orders
+      const sku = tourData.selected_skus[0]
       const lineItems = [{
         sku: sku,
+        partner_line_item_id: `${orderPrefix}-PARTICIPANT-${i + 1}`,
         quantity: 1,
-        price: "12.00",
-        product_name: `Product ${sku}`,
-        partner_line_item_id: `${orderPrefix.toLowerCase()}-participant-${Date.now()}-${i + 1}`,
+        price: "0.00", // Match adhoc order pricing
+        product_name: sku,
         fulfillment_status: "pending",
         quantity_pending_fulfillment: 1,
         warehouse_id: tourData.warehouse.shiphero_warehouse_id
       }]
 
+      // Use the same order data structure as proven adhoc sales orders
       const orderData = {
         order_number: `${orderPrefix}-PARTICIPANT-${Date.now()}-${i + 1}`,
-        shop_name: "Tour Participant Orders",
+        shop_name: `Warehouse Tours - ${orderPrefix} Participants`,
         fulfillment_status: "pending",
-        order_date: new Date().toISOString().split('T')[0],
+        order_date: tourData.date,
         total_tax: "0.00",
-        subtotal: "12.00",
+        subtotal: "0.00",
         total_discounts: "0.00",
-        total_price: "12.00",
+        total_price: "0.00",
+        shipping_lines: {
+          title: "Generic Shipping",
+          price: "0.00",
+          carrier: "Generic Carrier",
+          method: "Generic Label"
+        },
         shipping_address: {
           first_name: participant.first_name,
           last_name: participant.last_name,
           company: participant.company || "Tour Participant",
-          address1: warehouseAddress.address,
-          address2: warehouseAddress.address2,
-          city: warehouseAddress.city,
-          state: warehouseAddress.state,
-          state_code: warehouseAddress.state,
-          zip: warehouseAddress.zip,
-          country: warehouseAddress.country,
-          country_code: warehouseAddress.country,
-          phone: warehouseAddress.phone,
-          email: participant.email
+          address1: tourData.warehouse.address,
+          address2: tourData.warehouse.address2 || '',
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          state_code: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: 'US',
+          country_code: 'US',
+          email: participant.email,
+          phone: "5555555555"
         },
-        line_items: lineItems
+        billing_address: {
+          first_name: participant.first_name,
+          last_name: participant.last_name,
+          company: participant.company || "Tour Participant",
+          address1: tourData.warehouse.address,
+          address2: tourData.warehouse.address2 || '',
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          state_code: tourData.warehouse.state === 'Georgia' ? 'GA' : tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: 'US',
+          country_code: 'US',
+          email: participant.email,
+          phone: "5555555555"
+        },
+        line_items: lineItems,
+        required_ship_date: tourData.date,
+        tags: [tourData.warehouse.code || ""].filter(Boolean)
       }
 
       const promise = this.createSalesOrderViaAPI(orderData)
@@ -1711,9 +1757,9 @@ export class TourFinalizationService {
     }
 
     const results = await Promise.all(orderPromises)
-    const successful = results.filter(result => result.success)
+    const successful = results.filter(result => result.data?.order_create?.order)
     
-    console.log(`✅ Created ${successful.length}/${tourData.participants.length} participant orders`)
+    console.log(`✅ Created ${successful.length}/${tourData.participants.length} participant orders using proven format`)
     
     return successful
   }
