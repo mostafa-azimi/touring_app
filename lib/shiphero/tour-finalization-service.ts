@@ -252,10 +252,10 @@ export class TourFinalizationService {
       .select(`
         id, date, time, tour_numeric_id, selected_workflows, selected_skus, workflow_configs,
         warehouse:warehouses(id, name, address, address2, city, state, zip, shiphero_warehouse_id, code),
-        host:hosts(id, name, first_name, last_name),
+        host:team_members(id, name, first_name, last_name),
         participants:tour_participants(
           id,
-          hosts(id, name, first_name, last_name, email, company, title)
+          first_name, last_name, email, company, title
         )
       `)
       .eq('id', tourId)
