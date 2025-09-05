@@ -1574,4 +1574,78 @@ export class TourFinalizationService {
       console.warn(`⚠️ ${failedCount} demo orders failed to create`)
     }
   }
+
+  /**
+   * Helper method to create demo orders with celebrity names for various workflows
+   */
+  private async createDemoOrders(tourData: TourData, orderPrefix: string, orderCount: number, workflowSkus: string[]): Promise<any[]> {
+    console.log(`Creating ${orderCount} demo orders with celebrity names for ${orderPrefix}...`)
+    
+    if (workflowSkus.length === 0) {
+      throw new Error(`No SKUs selected for ${orderPrefix}. Please select SKUs when creating the tour.`)
+    }
+
+    const celebrities = getCelebrityNames(orderCount)
+    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const orderPromises = []
+
+    for (let i = 0; i < orderCount; i++) {
+      const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
+      
+      // Create single-item orders using workflow SKUs (rotating through them)
+      const skuIndex = i % workflowSkus.length
+      const lineItems = [{
+        sku: workflowSkus[skuIndex],
+        quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
+        price: "12.00",
+        product_name: `Product ${workflowSkus[skuIndex]}`,
+        partner_line_item_id: `${orderPrefix.toLowerCase()}-${Date.now()}-${i + 1}`,
+        fulfillment_status: "pending",
+        quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
+        warehouse_id: tourData.warehouse.shiphero_warehouse_id
+      }]
+
+      const orderData = {
+        order_number: `${orderPrefix}-${Date.now()}-${i + 1}`,
+        shop_name: "Tour Demo Orders",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString().split('T')[0],
+        total_tax: "0.00",
+        subtotal: "12.00",
+        total_discounts: "0.00",
+        total_price: "12.00",
+        shipping_address: {
+          first_name: celebrity.first,
+          last_name: celebrity.last,
+          company: "Demo Company",
+          address1: warehouseAddress.address,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country,
+          phone: warehouseAddress.phone,
+          email: `demo.${orderPrefix.toLowerCase()}.${i + 1}@example.com`
+        },
+        line_items: lineItems
+      }
+
+      const promise = this.createSalesOrderViaAPI(orderData)
+      orderPromises.push(promise)
+    }
+
+    const results = await Promise.all(orderPromises)
+    const successfulOrders = results.filter(result => result.success)
+    
+    console.log(`✅ Created ${successfulOrders.length}/${orderCount} ${orderPrefix} demo orders`)
+    
+    if (successfulOrders.length < orderCount) {
+      const failedCount = orderCount - successfulOrders.length
+      console.warn(`⚠️ ${failedCount} ${orderPrefix} demo orders failed to create`)
+    }
+
+    return successfulOrders
+  }
 }
