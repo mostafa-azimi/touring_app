@@ -1070,21 +1070,23 @@ export function ScheduleTourPage() {
                             {/* Expandable Configuration Section */}
                             {selectedWorkflows.includes(option.id) && expandedWorkflows.includes(option.id) && (
                               <div className="ml-6 p-4 bg-muted/30 rounded-lg border space-y-4">
-                                {/* Order Count Input */}
-                                <div className="flex items-center gap-4">
-                                  <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
-                                    📦 Orders to Create:
-                                  </Label>
-                                  <Input
-                                    id={`${option.id}-count`}
-                                    type="number"
-                                    min="1"
-                                    max="50"
-                                    value={workflowConfigs[option.id]?.orderCount || 5}
-                                    onChange={(e) => updateWorkflowOrderCount(option.id, parseInt(e.target.value) || 5)}
-                                    className="w-20"
-                                  />
-                                </div>
+                                {/* Order Count Input - Only for fulfillment workflows */}
+                                {!['standard_receiving', 'receive_to_light'].includes(option.id) && (
+                                  <div className="flex items-center gap-4">
+                                    <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
+                                      📦 Orders to Create:
+                                    </Label>
+                                    <Input
+                                      id={`${option.id}-count`}
+                                      type="number"
+                                      min="1"
+                                      max="50"
+                                      value={workflowConfigs[option.id]?.orderCount || 5}
+                                      onChange={(e) => updateWorkflowOrderCount(option.id, parseInt(e.target.value) || 5)}
+                                      className="w-20"
+                                    />
+                                  </div>
+                                )}
 
                                 {/* SKU Selection for this workflow */}
                                 <div className="space-y-2">
