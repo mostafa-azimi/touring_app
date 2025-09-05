@@ -108,6 +108,21 @@ export class TourFinalizationService {
   }
 
   /**
+   * Calculate the hold until date/time (tour date + tour time)
+   */
+  private getHoldUntilDate(tourDate: string, tourTime: string): string {
+    console.log(`⏳ Calculating hold until date for tour: ${tourDate} at ${tourTime}`)
+    
+    // Combine tour date and time
+    const tourDateTime = new Date(`${tourDate}T${tourTime}:00`)
+    const holdUntilDateTime = tourDateTime.toISOString()
+    
+    console.log(`⏳ Hold until date/time: ${holdUntilDateTime} (release orders at tour start time)`)
+    
+    return holdUntilDateTime
+  }
+
+  /**
    * Fetch extra customers from database when more orders needed than real participants + host
    */
   private async getExtrasFromDatabase(count: number): Promise<ExtraCustomer[]> {
@@ -826,6 +841,7 @@ export class TourFinalizationService {
         })),
         
         required_ship_date: new Date().toISOString().split('T')[0],
+        hold_until_date: this.getHoldUntilDate(tourData.date, tourData.time),
         tags: [`tour-${tourData.tour_numeric_id}`, tourData.warehouse.code].filter(Boolean)
       }
       

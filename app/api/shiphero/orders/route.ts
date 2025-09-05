@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
                 }`).join(',')}
               ]
               required_ship_date: "${data.required_ship_date}"
+              ${data.hold_until_date ? `hold_until_date: "${data.hold_until_date}"` : ''}
               tags: [${data.tags ? data.tags.map((tag: string) => `"${tag}"`).join(',') : ''}]
             }
           ) {
