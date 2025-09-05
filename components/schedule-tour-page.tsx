@@ -730,129 +730,74 @@ export function ScheduleTourPage() {
       const lines = text.split('\n').filter(line => line.trim())
       const headers = lines[0].split(',').map(h => h.trim())
       
-      // Validate headers
-      const requiredHeaders = ['warehouse_name', 'host_first_name', 'host_last_name', 'tour_date', 'tour_time', 'participant_first_name', 'participant_last_name', 'participant_email']
+      // Validate headers for participant data
+      const requiredHeaders = ['first_name', 'last_name', 'email']
+      const optionalHeaders = ['company', 'title']
       const missingHeaders = requiredHeaders.filter(h => !headers.includes(h))
       
       if (missingHeaders.length > 0) {
         toast({
           title: "Invalid CSV Format",
-          description: `Missing required columns: ${missingHeaders.join(', ')}`,
+          description: `Missing required columns: ${missingHeaders.join(', ')}. Required: ${requiredHeaders.join(', ')}. Optional: ${optionalHeaders.join(', ')}`,
           variant: "destructive",
         })
         return
       }
 
-      // Group rows by tour (warehouse + host + date + time)
-      const tourGroups = new Map()
+      // Parse participant data from CSV
+      const participantsToAdd: Participant[] = []
       
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim())
-        if (values.length < headers.length) continue
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
+        if (values.length < 3) continue // Need at least first_name, last_name, email
 
         const row: any = {}
         headers.forEach((header, index) => {
-          row[header] = values[index]
+          row[header] = values[index] || ''
         })
 
-        const tourKey = `${row.warehouse_name}-${row.host_first_name}-${row.host_last_name}-${row.tour_date}-${row.tour_time}`
-        
-        if (!tourGroups.has(tourKey)) {
-          tourGroups.set(tourKey, {
-            warehouse_name: row.warehouse_name,
-            host_first_name: row.host_first_name,
-            host_last_name: row.host_last_name,
-            tour_date: row.tour_date,
-            tour_time: row.tour_time,
-            participants: []
-          })
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(row.email)) {
+          console.warn(`Invalid email format: ${row.email}`)
+          continue
         }
 
-        tourGroups.get(tourKey).participants.push({
-          first_name: row.participant_first_name,
-          last_name: row.participant_last_name,
-          email: row.participant_email,
-          company: row.participant_company || '',
-          title: row.participant_title || ''
+        // Check for duplicate email in current participants
+        const isDuplicate = participants.some(p => p.email.toLowerCase() === row.email.toLowerCase()) ||
+                           participantsToAdd.some(p => p.email.toLowerCase() === row.email.toLowerCase())
+
+        if (isDuplicate) {
+          console.warn(`Duplicate email skipped: ${row.email}`)
+          continue
+        }
+
+        participantsToAdd.push({
+          id: '', // Will be generated
+          first_name: row.first_name,
+          last_name: row.last_name,
+          email: row.email,
+          company: row.company || '',
+          title: row.title || ''
         })
       }
 
-      // Create tours
-      let toursCreated = 0
-      for (const [, tourData] of tourGroups) {
-        try {
-          // Find warehouse by name
-          const warehouse = warehouses.find(w => w.name === tourData.warehouse_name)
-          if (!warehouse) {
-            console.warn(`Warehouse not found: ${tourData.warehouse_name}`)
-            continue
-          }
-
-          // Find host by name
-          const host = hosts.find(h => 
-            h.first_name === tourData.host_first_name && 
-            h.last_name === tourData.host_last_name
-          )
-          if (!host) {
-            console.warn(`Host not found: ${tourData.host_first_name} ${tourData.host_last_name}`)
-            continue
-          }
-
-          // Aggregate all SKUs from all workflows for backward compatibility
-          const allSelectedSkus = Array.from(new Set(
-            Object.values(workflowConfigs).flatMap(config => config.selectedSkus)
-          ))
-
-          // Create tour
-          const { data: tourResult, error: tourError } = await supabase
-            .from("tours")
-            .insert([{
-              warehouse_id: warehouse.id,
-              host_id: host.id,
-              date: tourData.tour_date,
-              time: tourData.tour_time,
-              status: 'scheduled',
-              tour_numeric_id: generateTourNumericId(),
-              selected_workflows: selectedWorkflows,
-              selected_skus: allSelectedSkus,
-              workflow_configs: workflowConfigs
-            }])
-            .select()
-            .single()
-
-          if (tourError) throw tourError
-
-          // Add participants
-          const participantInserts = tourData.participants.map((p: any) => ({
-            tour_id: tourResult.id,
-            name: `${p.first_name} ${p.last_name}`,
-            first_name: p.first_name,
-            last_name: p.last_name,
-            email: p.email,
-            company: p.company,
-            title: p.title
-          }))
-
-          const { error: participantError } = await supabase
-            .from("tour_participants")
-            .insert(participantInserts)
-
-          if (participantError) throw participantError
-
-          toursCreated++
-        } catch (error) {
-          console.error('Error creating tour:', error)
-        }
+      if (participantsToAdd.length === 0) {
+        toast({
+          title: "No Valid Participants",
+          description: "No valid participants found in CSV file. Check for duplicates or invalid email formats.",
+          variant: "destructive",
+        })
+        return
       }
+
+      // Add participants to current list
+      setParticipants(prev => [...prev, ...participantsToAdd])
 
       toast({
-        title: "CSV Upload Successful",
-        description: `Created ${toursCreated} tours from CSV file`,
+        title: "Participants Added",
+        description: `Successfully added ${participantsToAdd.length} participants from CSV file`,
       })
-
-      // Reset form
-      setFormData({ warehouse_id: "", host_id: "", date: "2025-11-15", time: "09:00" })
-      setParticipants([])
 
     } catch (error: any) {
       toast({
@@ -871,7 +816,7 @@ export function ScheduleTourPage() {
   const downloadTemplate = () => {
     const link = document.createElement('a')
     link.href = '/tour-upload-template.csv'
-    link.download = 'tour-upload-template.csv'
+    link.download = 'participant-upload-template.csv'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -1248,14 +1193,14 @@ export function ScheduleTourPage() {
         </CardContent>
       </Card>
 
-      {/* CSV Bulk Upload Section */}
+      {/* CSV Participant Upload Section */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Upload className="h-4 w-4" />
-            Bulk Upload
+            Bulk Add Participants
           </CardTitle>
-          <CardDescription>Upload multiple tours at once using CSV format</CardDescription>
+          <CardDescription>Add multiple participants to this tour using CSV format</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -1285,12 +1230,12 @@ export function ScheduleTourPage() {
                   className={isUploadingCSV ? "cursor-wait" : ""}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  {isUploadingCSV ? "Uploading..." : "Upload CSV"}
+                  {isUploadingCSV ? "Adding Participants..." : "Upload Participants CSV"}
                 </Button>
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              Upload a CSV file to create multiple tours at once. Download the template to see the required format and structure.
+              Upload a CSV file to add multiple participants to this tour. Download the template to see the required format: first_name, last_name, email, company (optional), title (optional).
             </p>
           </div>
         </CardContent>
