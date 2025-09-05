@@ -103,7 +103,13 @@ const categories = [
   "Fulfillment"
 ]
 
+// Global render counter for debugging
+let renderCount = 0
+
 export function ScheduleTourPage() {
+  renderCount++
+  console.log('🔥 RENDER START: ScheduleTourPage component rendering - RENDER #', renderCount, 'at', new Date().toISOString())
+  
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [hosts, setHosts] = useState<any[]>([])
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -123,33 +129,62 @@ export function ScheduleTourPage() {
   const [selectedSkus, setSelectedSkus] = useState<string[]>([]) // Legacy - will be replaced by workflowConfigs
   const [availableSkus, setAvailableSkus] = useState<any[]>([])
   const [allSkus, setAllSkus] = useState<any[]>([]) // Store all SKUs for filtering
+  
+  console.log('🔄 STATE SNAPSHOT:', {
+    selectedWorkflows: selectedWorkflows.length,
+    workflowConfigsKeys: Object.keys(workflowConfigs),
+    expandedWorkflows: expandedWorkflows.length,
+    availableSkus: availableSkus.length,
+    allSkus: allSkus.length,
+    warehouseId: formData.warehouse_id
+  })
   const [isLoadingSkus, setIsLoadingSkus] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
 
   const handleWorkflowChange = useCallback((optionId: string, checked: boolean) => {
+    console.log('🎯 WORKFLOW CHANGE:', { optionId, checked, timestamp: Date.now() })
+    
     if (checked) {
-      setSelectedWorkflows(prev => [...prev, optionId])
+      console.log('✅ Adding workflow:', optionId)
+      setSelectedWorkflows(prev => {
+        console.log('📝 setSelectedWorkflows: adding', optionId, 'to', prev)
+        return [...prev, optionId]
+      })
       // Initialize workflow config with defaults
-      setWorkflowConfigs(prev => ({
-        ...prev,
-        [optionId]: {
-          orderCount: 5, // Default to 5 orders
-          selectedSkus: []
+      setWorkflowConfigs(prev => {
+        console.log('📝 setWorkflowConfigs: adding config for', optionId)
+        return {
+          ...prev,
+          [optionId]: {
+            orderCount: 5, // Default to 5 orders
+            selectedSkus: []
+          }
         }
-      }))
+      })
       // Auto-expand the workflow section
-      setExpandedWorkflows(prev => [...prev, optionId])
+      setExpandedWorkflows(prev => {
+        console.log('📝 setExpandedWorkflows: adding', optionId, 'to', prev)
+        return [...prev, optionId]
+      })
     } else {
-      setSelectedWorkflows(prev => prev.filter(id => id !== optionId))
+      console.log('❌ Removing workflow:', optionId)
+      setSelectedWorkflows(prev => {
+        console.log('📝 setSelectedWorkflows: removing', optionId, 'from', prev)
+        return prev.filter(id => id !== optionId)
+      })
       // Remove workflow config
       setWorkflowConfigs(prev => {
+        console.log('📝 setWorkflowConfigs: removing config for', optionId)
         const newConfigs = { ...prev }
         delete newConfigs[optionId]
         return newConfigs
       })
       // Collapse the workflow section
-      setExpandedWorkflows(prev => prev.filter(id => id !== optionId))
+      setExpandedWorkflows(prev => {
+        console.log('📝 setExpandedWorkflows: removing', optionId, 'from', prev)
+        return prev.filter(id => id !== optionId)
+      })
     }
   }, [])
 
@@ -193,7 +228,10 @@ export function ScheduleTourPage() {
 
   // Filter SKUs by selected warehouse
   const filterSkusByWarehouse = (warehouseId: string) => {
+    console.log('🏭 FILTER SKUs START:', { warehouseId, allSkusLength: allSkus.length, timestamp: Date.now() })
+    
     if (!warehouseId || !allSkus.length) {
+      console.log('🚫 Early return: no warehouse or no SKUs')
       setAvailableSkus([])
       return
     }
@@ -201,6 +239,7 @@ export function ScheduleTourPage() {
     // Find the selected warehouse to get its ShipHero ID
     const selectedWarehouse = warehouses.find(w => w.id === warehouseId)
     if (!selectedWarehouse) {
+      console.log('🚫 Early return: warehouse not found')
       setAvailableSkus([])
       return
     }
@@ -220,7 +259,9 @@ export function ScheduleTourPage() {
       sampleFiltered: filteredSkus.slice(0, 3).map(p => ({ sku: p.sku, available: p.inventory?.available }))
     })
 
+    console.log('📝 setAvailableSkus: setting', filteredSkus.length, 'filtered SKUs')
     setAvailableSkus(filteredSkus)
+    console.log('🏭 FILTER SKUs END:', { timestamp: Date.now() })
   }
 
   const loadAvailableSkus = async () => {
@@ -590,10 +631,12 @@ export function ScheduleTourPage() {
     }
   }
 
-  const selectedWarehouse = useMemo(() => 
-    warehouses.find((w) => w.id === formData.warehouse_id), 
-    [warehouses, formData.warehouse_id]
-  )
+  const selectedWarehouse = useMemo(() => {
+    console.log('🏗️ MEMO: selectedWarehouse recalculating', { warehouseId: formData.warehouse_id, warehousesLength: warehouses.length })
+    const result = warehouses.find((w) => w.id === formData.warehouse_id)
+    console.log('🏗️ MEMO: selectedWarehouse result', result ? result.name : 'not found')
+    return result
+  }, [warehouses, formData.warehouse_id])
 
   // CSV Upload functionality
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1018,10 +1061,13 @@ export function ScheduleTourPage() {
 
               <div className="space-y-6">
                 {categories.map(category => {
-                  const categoryOptions = useMemo(() => 
-                    workflowOptions.filter(option => option.category === category),
-                    [category]
-                  )
+                  console.log('🏗️ CATEGORY RENDER:', category, 'at', Date.now())
+                  const categoryOptions = useMemo(() => {
+                    console.log('🏗️ MEMO: categoryOptions recalculating for', category)
+                    const result = workflowOptions.filter(option => option.category === category)
+                    console.log('🏗️ MEMO: categoryOptions result for', category, ':', result.length, 'options')
+                    return result
+                  }, [category])
                   
                   return (
                     <div key={category} className="space-y-3">
@@ -1095,16 +1141,18 @@ export function ScheduleTourPage() {
                                 <div className="space-y-2">
                                   <Label className="text-sm font-medium">🏷️ SKUs for this workflow:</Label>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto">
-                                    {availableSkus.map((product) => (
-                                      <div
-                                        key={product.sku}
-                                        className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
-                                          (workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku)
-                                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                                            : 'border-border bg-card hover:bg-muted/50'
-                                        }`}
-                                        onClick={() => handleWorkflowSkuChange(option.id, product.sku, !(workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku))}
-                                      >
+                                    {availableSkus.map((product, index) => {
+                                      if (index === 0) console.log('🎨 RENDERING WORKFLOW SKUs for', option.id, '- total:', availableSkus.length)
+                                      return (
+                                        <div
+                                          key={product.sku}
+                                          className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
+                                            (workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku)
+                                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                              : 'border-border bg-card hover:bg-muted/50'
+                                          }`}
+                                          onClick={() => handleWorkflowSkuChange(option.id, product.sku, !(workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku))}
+                                        >
                                         <div className="space-y-2">
                                           <div className="flex items-start justify-between gap-2">
                                             <h4 className="font-medium text-sm leading-tight truncate">
