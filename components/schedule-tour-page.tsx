@@ -175,10 +175,10 @@ export function ScheduleTourPage() {
     setWorkflowConfigs(prev => ({
       ...prev,
       [workflowId]: {
-        ...prev[workflowId],
+        orderCount: prev[workflowId]?.orderCount || 5,
         selectedSkus: checked 
-          ? [...prev[workflowId].selectedSkus, sku]
-          : prev[workflowId].selectedSkus.filter(s => s !== sku)
+          ? [...(prev[workflowId]?.selectedSkus || []), sku]
+          : (prev[workflowId]?.selectedSkus || []).filter(s => s !== sku)
       }
     }))
   }
@@ -1096,11 +1096,11 @@ export function ScheduleTourPage() {
                                       <div
                                         key={product.sku}
                                         className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
-                                          workflowConfigs[option.id]?.selectedSkus.includes(product.sku)
+                                          (workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku)
                                             ? 'border-primary bg-primary/5 ring-1 ring-primary'
                                             : 'border-border bg-card hover:bg-muted/50'
                                         }`}
-                                        onClick={() => handleWorkflowSkuChange(option.id, product.sku, !workflowConfigs[option.id]?.selectedSkus.includes(product.sku))}
+                                        onClick={() => handleWorkflowSkuChange(option.id, product.sku, !(workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku))}
                                       >
                                         <div className="space-y-2">
                                           <div className="flex items-start justify-between gap-2">
@@ -1108,7 +1108,7 @@ export function ScheduleTourPage() {
                                               {product.name}
                                             </h4>
                                             <Checkbox
-                                              checked={workflowConfigs[option.id]?.selectedSkus.includes(product.sku)}
+                                              checked={(workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku)}
                                               onChange={() => {}} // Handled by parent click
                                               className="pointer-events-none"
                                             />
