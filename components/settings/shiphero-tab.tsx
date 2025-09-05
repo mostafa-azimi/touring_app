@@ -826,10 +826,22 @@ export function ShipHeroTab() {
         response: poResult
       })
       
+      // Check for GraphQL errors first
+      if (poResult.errors && poResult.errors.length > 0) {
+        const errorMessages = poResult.errors.map((error: any) => error.message).join(', ')
+        console.error('❌ ShipHero GraphQL errors:', poResult.errors)
+        throw new Error(`ShipHero GraphQL errors: ${errorMessages}`)
+      }
+      
       const poId = poResult.data?.purchase_order_create?.purchase_order?.id
       const poLegacyId = poResult.data?.purchase_order_create?.purchase_order?.legacy_id
       const createdPONumber = poResult.data?.purchase_order_create?.purchase_order?.po_number || poNumber
       const shipheroPOLink = poLegacyId ? `https://app.shiphero.com/dashboard/purchase-orders/details/${poLegacyId}` : null
+      
+      // Check if purchase order was actually created
+      if (!poId) {
+        throw new Error('Purchase order creation failed - no PO ID returned')
+      }
       
       console.log('📦 PO created successfully!', {
         poId,

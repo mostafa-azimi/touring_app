@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
               po_date: "${data.po_date}"
               po_number: "${data.po_number}"
               subtotal: "${data.subtotal}"
-              tax: "${data.tax}"
+              tax: "${data.tax || '0.00'}"
               shipping_price: "${data.shipping_price}"
               total_price: "${data.total_price}"
               warehouse_id: "${data.warehouse_id}"
