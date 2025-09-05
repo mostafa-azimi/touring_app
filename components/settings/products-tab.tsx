@@ -38,73 +38,31 @@ export function ProductsTab() {
     console.log(`📦 ${autoRefresh ? 'Auto-' : ''}Fetching products from ShipHero...`)
     
     try {
-      // Get access token from localStorage
-      const accessToken = localStorage.getItem('shiphero_access_token')
+      // Use centralized data service for better caching and performance
+      const { shipHeroDataService } = await import('@/lib/shiphero/data-service')
+      const activeProducts = await shipHeroDataService.getActiveProducts(!autoRefresh) // Force refresh for manual requests
       
-      if (!accessToken) {
-        throw new Error('No access token available. Please generate a new access token in the ShipHero tab first.')
-      }
-
-      console.log('🔍 Using access token from localStorage')
-
-      const response = await fetch('/api/shiphero/inventory', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      console.log('📦 Products API response:', {
-        status: response.status,
-        ok: response.ok
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        console.error('❌ Products API error details:', {
-          status: response.status,
-          error: result.error,
-          details: result.details,
-          fullResult: result
+      // Sort by available quantity (highest to lowest)
+      const sortedProducts = activeProducts
+        .sort((a, b) => b.inventory.available - a.inventory.available)
+      
+      setProducts(sortedProducts)
+      setLastUpdated(new Date())
+      
+      // Only show toast for manual refresh, not auto-refresh
+      if (!autoRefresh) {
+        toast({
+          title: "Products Loaded",
+          description: `Found ${sortedProducts.length} active products (${sortedProducts.filter(p => p.inventory.available > 0).length} with available inventory)`,
         })
-        
-        if (result.details && Array.isArray(result.details)) {
-          console.error('🚨 ShipHero specific errors:', result.details)
-          result.details.forEach((error: any, index: number) => {
-            console.error(`Error ${index + 1}:`, error)
-          })
-        }
-        
-        throw new Error(result.error || 'Failed to fetch products')
       }
 
-      if (result.success && result.products) {
-        // Filter for active products only and sort by available quantity (highest to lowest)
-        const sortedProducts = result.products
-          .filter((product: Product) => product.active === true)
-          .sort((a: Product, b: Product) => b.inventory.available - a.inventory.available)
-        
-        setProducts(sortedProducts)
-        setLastUpdated(new Date())
-        
-        // Only show toast for manual refresh, not auto-refresh
-        if (!autoRefresh) {
-          toast({
-            title: "Products Loaded",
-            description: `Found ${sortedProducts.length} active products (${sortedProducts.filter((p: Product) => p.inventory.available > 0).length} with available inventory)`,
-          })
-        }
-
-        console.log('✅ Products loaded and sorted by available quantity:', {
-          totalProducts: sortedProducts.length,
-          productsWithInventory: sortedProducts.filter((p: Product) => p.inventory.available > 0).length,
-          topAvailableQuantities: sortedProducts.slice(0, 5).map(p => `${p.sku}: ${p.inventory.available}`)
-        })
-      } else {
-        throw new Error('Invalid response format')
-      }
+      console.log('✅ Products loaded and sorted by available quantity:', {
+        totalProducts: sortedProducts.length,
+        productsWithInventory: sortedProducts.filter(p => p.inventory.available > 0).length,
+        topAvailableQuantities: sortedProducts.slice(0, 5).map(p => `${p.sku}: ${p.inventory.available}`),
+        cached: autoRefresh // Auto-refresh likely uses cache
+      })
 
     } catch (error: any) {
       console.error('❌ Failed to fetch products:', error)

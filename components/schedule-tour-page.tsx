@@ -176,48 +176,22 @@ export function ScheduleTourPage() {
   const loadAvailableSkus = async () => {
     setIsLoadingSkus(true)
     try {
-      const accessToken = localStorage.getItem('shiphero_access_token')
-      if (!accessToken) {
-        toast({
-          title: "Access Token Required",
-          description: "Please generate a ShipHero access token in Settings to load SKUs.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      const response = await fetch('/api/shiphero/inventory', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch inventory')
-      }
-
-      const result = await response.json()
+      // Use centralized data service for better caching and performance
+      const { shipHeroDataService } = await import('@/lib/shiphero/data-service')
+      const activeProducts = await shipHeroDataService.getActiveProducts()
       
-      if (result.success && result.products) {
-        // Show only active products and sort alphabetically by SKU
-        const allActiveProducts = result.products
-          .filter((product: any) => product.active === true)
-          .sort((a: any, b: any) => a.sku.localeCompare(b.sku))
-        
-        // Store all SKUs for filtering
-        setAllSkus(allActiveProducts)
-        // Initially show no SKUs until a warehouse is selected
-        setAvailableSkus([])
-        console.log(`Loaded ${allActiveProducts.length} active SKUs for tour selection`)
-        
-        // If warehouse is already selected, filter immediately
-        if (formData.warehouse_id) {
-          filterSkusByWarehouse(formData.warehouse_id)
-        }
-      } else {
-        throw new Error('Invalid response format')
+      // Sort alphabetically by SKU
+      const sortedProducts = activeProducts.sort((a, b) => a.sku.localeCompare(b.sku))
+      
+      // Store all SKUs for filtering
+      setAllSkus(sortedProducts)
+      // Initially show no SKUs until a warehouse is selected
+      setAvailableSkus([])
+      console.log(`✅ Loaded ${sortedProducts.length} active SKUs for tour selection (cached: ${sortedProducts.length > 0})`)
+      
+      // If warehouse is already selected, filter immediately
+      if (formData.warehouse_id) {
+        filterSkusByWarehouse(formData.warehouse_id)
       }
     } catch (error: any) {
       console.error('Failed to load SKUs:', error)
@@ -498,11 +472,15 @@ export function ScheduleTourPage() {
 
       console.log('✅ Data validation passed, creating tour...')
 
-      // Create the tour
+      // Optimized: Create tour and get related data in one query with joins
       const { data: tourData, error: tourError } = await supabase
         .from("tours")
         .insert([tourInsertData])
-        .select()
+        .select(`
+          *,
+          warehouse:warehouses(id, name, address, city, state, zip, country),
+          host:team_members(id, first_name, last_name, email)
+        `)
         .single()
 
       if (tourError) {
@@ -511,23 +489,27 @@ export function ScheduleTourPage() {
         throw tourError
       }
 
-      // Add participants - no need to parse names anymore
-      const participantInserts = participants.map((participant) => ({
-        tour_id: tourData.id,
-        name: `${participant.first_name} ${participant.last_name}`, // Keep name field for backward compatibility
-        first_name: participant.first_name,
-        last_name: participant.last_name,
-        email: participant.email,
-        company: participant.company,
-        title: participant.title,
-      }))
+      // Add participants in batch for better performance
+      let insertedParticipants = null
+      if (participants.length > 0) {
+        const participantInserts = participants.map((participant) => ({
+          tour_id: tourData.id,
+          name: `${participant.first_name} ${participant.last_name}`, // Keep name field for backward compatibility
+          first_name: participant.first_name,
+          last_name: participant.last_name,
+          email: participant.email,
+          company: participant.company,
+          title: participant.title,
+        }))
 
-      const { data: insertedParticipants, error: participantError } = await supabase
-        .from("tour_participants")
-        .insert(participantInserts)
-        .select("id")
+        const { data: participantData, error: participantError } = await supabase
+          .from("tour_participants")
+          .insert(participantInserts)
+          .select("id, first_name, last_name, email, company, title")
 
-      if (participantError) throw participantError
+        if (participantError) throw participantError
+        insertedParticipants = participantData
+      }
 
       toast({
         title: "Success",
