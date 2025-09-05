@@ -396,7 +396,7 @@ export function ViewToursPage() {
       // Check if we have order summary data
       if (!tourData.order_summary) {
         toast({
-          title: "No Tour Summary Available", 
+          title: "No Tour Summary Available",
           description: "This tour was finalized before comprehensive summaries were saved. Please re-finalize the tour to generate a summary.",
           variant: "destructive",
         })
