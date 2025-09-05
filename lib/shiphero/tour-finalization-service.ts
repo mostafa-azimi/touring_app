@@ -144,7 +144,7 @@ export class TourFinalizationService {
     // First, get basic tour data including date
     const { data: tour, error: tourError } = await this.supabase
       .from('tours')
-      .select('id, warehouse_id, host_id, selected_workflows, selected_skus, date, time, tour_numeric_id')
+      .select('id, warehouse_id, host_id, selected_workflows, selected_skus, date, time, tour_numeric_id, workflow_configs')
       .eq('id', tourId)
       .single()
 
@@ -200,7 +200,8 @@ export class TourFinalizationService {
         code: warehouse.code
       },
       selected_workflows: tour.selected_workflows || [],
-      selected_skus: tour.selected_skus || []
+      selected_skus: tour.selected_skus || [],
+      workflow_configs: tour.workflow_configs || {}
     }
   }
 
