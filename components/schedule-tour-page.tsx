@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -590,7 +590,10 @@ export function ScheduleTourPage() {
     }
   }
 
-  const selectedWarehouse = warehouses.find((w) => w.id === formData.warehouse_id)
+  const selectedWarehouse = useMemo(() => 
+    warehouses.find((w) => w.id === formData.warehouse_id), 
+    [warehouses, formData.warehouse_id]
+  )
 
   // CSV Upload functionality
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -796,14 +799,11 @@ export function ScheduleTourPage() {
                     <SelectValue placeholder="Select a warehouse" />
                   </SelectTrigger>
                   <SelectContent>
-                    {warehouses.map((warehouse) => {
-                      console.log('Rendering warehouse:', warehouse.name, warehouse.id)
-                      return (
-                        <SelectItem key={warehouse.id} value={warehouse.id} className="cursor-pointer">
-                          {warehouse.name}
-                        </SelectItem>
-                      )
-                    })}
+                    {warehouses.map((warehouse) => (
+                      <SelectItem key={warehouse.id} value={warehouse.id} className="cursor-pointer">
+                        {warehouse.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {selectedWarehouse && (
