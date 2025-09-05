@@ -393,8 +393,8 @@ export class TourFinalizationService {
       console.log(`📊 Total participants: ${tourData.participants?.length || 0}`)
 
       // Return separate arrays for sales and purchase orders
-      const sales_orders = createdOrders.filter(order => order.type === 'sales_order')
-      const purchase_orders = createdOrders.filter(order => order.type === 'purchase_order')
+      const sales_orders = this.createdOrders // Sales orders from fulfillment workflows
+      const purchase_orders = this.createdPurchaseOrders // Purchase orders from inbound workflows
 
       // Prepare comprehensive order summary for storage
       const orderSummary = {
