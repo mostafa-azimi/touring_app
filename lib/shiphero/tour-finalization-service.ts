@@ -5,6 +5,7 @@ export interface TourData {
   id: string
   date: string
   time: string
+  tour_numeric_id: number
   host: {
     id: string
     name: string
@@ -25,8 +26,7 @@ export interface TourData {
     name: string
     address: any
     shiphero_warehouse_id: string
-    warehouse_code?: string
-    warehouse_number?: string
+    code?: string
   }
   selected_workflows: string[]
   selected_skus: string[]
@@ -138,7 +138,7 @@ export class TourFinalizationService {
     // First, get basic tour data including date
     const { data: tour, error: tourError } = await this.supabase
       .from('tours')
-      .select('id, warehouse_id, host_id, selected_workflows, selected_skus, date, time')
+      .select('id, warehouse_id, host_id, selected_workflows, selected_skus, date, time, tour_numeric_id')
       .eq('id', tourId)
       .single()
 
@@ -149,7 +149,7 @@ export class TourFinalizationService {
     // Get warehouse data separately including warehouse code
     const { data: warehouse, error: warehouseError } = await this.supabase
       .from('warehouses')
-      .select('id, name, address, shiphero_warehouse_id, warehouse_code, warehouse_number')
+      .select('id, name, address, shiphero_warehouse_id, code')
       .eq('id', tour.warehouse_id)
       .single()
       
@@ -178,6 +178,7 @@ export class TourFinalizationService {
       id: tour.id,
       date: tour.date,
       time: tour.time,
+      tour_numeric_id: tour.tour_numeric_id,
       host: {
         id: host.id,
         name: host.name,
@@ -190,8 +191,7 @@ export class TourFinalizationService {
         name: warehouse.name,
         address: warehouse.address,
         shiphero_warehouse_id: warehouse.shiphero_warehouse_id,
-        warehouse_code: warehouse.warehouse_code,
-        warehouse_number: warehouse.warehouse_number
+        code: warehouse.code
       },
       selected_workflows: tour.selected_workflows || [],
       selected_skus: tour.selected_skus || []
@@ -678,12 +678,11 @@ export class TourFinalizationService {
     const orderDate = new Date(tourDate)
     orderDate.setDate(orderDate.getDate() - 1) // Day before tour
     
-    // Generate tags
+    // Generate tags using 6-digit numeric tour ID and warehouse code
     const tags = [
       'tour_orders',
-      `tour_${tourData.id}`,
-      tourData.warehouse.warehouse_code || 'WH001',
-      tourData.warehouse.warehouse_number || '001'
+      `tour_${tourData.tour_numeric_id}`, // Use 6-digit numeric ID
+      tourData.warehouse.code || 'WH001' // Use warehouse code from settings
     ]
 
     return {
