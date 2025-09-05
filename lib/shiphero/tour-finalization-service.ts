@@ -385,7 +385,8 @@ export class TourFinalizationService {
         selectedSkus: tourData.selected_skus,
         participantCount: tourData.participants?.length || 0,
         orders: {
-          created_orders: createdOrders
+          sales_orders: createdOrders.filter(order => order.type === 'sales_order'),
+          purchase_orders: createdOrders.filter(order => order.type === 'purchase_order')
         },
         instructions: instructionGuide
       }
