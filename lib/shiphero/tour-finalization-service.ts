@@ -695,15 +695,24 @@ export class TourFinalizationService {
     // Extract warehouse number from ShipHero warehouse ID
     const warehouseNumber = this.decodeWarehouseId(tourData.warehouse.shiphero_warehouse_id)
     
+    // Debug logging for tag generation
+    console.log('🔧 Tag generation debug:')
+    console.log('  - tour_numeric_id:', tourData.tour_numeric_id)
+    console.log('  - warehouse.code:', tourData.warehouse.code)
+    console.log('  - shiphero_warehouse_id:', tourData.warehouse.shiphero_warehouse_id)
+    console.log('  - decoded warehouse number:', warehouseNumber)
+    
     // Generate tags using 6-digit numeric tour ID, warehouse code, and warehouse number
     const tags = [
       'tour_orders',
-      `tour_${tourData.tour_numeric_id}`, // Use 6-digit numeric ID
+      `tour_${tourData.tour_numeric_id || 'UNKNOWN'}`, // Use 6-digit numeric ID with fallback
       tourData.warehouse.code || 'WH001', // Use warehouse code from settings
       warehouseNumber // Use decoded warehouse number
     ]
+    
+    console.log('🏷️ Generated tags:', tags)
 
-    return {
+    const metadata = {
       fulfillment_status: "Tour_Orders",
       order_date: orderDate.toISOString(),
       required_ship_date: tourDate.toISOString().slice(0, 10),
@@ -717,6 +726,9 @@ export class TourFinalizationService {
       total_tax: "0.00",
       total_discounts: "0.00"
     }
+    
+    console.log('📊 Standard metadata generated:', JSON.stringify(metadata, null, 2))
+    return metadata
   }
 
   /**
