@@ -51,6 +51,13 @@ export type WorkflowOption =
 export class TourFinalizationService {
   private supabase
   private shipHero: any
+  private createdOrders: Array<{
+    workflow: string
+    order_number: string
+    shiphero_id: string
+    legacy_id: string
+    recipient: string
+  }> = []
 
   constructor() {
     this.supabase = createClient()
@@ -396,6 +403,9 @@ export class TourFinalizationService {
         console.log('✅ Tour status updated to finalized')
       }
 
+      // Print final summary of all created orders
+      this.printFinalOrderSummary()
+
       // Generate instruction guide (disabled as requested)
       const instruction_guide = "Instruction guide generation disabled."
       
@@ -662,7 +672,7 @@ export class TourFinalizationService {
       const orderData = {
         order_number: orderNumber,
         shop_name: "ShipHero Tour Demo",
-        fulfillment_status: "pending",
+        fulfillment_status: "Tour_Orders",
         order_date: new Date().toISOString().split('T')[0],
         total_tax: "0.00",
         subtotal: "0.00",
@@ -714,7 +724,7 @@ export class TourFinalizationService {
           quantity: item.quantity,
           price: item.price,
           product_name: item.sku,
-          fulfillment_status: "pending",
+          fulfillment_status: "Tour_Orders",
           quantity_pending_fulfillment: item.quantity,
           warehouse_id: tourData.warehouse.shiphero_warehouse_id
         })),
@@ -738,8 +748,19 @@ export class TourFinalizationService {
           console.log(`✅ ${prefix} order ${i + 1} created successfully!`)
           console.log(`   📋 Order Number: ${orderInfo.order_number}`)
           console.log(`   🆔 ShipHero ID: ${orderInfo.id}`)
+          console.log(`   🆔 Legacy ID: ${orderInfo.legacy_id}`)
           console.log(`   💰 Total Price: ${orderInfo.total_price}`)
           console.log(`   📊 Status: ${orderInfo.fulfillment_status}`)
+          
+          // Store for final summary
+          this.createdOrders = this.createdOrders || []
+          this.createdOrders.push({
+            workflow: prefix,
+            order_number: orderInfo.order_number,
+            shiphero_id: orderInfo.id,
+            legacy_id: orderInfo.legacy_id,
+            recipient: `${recipient.first_name} ${recipient.last_name} (${recipient.type})`
+          })
         } else {
           console.error(`⚠️ ${prefix} order ${i + 1} API response missing order data:`, result)
         }
@@ -827,6 +848,43 @@ export class TourFinalizationService {
     console.log(`🎯 Final recipient list (${finalRecipients.length}):`, finalRecipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`))
     
     return finalRecipients
+  }
+
+  /**
+   * Print final summary of all created orders
+   */
+  private printFinalOrderSummary() {
+    console.log('\n🎉 ========== FINAL ORDER SUMMARY ==========')
+    
+    if (this.createdOrders.length === 0) {
+      console.log('❌ No orders were created')
+      return
+    }
+    
+    // Group orders by workflow
+    const ordersByWorkflow = this.createdOrders.reduce((acc, order) => {
+      if (!acc[order.workflow]) {
+        acc[order.workflow] = []
+      }
+      acc[order.workflow].push(order)
+      return acc
+    }, {} as {[key: string]: typeof this.createdOrders})
+    
+    console.log(`✅ Successfully created ${this.createdOrders.length} orders across ${Object.keys(ordersByWorkflow).length} workflows:`)
+    
+    // Print each workflow's orders
+    Object.entries(ordersByWorkflow).forEach(([workflow, orders]) => {
+      console.log(`\n📦 ${workflow.toUpperCase()} WORKFLOW (${orders.length} orders):`)
+      orders.forEach((order, index) => {
+        console.log(`   ${index + 1}. ${order.order_number}`)
+        console.log(`      🆔 ShipHero ID: ${order.shiphero_id}`)
+        console.log(`      🆔 Legacy ID: ${order.legacy_id}`)
+        console.log(`      👤 Recipient: ${order.recipient}`)
+      })
+    })
+    
+    console.log('\n🎯 All orders created successfully! Check ShipHero dashboard for details.')
+    console.log('========================================\n')
   }
 
   /**

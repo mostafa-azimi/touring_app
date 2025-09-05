@@ -805,16 +805,16 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
   }
 
   // Generate ShipHero URL with tour tag filter and date range
-  const generateShipHeroFilterUrl = (tourNumericId: number, tourDate: string): string => {
-    const tourTag = `Tour_${tourNumericId}`
+  const generateShipHeroFilterUrl = (tourNumericId: number): string => {
+    const tourTag = `tour-${tourNumericId}`
     
-    // Parse the tour date and create date range (day before to week after for buffer)
-    const date = new Date(tourDate)
-    const startDate = new Date(date)
-    startDate.setDate(date.getDate() - 1) // Day before tour
+    // Use current date for order date range (since orders are created "today")
+    const today = new Date()
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - 1) // Day before order creation
     
-    const endDate = new Date(date)
-    endDate.setDate(date.getDate() + 7) // Week after tour for buffer
+    const endDate = new Date(today)
+    endDate.setDate(today.getDate() + 7) // Week after order creation for buffer
     
     // Format dates as MM%2FDD%2FYYYY (URL encoded MM/DD/YYYY)
     const formatDateForUrl = (date: Date): string => {
@@ -920,7 +920,7 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
               <div className="flex items-center gap-2">
                 <p className="font-medium font-mono">{tour.tour_numeric_id}</p>
                 <a 
-                  href={generateShipHeroFilterUrl(tour.tour_numeric_id, tour.date)}
+                  href={generateShipHeroFilterUrl(tour.tour_numeric_id)}
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:text-blue-800 text-sm underline cursor-pointer"
