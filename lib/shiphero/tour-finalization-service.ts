@@ -102,7 +102,12 @@ export class TourFinalizationService {
       throw new Error(`Failed to create sales order: ${response.status} ${errorText}`)
     }
 
-    return response.json()
+    const result = await response.json()
+    
+    // Log the raw ShipHero response for debugging
+    console.log(`🔍 Raw ShipHero API response:`, JSON.stringify(result, null, 2))
+    
+    return result
   }
 
   /**
@@ -1087,8 +1092,23 @@ export class TourFinalizationService {
 
     try {
       const result = await this.createSalesOrderViaAPI(orderData)
+      
+      // Check for ShipHero GraphQL errors in the response
+      if (result.errors && result.errors.length > 0) {
+        console.error(`❌ ShipHero API returned errors:`, result.errors)
+        console.error(`❌ Full ShipHero response:`, JSON.stringify(result, null, 2))
+        throw new Error(`ShipHero API errors: ${JSON.stringify(result.errors)}`)
+      }
+      
+      // Check if the order was actually created
+      if (!result.data?.order_create?.order) {
+        console.error(`❌ No order returned from ShipHero:`, result)
+        throw new Error(`ShipHero did not return an order object`)
+      }
+      
       console.log(`✅ Created host sales order: ${orderData.order_number}`)
-      console.log(`✅ Host sales order result:`, result)
+      console.log(`✅ ShipHero order ID: ${result.data.order_create.order.id}`)
+      console.log(`✅ ShipHero order number: ${result.data.order_create.order.order_number}`)
       return result
     } catch (error) {
       console.error(`❌ Failed to create host sales order:`, error)
