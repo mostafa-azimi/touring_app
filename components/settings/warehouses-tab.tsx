@@ -286,21 +286,20 @@ export function WarehousesTab() {
       {shipHeroWarehouses.length > 0 ? (
         <div className="space-y-4">
           <h4 className="text-md font-medium">ShipHero Warehouses</h4>
-          <div className="border rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table className="min-w-full">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[150px]">Name</TableHead>
-                    <TableHead className="min-w-[100px]">Code</TableHead>
-                    <TableHead className="min-w-[200px]">Address</TableHead>
-                    <TableHead className="min-w-[100px]">City</TableHead>
-                    <TableHead className="min-w-[80px]">State</TableHead>
-                    <TableHead className="min-w-[80px]">Zip</TableHead>
-                    <TableHead className="min-w-[100px]">Warehouse #</TableHead>
-                    <TableHead className="min-w-[200px]">ShipHero ID</TableHead>
-                  </TableRow>
-                </TableHeader>
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[20%]">Name</TableHead>
+                  <TableHead className="w-[10%]">Code</TableHead>
+                  <TableHead className="w-[25%]">Address</TableHead>
+                  <TableHead className="w-[15%] hidden lg:table-cell">City</TableHead>
+                  <TableHead className="w-[8%] hidden xl:table-cell">State</TableHead>
+                  <TableHead className="w-[8%] hidden xl:table-cell">Zip</TableHead>
+                  <TableHead className="w-[10%] hidden md:table-cell">Warehouse #</TableHead>
+                  <TableHead className="w-[4%] hidden 2xl:table-cell">ShipHero ID</TableHead>
+                </TableRow>
+              </TableHeader>
                 <TableBody>
                   {shipHeroWarehouses.map((warehouse) => {
                     const warehouseNumber = decodeWarehouseId(warehouse.id)
@@ -310,63 +309,83 @@ export function WarehousesTab() {
                     return (
                       <TableRow key={warehouse.id}>
                         <TableCell className="font-medium">
-                          {warehouse.address?.name || warehouse.identifier || '-'}
+                          <div className="truncate">
+                            {warehouse.address?.name || warehouse.identifier || '-'}
+                          </div>
+                          {/* Show mobile info */}
+                          <div className="lg:hidden text-xs text-muted-foreground mt-1">
+                            {warehouse.address?.city && warehouse.address?.state && 
+                              `${warehouse.address.city}, ${warehouse.address.state}`
+                            }
+                          </div>
                         </TableCell>
                         <TableCell>
                           {isEditing ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col gap-2">
                               <Input
                                 value={editingCodeValue}
                                 onChange={(e) => setEditingCodeValue(e.target.value)}
-                                className="w-20 h-8"
+                                className="w-full h-8"
                                 placeholder="Code"
                                 autoFocus
                               />
-                              <Button
-                                size="sm"
-                                onClick={() => saveWarehouseCode(warehouse.id, editingCodeValue)}
-                                className="h-8 px-2"
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={cancelEditingCode}
-                                className="h-8 px-2"
-                              >
-                                Cancel
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  onClick={() => saveWarehouseCode(warehouse.id, editingCodeValue)}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={cancelEditingCode}
+                                  className="h-6 px-2 text-xs"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
                             </div>
                           ) : (
                             <div 
-                              className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded"
+                              className="cursor-pointer hover:bg-muted/50 p-1 rounded"
                               onClick={() => startEditingCode(warehouse.id, currentCode)}
                             >
-                              <span className="font-mono text-sm">
-                                {currentCode || 'Click to add'}
+                              <span className="font-mono text-sm truncate block">
+                                {currentCode || 'Add'}
                               </span>
-                              <Edit className="h-3 w-3 text-muted-foreground" />
+                              <Edit className="h-3 w-3 text-muted-foreground mt-1" />
                             </div>
                           )}
                         </TableCell>
                         <TableCell>
-                          {warehouse.address?.address1 || '-'}
+                          <div className="truncate">
+                            {warehouse.address?.address1 || '-'}
+                          </div>
+                          {/* Show mobile warehouse info */}
+                          <div className="md:hidden text-xs text-muted-foreground mt-1">
+                            Warehouse #{warehouseNumber}
+                          </div>
                         </TableCell>
-                        <TableCell>
-                          {warehouse.address?.city || '-'}
+                        <TableCell className="hidden lg:table-cell">
+                          <div className="truncate">
+                            {warehouse.address?.city || '-'}
+                          </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden xl:table-cell">
                           {warehouse.address?.state || '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden xl:table-cell">
                           {warehouse.address?.zip || '-'}
                         </TableCell>
-                        <TableCell className="font-mono text-sm font-medium">
+                        <TableCell className="font-mono text-sm font-medium hidden md:table-cell">
                           {warehouseNumber}
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground max-w-[200px] truncate" title={warehouse.id}>
-                          {warehouse.id}
+                        <TableCell className="font-mono text-xs text-muted-foreground hidden 2xl:table-cell">
+                          <div className="truncate" title={warehouse.id}>
+                            {warehouse.id}
+                          </div>
                         </TableCell>
                       </TableRow>
                     )

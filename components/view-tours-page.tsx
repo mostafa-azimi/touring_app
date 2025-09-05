@@ -545,7 +545,7 @@ export function ViewToursPage() {
     })
   }
 
-  const SortableHeader = ({ field, children }: { field: string; children: React.ReactNode }) => {
+  const SortableHeader = ({ field, children, className }: { field: string; children: React.ReactNode; className?: string }) => {
     const isActive = sortField === field
     const Icon = isActive 
       ? (sortDirection === 'asc' ? ArrowUp : ArrowDown)
@@ -553,12 +553,12 @@ export function ViewToursPage() {
 
     return (
       <TableHead 
-        className="cursor-pointer hover:bg-muted/50 select-none"
+        className={`cursor-pointer hover:bg-muted/50 select-none ${className || ''}`}
         onClick={() => handleSort(field)}
       >
         <div className="flex items-center gap-2">
-          {children}
-          <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+          <span className="truncate">{children}</span>
+          <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
         </div>
       </TableHead>
     )
@@ -606,12 +606,12 @@ export function ViewToursPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableHeader field="date">Date & Time</SortableHeader>
-                  <SortableHeader field="warehouse">Warehouse</SortableHeader>
-                  <SortableHeader field="host">Host</SortableHeader>
-                  <SortableHeader field="participants">Participants</SortableHeader>
-                  <SortableHeader field="status">Status</SortableHeader>
-                  <TableHead className="w-[140px]">Actions</TableHead>
+                  <SortableHeader field="date" className="w-[15%]">Date & Time</SortableHeader>
+                  <SortableHeader field="warehouse" className="w-[25%]">Warehouse</SortableHeader>
+                  <SortableHeader field="host" className="w-[15%] hidden md:table-cell">Host</SortableHeader>
+                  <SortableHeader field="participants" className="w-[15%] hidden lg:table-cell">Participants</SortableHeader>
+                  <SortableHeader field="status" className="w-[15%] hidden xl:table-cell">Status</SortableHeader>
+                  <TableHead className="w-[15%]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -632,16 +632,30 @@ export function ViewToursPage() {
                     <TableRow key={tour.id}>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{formatDate(tour.date)}</div>
+                          <div className="font-medium truncate">{formatDate(tour.date)}</div>
                           <div className="text-sm text-muted-foreground">{formatTime(tour.time)}</div>
+                          {/* Show mobile info */}
+                          <div className="md:hidden text-xs text-muted-foreground mt-1">
+                            {tour.host && `Host: ${tour.host.first_name} ${tour.host.last_name}`}
+                          </div>
+                          <div className="lg:hidden text-xs text-muted-foreground mt-1">
+                            {tour.participants.length} participant{tour.participants.length !== 1 ? 's' : ''}
+                          </div>
+                          <div className="xl:hidden text-xs text-muted-foreground mt-1">
+                            <Badge variant={tour.status === 'finalized' ? 'default' : 'secondary'} className="text-xs">
+                              {tour.status || 'scheduled'}
+                            </Badge>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{tour.warehouse.name}</div>
+                          <div className="font-medium truncate" title={tour.warehouse.name}>
+                            {tour.warehouse.name}
+                          </div>
                           <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {tour.warehouse.address}
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{tour.warehouse.address}</span>
                           </div>
                           {tour.shiphero_purchase_order_url && (
                             <div className="mt-1">
@@ -649,7 +663,7 @@ export function ViewToursPage() {
                                 href={tour.shiphero_purchase_order_url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 text-xs underline cursor-pointer"
+                                className="text-blue-600 hover:text-blue-800 text-xs underline cursor-pointer truncate block"
                               >
                                 PO: {tour.shiphero_purchase_order_number || 'View Order'}
                               </a>
@@ -657,30 +671,34 @@ export function ViewToursPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div>
                           {tour.host ? (
                             <>
-                              <div className="font-medium">{tour.host.first_name} {tour.host.last_name}</div>
-                              <div className="text-sm text-muted-foreground">{tour.host.email}</div>
+                              <div className="font-medium truncate" title={`${tour.host.first_name} ${tour.host.last_name}`}>
+                                {tour.host.first_name} {tour.host.last_name}
+                              </div>
+                              <div className="text-sm text-muted-foreground truncate" title={tour.host.email}>
+                                {tour.host.email}
+                              </div>
                             </>
                           ) : (
                             <div className="text-sm text-muted-foreground">No host assigned</div>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <Badge variant="secondary" className="flex items-center gap-1 w-fit">
                           <Users className="h-3 w-3" />
                           {tour.participants.length}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden xl:table-cell">
                         <Badge 
-                          variant={tour.status === 'validated' ? 'default' : tour.status === 'cancelled' ? 'destructive' : 'secondary'}
+                          variant={tour.status === 'finalized' ? 'default' : tour.status === 'cancelled' ? 'destructive' : 'secondary'}
                           className="capitalize"
                         >
-                          {tour.status || 'draft'}
+                          {tour.status || 'scheduled'}
                         </Badge>
                       </TableCell>
                       <TableCell>

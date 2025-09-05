@@ -229,22 +229,26 @@ export function ProductsTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px] min-w-[120px]">SKU</TableHead>
-                    <TableHead className="min-w-[200px]">Product Name</TableHead>
-                    <TableHead className="w-[80px] min-w-[80px] text-center">Available</TableHead>
-                    <TableHead className="w-[80px] min-w-[80px] text-center hidden md:table-cell">On Hand</TableHead>
-                    <TableHead className="w-[80px] min-w-[80px] text-center hidden lg:table-cell">Allocated</TableHead>
-                    <TableHead className="w-[140px] min-w-[140px] hidden xl:table-cell">Warehouse</TableHead>
+                    <TableHead className="w-[15%]">SKU</TableHead>
+                    <TableHead className="w-[35%]">Product Name</TableHead>
+                    <TableHead className="w-[15%] text-center">Available</TableHead>
+                    <TableHead className="w-[12%] text-center hidden md:table-cell">On Hand</TableHead>
+                    <TableHead className="w-[12%] text-center hidden lg:table-cell">Allocated</TableHead>
+                    <TableHead className="w-[11%] hidden xl:table-cell">Warehouse</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {products.map((product, index) => (
                     <TableRow key={product.sku || index}>
                       <TableCell className="font-mono text-xs">
-                        {product.sku}
+                        <div className="truncate" title={product.sku}>
+                          {product.sku}
+                        </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        <div>{product.name || 'Unnamed Product'}</div>
+                        <div className="truncate" title={product.name || 'Unnamed Product'}>
+                          {product.name || 'Unnamed Product'}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center font-medium">
                         <div className="space-y-1">
@@ -255,7 +259,7 @@ export function ProductsTab() {
                           <div className="md:hidden text-xs text-muted-foreground">
                             On Hand: {product.inventory.on_hand} | Allocated: {product.inventory.allocated}
                           </div>
-                          <div className="xl:hidden text-xs text-muted-foreground">
+                          <div className="xl:hidden text-xs text-muted-foreground truncate">
                             {product.inventory.warehouse_name || product.inventory.warehouse_identifier || 'N/A'}
                           </div>
                         </div>
@@ -267,7 +271,9 @@ export function ProductsTab() {
                         {product.inventory.allocated}
                       </TableCell>
                       <TableCell className="text-sm hidden xl:table-cell">
-                        {product.inventory.warehouse_name || product.inventory.warehouse_identifier || 'N/A'}
+                        <div className="truncate" title={product.inventory.warehouse_name || product.inventory.warehouse_identifier || 'N/A'}>
+                          {product.inventory.warehouse_name || product.inventory.warehouse_identifier || 'N/A'}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -211,11 +211,11 @@ export function HostsTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>First Name</TableHead>
-              <TableHead>Last Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="w-[140px]">Actions</TableHead>
+              <TableHead className="w-[18%]">First Name</TableHead>
+              <TableHead className="w-[18%]">Last Name</TableHead>
+              <TableHead className="w-[35%]">Email</TableHead>
+              <TableHead className="w-[15%] hidden md:table-cell">Created</TableHead>
+              <TableHead className="w-[14%]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -234,17 +234,35 @@ export function HostsTab() {
             ) : (
               hosts.map((host) => (
                 <TableRow key={host.id}>
-                  <TableCell className="font-medium">{host.first_name || '-'}</TableCell>
-                  <TableCell className="font-medium">{host.last_name || '-'}</TableCell>
-                  <TableCell>{host.email}</TableCell>
-                  <TableCell>{new Date(host.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="truncate" title={host.first_name || '-'}>
+                      {host.first_name || '-'}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <div className="truncate" title={host.last_name || '-'}>
+                      {host.last_name || '-'}
+                    </div>
+                    {/* Show created date on mobile */}
+                    <div className="md:hidden text-xs text-muted-foreground mt-1">
+                      {new Date(host.created_at).toLocaleDateString()}
+                    </div>
+                  </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(host)}>
+                    <div className="truncate" title={host.email}>
+                      {host.email}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {new Date(host.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(host)} className="w-full">
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(host.id)}>
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(host.id)} className="w-full">
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </Button>

@@ -211,11 +211,11 @@ export function SwagItemsTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Product Name</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>Vendor ID</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="w-[140px]">Actions</TableHead>
+              <TableHead className="w-[35%]">Product Name</TableHead>
+              <TableHead className="w-[20%]">SKU</TableHead>
+              <TableHead className="w-[15%] hidden md:table-cell">Vendor ID</TableHead>
+              <TableHead className="w-[15%] hidden lg:table-cell">Created</TableHead>
+              <TableHead className="w-[15%]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -234,17 +234,38 @@ export function SwagItemsTab() {
             ) : (
               swagItems.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{item.sku || '-'}</TableCell>
-                  <TableCell>{item.vendor_id || '-'}</TableCell>
-                  <TableCell>{new Date(item.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="truncate" title={item.name}>
+                      {item.name}
+                    </div>
+                  </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
+                    <div className="truncate font-mono text-sm" title={item.sku || '-'}>
+                      {item.sku || '-'}
+                    </div>
+                    {/* Show mobile info */}
+                    <div className="md:hidden text-xs text-muted-foreground mt-1">
+                      Vendor: {item.vendor_id || 'N/A'}
+                    </div>
+                    <div className="lg:hidden text-xs text-muted-foreground mt-1">
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="truncate" title={item.vendor_id || '-'}>
+                      {item.vendor_id || '-'}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(item)} className="w-full">
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id)}>
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id)} className="w-full">
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </Button>
