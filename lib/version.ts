@@ -1,4 +1,4 @@
 // Auto-incremented version for deployment tracking
 // This file is updated automatically on each deployment
-export const APP_VERSION = "1.0.13"
-export const BUILD_TIMESTAMP = "2025-09-05T02:09:50.109Z"
+export const APP_VERSION = "1.0.14"
+export const BUILD_TIMESTAMP = "2025-09-05T02:11:07.110Z"

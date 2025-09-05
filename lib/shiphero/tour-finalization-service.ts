@@ -670,6 +670,20 @@ export class TourFinalizationService {
   }
 
   /**
+   * Helper method to decode ShipHero warehouse ID and extract warehouse number
+   */
+  private decodeWarehouseId(base64Id: string): string {
+    try {
+      const decoded = atob(base64Id)
+      // Remove "Warehouse:" prefix and return just the number
+      return decoded.replace('Warehouse:', '')
+    } catch (error) {
+      console.error('Failed to decode warehouse ID:', base64Id, error)
+      return 'Unknown'
+    }
+  }
+
+  /**
    * Helper method to generate standardized order metadata for all sales orders
    */
   private getStandardOrderMetadata(tourData: TourData) {
@@ -678,11 +692,15 @@ export class TourFinalizationService {
     const orderDate = new Date(tourDate)
     orderDate.setDate(orderDate.getDate() - 1) // Day before tour
     
-    // Generate tags using 6-digit numeric tour ID and warehouse code
+    // Extract warehouse number from ShipHero warehouse ID
+    const warehouseNumber = this.decodeWarehouseId(tourData.warehouse.shiphero_warehouse_id)
+    
+    // Generate tags using 6-digit numeric tour ID, warehouse code, and warehouse number
     const tags = [
       'tour_orders',
       `tour_${tourData.tour_numeric_id}`, // Use 6-digit numeric ID
-      tourData.warehouse.code || 'WH001' // Use warehouse code from settings
+      tourData.warehouse.code || 'WH001', // Use warehouse code from settings
+      warehouseNumber // Use decoded warehouse number
     ]
 
     return {
