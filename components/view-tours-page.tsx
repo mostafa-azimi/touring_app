@@ -438,7 +438,11 @@ export function ViewToursPage() {
 
 ## 📋 Tour Information
 - **Tour ID:** ${tourData.tour_numeric_id}
-- **Date:** ${new Date(tourData.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+- **Date:** ${(() => {
+  const [year, month, day] = tourData.date.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+})()}
 - **Time:** ${tourData.time}
 - **Status:** ${tourData.status?.toUpperCase()}
 - **Warehouse:** ${tourData.warehouse?.name} (${tourData.warehouse?.code})
@@ -488,7 +492,10 @@ export function ViewToursPage() {
   const currentTours = sortedTours.slice(startIndex, endIndex)
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    // Parse date as local date to avoid timezone conversion issues
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(year, month - 1, day) // month is 0-indexed
+    return date.toLocaleDateString("en-US", {
       weekday: "short",
       year: "numeric",
       month: "short",
@@ -895,7 +902,10 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
   const { toast } = useToast()
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    // Parse date as local date to avoid timezone conversion issues
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(year, month - 1, day) // month is 0-indexed
+    return date.toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",

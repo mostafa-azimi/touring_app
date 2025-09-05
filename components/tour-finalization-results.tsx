@@ -176,7 +176,11 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Date:</span>
-                  <span>{new Date(result.tourDate).toLocaleDateString()}</span>
+                  <span>{(() => {
+                    const [year, month, day] = result.tourDate.split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    return date.toLocaleDateString();
+                  })()}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
