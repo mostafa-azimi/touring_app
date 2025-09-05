@@ -1288,4 +1288,106 @@ export class TourFinalizationService {
     console.log("📋 Host-friendly instruction guide generated successfully")
     return guide
   }
+
+  /**
+   * Create Multi-Item Batch sales orders with celebrity demo customers
+   */
+  private async createMultiItemBatchSOs(tourData: TourData): Promise<void> {
+    console.log('🎯 Starting Multi-Item Batch workflow...')
+    console.log(`Creating orders for ${tourData.participants.length} participants first...`)
+
+    // Create participant orders first (if any)
+    if (tourData.participants.length > 0) {
+      await this.createParticipantOrders(tourData)
+    } else {
+      console.log('No participants found, skipping participant orders')
+    }
+
+    // Create demo orders with celebrity names for training variety
+    const demoOrderCount = 5
+    console.log(`Creating ${demoOrderCount} multi-item demo orders with celebrity names...`)
+    
+    const orderPromises = []
+    
+    for (let i = 0; i < demoOrderCount; i++) {
+      // Get celebrity name
+      const celebrity = getCelebrityNames(1)[0]
+      
+      // Create multi-item line items (2-4 items per order)
+      const itemCount = Math.floor(Math.random() * 3) + 2 // 2-4 items
+      const lineItems = []
+      
+      for (let j = 0; j < itemCount; j++) {
+        const skuIndex = (i + j) % tourData.selected_skus.length
+        lineItems.push({
+          sku: tourData.selected_skus[skuIndex],
+          quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
+          price: "15.00"
+        })
+      }
+
+      const orderData = {
+        order_number: `DEMO-MIB-${Date.now()}-${i + 1}`,
+        shop_name: "Demo Store",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString(),
+        total_tax: "0.00",
+        subtotal: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
+        total_discounts: "0.00",
+        total_price: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
+        shipping_lines: {
+          title: "Standard Shipping",
+          price: "0.00",
+          carrier: "Demo Carrier",
+          method: "Standard"
+        },
+        shipping_address: {
+          first_name: celebrity.firstName,
+          last_name: celebrity.lastName,
+          company: "",
+          address1: tourData.warehouse.address.address1,
+          address2: tourData.warehouse.address.address2 || "",
+          city: tourData.warehouse.address.city,
+          state: tourData.warehouse.address.state,
+          state_code: tourData.warehouse.address.state,
+          zip: tourData.warehouse.address.zip,
+          country: tourData.warehouse.address.country,
+          country_code: tourData.warehouse.address.country,
+          phone: tourData.warehouse.address.phone || "",
+          email: `demo.mib${i + 1}@example.com`
+        },
+        billing_address: {
+          first_name: celebrity.firstName,
+          last_name: celebrity.lastName,
+          company: "",
+          address1: tourData.warehouse.address.address1,
+          address2: tourData.warehouse.address.address2 || "",
+          city: tourData.warehouse.address.city,
+          state: tourData.warehouse.address.state,
+          state_code: tourData.warehouse.address.state,
+          zip: tourData.warehouse.address.zip,
+          country: tourData.warehouse.address.country,
+          country_code: tourData.warehouse.address.country,
+          phone: tourData.warehouse.address.phone || "",
+          email: `demo.mib${i + 1}@example.com`
+        },
+        line_items: lineItems,
+        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        tags: ["demo", "multi-item", "batch", "tour"]
+      }
+
+      const promise = this.createSalesOrderViaAPI(orderData)
+      orderPromises.push(promise)
+    }
+
+    const results = await Promise.all(orderPromises)
+    const successfulOrders = results.filter(result => result.success).length
+    
+    console.log(`✅ Created ${successfulOrders} multi-item batch demo orders`)
+    
+    if (successfulOrders < demoOrderCount) {
+      const failedCount = demoOrderCount - successfulOrders
+      console.warn(`⚠️ ${failedCount} demo orders failed to create`)
+    }
+  }
 }
