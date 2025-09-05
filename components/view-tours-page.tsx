@@ -370,18 +370,19 @@ export function ViewToursPage() {
 
   const handleViewInstructions = async (tourId: string) => {
     try {
-      // Fetch tour data including saved instruction guide
+      // Fetch comprehensive tour data including order summary
       const { data: tourData, error: tourError } = await supabase
         .from('tours')
         .select(`
           id,
           date,
           time,
+          status,
+          tour_numeric_id,
           selected_workflows,
           selected_skus,
-          instruction_guide,
-          instruction_guide_generated_at,
-          warehouse:warehouses(id, name, address, address2, city, state, zip, country, shiphero_warehouse_id),
+          order_summary,
+          warehouse:warehouses(id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id),
           host:team_members(id, first_name, last_name, email),
           participants:tour_participants(id, first_name, last_name, email, company, title)
         `)
@@ -392,44 +393,76 @@ export function ViewToursPage() {
         throw new Error('Failed to fetch tour data')
       }
 
-      // Check if we have a saved instruction guide
-      if (!tourData.instruction_guide) {
+      // Check if we have order summary data
+      if (!tourData.order_summary) {
         toast({
-          title: "No Instructions Available",
-          description: "This tour was finalized before instruction guides were saved. Please re-finalize the tour to generate instructions.",
+          title: "No Tour Summary Available",
+          description: "This tour was finalized before comprehensive summaries were saved. Please re-finalize the tour to generate a summary.",
           variant: "destructive",
         })
         return
       }
 
-      // Create finalization result with saved instruction guide
-      const mockResult = {
+      // Create comprehensive tour summary
+      const tourSummary = {
         tourId: tourData.id,
         tourDate: tourData.date,
         tourTime: tourData.time,
+        tourNumericId: tourData.tour_numeric_id,
+        status: tourData.status,
         warehouseName: tourData.warehouse?.name || 'Unknown Warehouse',
+        warehouseCode: tourData.warehouse?.code || '',
         warehouseAddress: `${tourData.warehouse?.address || ''} ${tourData.warehouse?.city || ''} ${tourData.warehouse?.state || ''} ${tourData.warehouse?.zip || ''}`.trim() || 'Address not available',
         hostName: `${tourData.host?.first_name || ''} ${tourData.host?.last_name || ''}`.trim(),
+        hostEmail: tourData.host?.email || '',
         selectedWorkflows: tourData.selected_workflows || [],
         selectedSkus: tourData.selected_skus || [],
         participantCount: tourData.participants?.length || 0,
+        participants: tourData.participants || [],
         orders: {
-          sales_orders: [], // Would need to be stored in DB for full functionality
-          purchase_orders: []
+          sales_orders: tourData.order_summary?.sales_orders || [],
+          purchase_orders: tourData.order_summary?.purchase_orders || []
         },
-        instructions: tourData.instruction_guide // Use saved instruction guide
+        summary: tourData.order_summary?.summary || {},
+        instructions: `
+# 🎯 Tour Summary
+
+## 📋 Tour Information
+- **Tour ID:** ${tourData.tour_numeric_id}
+- **Date:** ${new Date(tourData.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+- **Time:** ${tourData.time}
+- **Status:** ${tourData.status?.toUpperCase()}
+- **Warehouse:** ${tourData.warehouse?.name} (${tourData.warehouse?.code})
+- **Address:** ${tourData.warehouse?.address}, ${tourData.warehouse?.city}, ${tourData.warehouse?.state} ${tourData.warehouse?.zip}
+
+## 👥 Tour Host & Participants
+- **Host:** ${tourData.host?.first_name} ${tourData.host?.last_name} (${tourData.host?.email})
+- **Participants:** ${tourData.participants?.length || 0} registered
+
+## 📦 Order Summary
+- **Total Orders Created:** ${tourData.order_summary?.summary?.total_orders || 0}
+- **Sales Orders:** ${tourData.order_summary?.summary?.total_sales_orders || 0}
+- **Purchase Orders:** ${tourData.order_summary?.summary?.total_purchase_orders || 0}
+
+### 🔗 Quick Links
+- [View All Tour Orders in ShipHero](${generateShipHeroFilterUrl(tourData.tour_numeric_id)})
+
+---
+
+*This summary was generated automatically when the tour was finalized.*
+        `.trim()
       }
 
-      setFinalizationResult(mockResult)
+      setFinalizationResult(tourSummary)
       setShowFinalizationResults(true)
 
       toast({
-        title: "Instructions Retrieved",
-        description: `Instruction guide generated on ${new Date(tourData.instruction_guide_generated_at).toLocaleDateString()}`,
+        title: "Tour Summary Retrieved",
+        description: `Comprehensive tour summary with ${tourData.order_summary?.summary?.total_orders || 0} orders`,
       })
     } catch (error: any) {
       toast({
-        title: "Failed to Load Instructions",
+        title: "Failed to Load Tour Summary",
         description: error.message,
         variant: "destructive",
       })
@@ -739,7 +772,7 @@ export function ViewToursPage() {
                             </Button>
                           )}
                           
-                          {/* View Instructions for Finalized Tours */}
+                          {/* View Summary for Finalized Tours */}
                           {tour.status === 'finalized' && (
                             <>
                               <Button 
@@ -749,7 +782,7 @@ export function ViewToursPage() {
                                 className="w-full bg-green-600 hover:bg-green-700"
                               >
                                 <FileText className="h-4 w-4 mr-2" />
-                                View Instructions
+                                View Summary
                               </Button>
                               
                               {/* Cancel Tour Button for Finalized Tours */}

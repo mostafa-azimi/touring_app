@@ -25,24 +25,44 @@ interface FinalizationResult {
   tourId: string
   tourDate: string
   tourTime: string
+  tourNumericId?: number
+  status?: string
   warehouseName: string
+  warehouseCode?: string
   warehouseAddress: string
   hostName: string
+  hostEmail?: string
   selectedWorkflows: string[]
   selectedSkus: string[]
   participantCount: number
+  participants?: Array<{
+    id: string
+    first_name: string
+    last_name: string
+    email: string
+    company?: string
+    title?: string
+  }>
   orders: {
     sales_orders: Array<{
-      order_number: string
       workflow: string
-      customer_name: string
-      items: Array<{ sku: string; quantity: number }>
+      order_number: string
+      shiphero_id: string
+      legacy_id: string
+      recipient: string
     }>
     purchase_orders: Array<{
-      po_number: string
       workflow: string
-      items: Array<{ sku: string; quantity: number }>
+      po_number: string
+      shiphero_id: string
+      legacy_id: string
     }>
+  }
+  summary?: {
+    total_orders: number
+    total_sales_orders: number
+    total_purchase_orders: number
+    created_at: string
   }
   instructions: string
 }
@@ -71,6 +91,11 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
       icon: <Package className="h-4 w-4" />, 
       color: 'bg-green-100 text-green-800 border-green-200' 
     },
+    'standard_receiving': { 
+      label: 'Standard Receiving (STD_REC)', 
+      icon: <Package className="h-4 w-4" />, 
+      color: 'bg-green-100 text-green-800 border-green-200' 
+    },
     'pack_to_light': { 
       label: 'Pack-to-Light (P2L)', 
       icon: <Package className="h-4 w-4" />, 
@@ -87,6 +112,37 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
       color: 'bg-orange-100 text-orange-800 border-orange-200' 
     },
     'bulk_shipping': { 
+      label: 'Bulk Shipping (BSHIP)', 
+      icon: <Package className="h-4 w-4" />, 
+      color: 'bg-red-100 text-red-800 border-red-200' 
+    },
+    // Workflow prefixes for display
+    'R2L': { 
+      label: 'Receive-to-Light', 
+      icon: <Package className="h-4 w-4" />, 
+      color: 'bg-green-100 text-green-800 border-green-200' 
+    },
+    'STD_REC': { 
+      label: 'Standard Receiving', 
+      icon: <Package className="h-4 w-4" />, 
+      color: 'bg-green-100 text-green-800 border-green-200' 
+    },
+    'p2l': { 
+      label: 'Pack-to-Light', 
+      icon: <Package className="h-4 w-4" />, 
+      color: 'bg-blue-100 text-blue-800 border-blue-200' 
+    },
+    'mib': { 
+      label: 'Multi-Item Batch', 
+      icon: <ShoppingCart className="h-4 w-4" />, 
+      color: 'bg-purple-100 text-purple-800 border-purple-200' 
+    },
+    'sib': { 
+      label: 'Single-Item Batch', 
+      icon: <ShoppingCart className="h-4 w-4" />, 
+      color: 'bg-orange-100 text-orange-800 border-orange-200' 
+    },
+    'bship': { 
       label: 'Bulk Shipping', 
       icon: <Package className="h-4 w-4" />, 
       color: 'bg-red-100 text-red-800 border-red-200' 
@@ -130,7 +186,7 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Warehouse:</span>
-                  <span>{result.warehouseName}</span>
+                  <span>{result.warehouseName} ({result.warehouseCode})</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
@@ -138,14 +194,52 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
                   <span>{result.participantCount}</span>
                 </div>
               </div>
+              
+              {result.tourNumericId && (
+                <div className="pt-2">
+                  <span className="text-sm font-medium">Tour ID:</span>
+                  <span className="ml-2 text-sm font-mono">{result.tourNumericId}</span>
+                  <a 
+                    href={`https://app.shiphero.com/dashboard/orders/v2/manage?tags=tour-${result.tourNumericId}&start_date=${encodeURIComponent(new Date(Date.now() - 86400000).toLocaleDateString('en-US'))}&preselectedDate=custom&end_date=${encodeURIComponent(new Date(Date.now() + 604800000).toLocaleDateString('en-US'))}&fulfillment_status=unfulfilled`}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="ml-2 text-blue-600 hover:text-blue-800 text-sm underline"
+                  >
+                    View All Orders in ShipHero →
+                  </a>
+                </div>
+              )}
+              
               <div className="pt-2">
                 <span className="text-sm font-medium">Host:</span>
                 <span className="ml-2 text-sm">{result.hostName}</span>
+                {result.hostEmail && (
+                  <span className="ml-2 text-sm text-muted-foreground">({result.hostEmail})</span>
+                )}
               </div>
               <div className="pt-2">
                 <span className="text-sm font-medium">Address:</span>
                 <span className="ml-2 text-sm text-muted-foreground">{result.warehouseAddress}</span>
               </div>
+              
+              {result.summary && (
+                <div className="pt-4 border-t">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="text-center">
+                      <div className="font-medium text-lg">{result.summary.total_orders}</div>
+                      <div className="text-muted-foreground">Total Orders</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-medium text-lg">{result.summary.total_sales_orders}</div>
+                      <div className="text-muted-foreground">Sales Orders</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-medium text-lg">{result.summary.total_purchase_orders}</div>
+                      <div className="text-muted-foreground">Purchase Orders</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -182,10 +276,10 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5" />
-                  Sales Orders Created
+                  Sales Orders Created ({result.orders.sales_orders.length})
                 </CardTitle>
                 <CardDescription>
-                  Use these order numbers for picking and packing demonstrations
+                  Click order numbers to view individual orders in ShipHero
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -193,18 +287,27 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
                   <div key={index} className="border rounded-lg p-4 print:border-2">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className={`text-xs ${workflowLabels[order.workflow]?.color || 'bg-gray-100 text-gray-800'}`}>
                           {workflowLabels[order.workflow]?.label || order.workflow}
                         </Badge>
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-mono font-medium">{order.order_number}</span>
+                        <a 
+                          href={`https://app.shiphero.com/dashboard/orders/details/${order.legacy_id}`}
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="font-mono font-medium text-blue-600 hover:text-blue-800 underline"
+                        >
+                          {order.order_number}
+                        </a>
+                        <ExternalLink className="h-3 w-3 text-blue-600" />
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        Customer: {order.customer_name}
+                        {order.recipient}
                       </span>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Items: {order.items.map(item => `${item.sku} (${item.quantity})`).join(', ')}
+                    <div className="text-xs text-muted-foreground">
+                      <div>ShipHero ID: {order.shiphero_id}</div>
+                      <div>Legacy ID: {order.legacy_id}</div>
                     </div>
                   </div>
                 ))}
@@ -218,24 +321,33 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5" />
-                  Purchase Orders Created
+                  Purchase Orders Created ({result.orders.purchase_orders.length})
                 </CardTitle>
                 <CardDescription>
-                  Use these PO numbers for receiving demonstrations
+                  Click PO numbers to view individual purchase orders in ShipHero
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {result.orders.purchase_orders.map((po, index) => (
                   <div key={index} className="border rounded-lg p-4 print:border-2">
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className={`text-xs ${workflowLabels[po.workflow]?.color || 'bg-gray-100 text-gray-800'}`}>
                         {workflowLabels[po.workflow]?.label || po.workflow}
                       </Badge>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-mono font-medium">{po.po_number}</span>
+                      <a 
+                        href={`https://app.shiphero.com/dashboard/purchase-orders/details/${po.legacy_id}`}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="font-mono font-medium text-blue-600 hover:text-blue-800 underline"
+                      >
+                        {po.po_number}
+                      </a>
+                      <ExternalLink className="h-3 w-3 text-blue-600" />
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Items: {po.items.map(item => `${item.sku} (${item.quantity})`).join(', ')}
+                    <div className="text-xs text-muted-foreground">
+                      <div>ShipHero ID: {po.shiphero_id}</div>
+                      <div>Legacy ID: {po.legacy_id}</div>
                     </div>
                   </div>
                 ))}

@@ -396,18 +396,44 @@ export class TourFinalizationService {
       const sales_orders = createdOrders.filter(order => order.type === 'sales_order')
       const purchase_orders = createdOrders.filter(order => order.type === 'purchase_order')
 
-      // Update tour status to finalized in database
-      console.log('🔄 Updating tour status to finalized...')
+      // Prepare comprehensive order summary for storage
+      const orderSummary = {
+        sales_orders: this.createdOrders.map(order => ({
+          workflow: order.workflow,
+          order_number: order.order_number,
+          shiphero_id: order.shiphero_id,
+          legacy_id: order.legacy_id,
+          recipient: order.recipient
+        })),
+        purchase_orders: this.createdPurchaseOrders.map(po => ({
+          workflow: po.workflow,
+          po_number: po.po_number,
+          shiphero_id: po.shiphero_id,
+          legacy_id: po.legacy_id
+        })),
+        summary: {
+          total_orders: this.createdOrders.length + this.createdPurchaseOrders.length,
+          total_sales_orders: this.createdOrders.length,
+          total_purchase_orders: this.createdPurchaseOrders.length,
+          created_at: new Date().toISOString()
+        }
+      }
+
+      // Update tour status to finalized and store order summary in database
+      console.log('🔄 Updating tour status to finalized and storing order summary...')
       const { error: statusError } = await this.supabase
         .from('tours')
-        .update({ status: 'finalized' })
+        .update({ 
+          status: 'finalized',
+          order_summary: orderSummary
+        })
         .eq('id', tourId)
 
       if (statusError) {
         console.error('⚠️ Failed to update tour status:', statusError)
         // Don't fail the entire operation for a status update error
       } else {
-        console.log('✅ Tour status updated to finalized')
+        console.log('✅ Tour status updated to finalized and order summary stored')
       }
 
       // Print final summary of all created orders
