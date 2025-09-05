@@ -1,10 +1,11 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
 import { 
   FileText, 
   ExternalLink, 
@@ -14,7 +15,9 @@ import {
   MapPin,
   Calendar,
   Clock,
-  CheckCircle
+  CheckCircle,
+  XCircle,
+  AlertTriangle
 } from "lucide-react"
 
 interface TourSummaryData {
@@ -58,7 +61,157 @@ interface TourSummaryDialogProps {
 }
 
 export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogProps) {
+  const [isCanceling, setIsCanceling] = useState(false)
+  const { toast } = useToast()
+
   if (!data) return null
+
+  // Helper function to get ShipHero access token
+  const getAccessToken = async () => {
+    try {
+      const response = await fetch('/api/shiphero/refresh-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const result = await response.json()
+      return result.access_token
+    } catch (error) {
+      console.error('Failed to get access token:', error)
+      throw error
+    }
+  }
+
+  // Cancel orders by workflow
+  const cancelOrdersByWorkflow = async (workflow: string, orderType: 'sales' | 'purchase') => {
+    try {
+      setIsCanceling(true)
+      const accessToken = await getAccessToken()
+
+      let ordersToCancel
+      if (orderType === 'sales') {
+        ordersToCancel = data.orders.sales_orders
+          .filter(order => order.workflow === workflow)
+          .map(order => ({ id: order.shiphero_id, legacy_id: order.legacy_id }))
+      } else {
+        ordersToCancel = data.orders.purchase_orders
+          .filter(order => order.workflow === workflow)
+          .map(order => ({ id: order.shiphero_id, legacy_id: order.legacy_id }))
+      }
+
+      if (ordersToCancel.length === 0) {
+        toast({
+          title: "No Orders Found",
+          description: `No ${orderType} orders found for ${workflow} workflow.`,
+          variant: "destructive"
+        })
+        return
+      }
+
+      const response = await fetch('/api/shiphero/cancel-orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          orders: ordersToCancel,
+          type: orderType
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "Orders Canceled",
+          description: `Successfully canceled ${result.canceled_count} ${orderType} orders for ${workflow} workflow.`,
+        })
+      } else {
+        toast({
+          title: "Partial Cancellation",
+          description: `Canceled ${result.canceled_count}/${result.total_count} ${orderType} orders. ${result.errors.length} failed.`,
+          variant: "destructive"
+        })
+      }
+
+    } catch (error) {
+      console.error('Error canceling orders:', error)
+      toast({
+        title: "Cancellation Failed",
+        description: "Failed to cancel orders. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsCanceling(false)
+    }
+  }
+
+  // Cancel all orders of a specific type
+  const cancelAllOrders = async (orderType: 'sales' | 'purchase') => {
+    try {
+      setIsCanceling(true)
+      const accessToken = await getAccessToken()
+
+      let ordersToCancel
+      if (orderType === 'sales') {
+        ordersToCancel = data.orders.sales_orders.map(order => ({ 
+          id: order.shiphero_id, 
+          legacy_id: order.legacy_id 
+        }))
+      } else {
+        ordersToCancel = data.orders.purchase_orders.map(order => ({ 
+          id: order.shiphero_id, 
+          legacy_id: order.legacy_id 
+        }))
+      }
+
+      if (ordersToCancel.length === 0) {
+        toast({
+          title: "No Orders Found",
+          description: `No ${orderType} orders found to cancel.`,
+          variant: "destructive"
+        })
+        return
+      }
+
+      const response = await fetch('/api/shiphero/cancel-orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          orders: ordersToCancel,
+          type: orderType
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "All Orders Canceled",
+          description: `Successfully canceled all ${result.canceled_count} ${orderType} orders.`,
+        })
+      } else {
+        toast({
+          title: "Partial Cancellation",
+          description: `Canceled ${result.canceled_count}/${result.total_count} ${orderType} orders. ${result.errors.length} failed.`,
+          variant: "destructive"
+        })
+      }
+
+    } catch (error) {
+      console.error('Error canceling all orders:', error)
+      toast({
+        title: "Cancellation Failed",
+        description: "Failed to cancel orders. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsCanceling(false)
+    }
+  }
 
   const formatDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number)
@@ -284,9 +437,120 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             </Card>
           )}
 
+          {/* Order Cancellation Section */}
+          {(data.orders.sales_orders.length > 0 || data.orders.purchase_orders.length > 0) && (
+            <Card className="border-red-200 bg-red-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-800">
+                  <AlertTriangle className="h-5 w-5" />
+                  Order Cancellation
+                </CardTitle>
+                <CardDescription className="text-red-700">
+                  Cancel orders by workflow or cancel all orders at once. This will update the fulfillment status to "Canceled" in ShipHero.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                
+                {/* Sales Orders Cancellation */}
+                {data.orders.sales_orders.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-green-700">
+                      <ShoppingCart className="h-4 w-4" />
+                      Sales Orders ({data.orders.sales_orders.length})
+                    </div>
+                    
+                    {/* Individual workflow cancellation buttons */}
+                    <div className="flex flex-wrap gap-2 ml-6">
+                      {(() => {
+                        const salesWorkflows = [...new Set(data.orders.sales_orders.map(order => order.workflow))]
+                        return salesWorkflows.map(workflow => {
+                          const workflowOrders = data.orders.sales_orders.filter(order => order.workflow === workflow)
+                          const workflowLabel = workflowLabels[workflow]?.label || workflow
+                          return (
+                            <Button
+                              key={workflow}
+                              variant="outline"
+                              size="sm"
+                              disabled={isCanceling}
+                              onClick={() => cancelOrdersByWorkflow(workflow, 'sales')}
+                              className="text-red-600 border-red-300 hover:bg-red-100"
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Cancel {workflowLabel} ({workflowOrders.length})
+                            </Button>
+                          )
+                        })
+                      })()}
+                    </div>
+                    
+                    {/* Cancel all sales orders */}
+                    <div className="ml-6">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={isCanceling}
+                        onClick={() => cancelAllOrders('sales')}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancel All Sales Orders ({data.orders.sales_orders.length})
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Purchase Orders Cancellation */}
+                {data.orders.purchase_orders.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-purple-700">
+                      <Package className="h-4 w-4" />
+                      Purchase Orders ({data.orders.purchase_orders.length})
+                    </div>
+                    
+                    {/* Individual workflow cancellation buttons */}
+                    <div className="flex flex-wrap gap-2 ml-6">
+                      {(() => {
+                        const purchaseWorkflows = [...new Set(data.orders.purchase_orders.map(order => order.workflow))]
+                        return purchaseWorkflows.map(workflow => {
+                          const workflowOrders = data.orders.purchase_orders.filter(order => order.workflow === workflow)
+                          const workflowLabel = workflowLabels[workflow]?.label || workflow
+                          return (
+                            <Button
+                              key={workflow}
+                              variant="outline"
+                              size="sm"
+                              disabled={isCanceling}
+                              onClick={() => cancelOrdersByWorkflow(workflow, 'purchase')}
+                              className="text-red-600 border-red-300 hover:bg-red-100"
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Cancel {workflowLabel} ({workflowOrders.length})
+                            </Button>
+                          )
+                        })
+                      })()}
+                    </div>
+                    
+                    {/* Cancel all purchase orders */}
+                    <div className="ml-6">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={isCanceling}
+                        onClick={() => cancelAllOrders('purchase')}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancel All Purchase Orders ({data.orders.purchase_orders.length})
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end">
-            <Button onClick={onClose}>
+            <Button onClick={onClose} disabled={isCanceling}>
               Close
             </Button>
           </div>
