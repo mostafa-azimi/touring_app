@@ -438,10 +438,8 @@ export class TourFinalizationService {
       await this.createHostSalesOrder(tourData, "P2L-HOST")
     }
     
-    // Create purchase order using selected SKUs (sum of all participants + host)
-    await this.createStandardReceivingPO(tourData, "P2L")
-
-    console.log("Executed: Pack-to-Light Workflow with selected SKUs")
+    // P2L workflow is for fulfillment only - no purchase order needed
+    console.log("Executed: Pack-to-Light Workflow with selected SKUs (Sales Orders Only)")
   }
 
   /**
@@ -460,7 +458,7 @@ export class TourFinalizationService {
     
     const poLineItems = skusToUse.map((sku, index) => ({
       sku: sku,
-      quantity: Math.floor(Math.random() * 10) + 5 // 5-14 quantity
+      quantity: 10 // Fixed quantity for demo purposes
     }))
 
     console.log(`Creating ${workflowName} PO with ${poLineItems.length} SKUs:`, poLineItems.map(item => item.sku))
@@ -653,20 +651,29 @@ export class TourFinalizationService {
   // REMOVED: Legacy createMultiItemBatchSOsOld method - replaced with selected SKU approach
 
   /**
-   * Helper method to get warehouse shipping address
+   * Helper method to get warehouse shipping address using REAL warehouse address
    */
   private getWarehouseShippingAddress(tourData: TourData) {
-    const address = tourData.warehouse.address
+    // Use the actual warehouse address from the database
+    const warehouseName = tourData.warehouse.name || "Warehouse"
+    const warehouseAddress = tourData.warehouse.address || "Address not available"
+    
+    console.log(`🏠 Using REAL warehouse address: ${warehouseAddress}`)
+    
     return {
-      first_name: "Warehouse",
-      last_name: "Demo",
-      address1: address?.address1 || address?.address || "123 Warehouse St",
-      address2: address?.address2 || "",
-      city: address?.city || "Demo City",
-      state: address?.state || "CA",
-      zip: address?.zip || "90210",
-      country: address?.country || "US",
-      phone: address?.phone || "555-0123"
+      first_name: warehouseName,
+      last_name: "Location",
+      company: warehouseName,
+      address1: warehouseAddress,
+      address2: "",
+      city: "Warehouse City", // TODO: Parse from full address if needed
+      state: "GA", // Default to GA for Atlanta warehouse
+      state_code: "GA",
+      zip: "30309", // Default Atlanta ZIP
+      country: "US",
+      country_code: "US",
+      phone: "555-WAREHOUSE",
+      email: "warehouse@shiphero.com"
     }
   }
 
@@ -1068,19 +1075,19 @@ export class TourFinalizationService {
         email: "host@example.com"
       },
       billing_address: {
-        first_name: tourData.host.first_name || "Host",
-        last_name: tourData.host.last_name || "Demo",
-        company: "",
+        first_name: warehouseAddress.first_name,
+        last_name: warehouseAddress.last_name,
+        company: warehouseAddress.company,
         address1: warehouseAddress.address1,
         address2: warehouseAddress.address2,
         city: warehouseAddress.city,
         state: warehouseAddress.state,
-        state_code: warehouseAddress.state,
+        state_code: warehouseAddress.state_code,
         zip: warehouseAddress.zip,
         country: warehouseAddress.country,
-        country_code: warehouseAddress.country,
+        country_code: warehouseAddress.country_code,
         phone: warehouseAddress.phone,
-        email: "host@example.com"
+        email: warehouseAddress.email
       },
       line_items: lineItems
     }
