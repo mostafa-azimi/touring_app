@@ -544,20 +544,20 @@ export class TourFinalizationService {
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      fulfillment_status: "pending",
+      fulfillment_status: "Tour_PO",
       sell_ahead: 0
     }))
 
     const poData = {
       po_number: `STD_REC-${tourData.tour_numeric_id}-${Date.now()}`,
-      po_date: new Date().toISOString().slice(0, 10),
+      po_date: this.getOrderDate(tourData.date),
       vendor_id: "1076735",
       warehouse_id: tourData.warehouse.shiphero_warehouse_id,
       subtotal: "0.00",
       tax: "0.00",
       shipping_price: "0.00", 
       total_price: "0.00",
-      fulfillment_status: "pending",
+      fulfillment_status: "Tour_PO",
       discount: "0.00",
       line_items: poLineItems
     }
@@ -613,20 +613,20 @@ export class TourFinalizationService {
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      fulfillment_status: "pending",
+      fulfillment_status: "Tour_PO",
       sell_ahead: 0
     }))
 
     const poData = {
       po_number: `R2L-${tourData.tour_numeric_id}-${Date.now()}`,
-      po_date: new Date().toISOString().slice(0, 10),
+      po_date: this.getOrderDate(tourData.date),
       vendor_id: "1076735",
       warehouse_id: tourData.warehouse.shiphero_warehouse_id,
       subtotal: "0.00",
       tax: "0.00",
       shipping_price: "0.00",
       total_price: "0.00",
-      fulfillment_status: "pending",
+      fulfillment_status: "Tour_PO",
       discount: "0.00",
       line_items: poLineItems
     }
@@ -1064,7 +1064,7 @@ export class TourFinalizationService {
       const orderData = {
         order_number: orderNumber,
         shop_name: "ShipHero Tour Demo",
-        fulfillment_status: "pending",
+        fulfillment_status: "Tour_PO",
         order_date: new Date().toISOString().split('T')[0], // Date only format like adhoc
         total_tax: "0.00",
         subtotal: "0.00", 
@@ -1116,7 +1116,7 @@ export class TourFinalizationService {
           quantity: item.quantity,
           price: item.price,
           product_name: item.sku,
-          fulfillment_status: "pending",
+          fulfillment_status: "Tour_PO",
           quantity_pending_fulfillment: item.quantity,
           warehouse_id: item.warehouse_id
         })),
