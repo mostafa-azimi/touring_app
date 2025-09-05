@@ -530,6 +530,9 @@ export class TourFinalizationService {
     
     console.log(`Creating ${orderCount} bulk shipping orders...`)
     console.log(`🎯 Using SKUs for Bulk Shipping:`, workflowSkus)
+    console.log(`🔍 DEBUG - workflowConfig:`, workflowConfig)
+    console.log(`🔍 DEBUG - skuQuantities:`, skuQuantities)
+    console.log(`🔍 DEBUG - tourData.selected_skus:`, tourData.selected_skus)
     
     // Step 1: Create participant orders first
     const participantOrders = await this.createParticipantOrders(tourData, "BULK")
@@ -1589,7 +1592,7 @@ export class TourFinalizationService {
     const orderPromises = []
 
     for (let i = 0; i < orderCount; i++) {
-      const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
+      const celebrity = celebrities[i] || { firstName: "Demo", lastName: `Customer ${i + 1}` }
       
       // Create line items using the same format as adhoc sales orders
       const skuIndex = i % workflowSkus.length
@@ -1621,8 +1624,8 @@ export class TourFinalizationService {
           method: "Generic Label"
         },
         shipping_address: {
-          first_name: celebrity.first,
-          last_name: celebrity.last,
+          first_name: celebrity.firstName,
+          last_name: celebrity.lastName,
           company: `${orderPrefix} Demo`,
           address1: tourData.warehouse.address,
           address2: tourData.warehouse.address2 || '',
@@ -1636,8 +1639,8 @@ export class TourFinalizationService {
           phone: "5555555555"
         },
         billing_address: {
-          first_name: celebrity.first,
-          last_name: celebrity.last,
+          first_name: celebrity.firstName,
+          last_name: celebrity.lastName,
           company: `${orderPrefix} Demo`,
           address1: tourData.warehouse.address,
           address2: tourData.warehouse.address2 || '',
