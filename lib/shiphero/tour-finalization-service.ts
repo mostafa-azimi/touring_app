@@ -71,6 +71,43 @@ export class TourFinalizationService {
   }
 
   /**
+   * Calculate one business day before the tour date with current Eastern time
+   * Skips weekends (Saturday = 6, Sunday = 0)
+   */
+  private getOrderDate(tourDate: string): string {
+    console.log(`📅 Calculating order date for tour date: ${tourDate}`)
+    
+    const tour = new Date(tourDate + 'T00:00:00')
+    let orderDate = new Date(tour)
+    
+    // Go back one day
+    orderDate.setDate(orderDate.getDate() - 1)
+    
+    // If it's a weekend, go back to Friday
+    const dayOfWeek = orderDate.getDay()
+    if (dayOfWeek === 0) { // Sunday
+      orderDate.setDate(orderDate.getDate() - 2) // Go to Friday
+      console.log(`📅 Tour is on Monday, moving order date back to Friday`)
+    } else if (dayOfWeek === 6) { // Saturday
+      orderDate.setDate(orderDate.getDate() - 1) // Go to Friday
+      console.log(`📅 Tour is on Sunday, moving order date back to Friday`)
+    }
+    
+    // Get current time in Eastern timezone
+    const now = new Date()
+    const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}))
+    
+    // Combine the order date with current Eastern time
+    const orderDateStr = orderDate.toISOString().split('T')[0]
+    const easternTimeStr = easternTime.toISOString().split('T')[1]
+    const fullOrderDateTime = `${orderDateStr}T${easternTimeStr}`
+    
+    console.log(`📅 Final order date/time: ${fullOrderDateTime} (${orderDateStr} with Eastern time)`)
+    
+    return fullOrderDateTime
+  }
+
+  /**
    * Fetch extra customers from database when more orders needed than real participants + host
    */
   private async getExtrasFromDatabase(count: number): Promise<ExtraCustomer[]> {
@@ -732,7 +769,7 @@ export class TourFinalizationService {
         order_number: orderNumber,
         shop_name: "ShipHero Tour Demo",
         fulfillment_status: "Tour_Orders",
-        order_date: new Date().toISOString().split('T')[0],
+        order_date: this.getOrderDate(tourData.date), // One business day before tour date
         total_tax: "0.00",
         subtotal: "0.00",
         total_discounts: "0.00", 
