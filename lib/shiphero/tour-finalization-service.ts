@@ -108,16 +108,19 @@ export class TourFinalizationService {
   }
 
   /**
-   * Calculate the hold until date/time (tour date + tour time)
+   * Calculate the hold until date/time (tour date at 6:00 AM Eastern)
    */
   private getHoldUntilDate(tourDate: string, tourTime: string): string {
     console.log(`⏳ Calculating hold until date for tour: ${tourDate} at ${tourTime}`)
     
-    // Combine tour date and time
-    const tourDateTime = new Date(`${tourDate}T${tourTime}:00`)
-    const holdUntilDateTime = tourDateTime.toISOString()
+    // Create 6:00 AM Eastern time on the tour date
+    // We'll create a date string for 6:00 AM and let JavaScript handle the timezone conversion
+    const easternTime6AM = new Date(`${tourDate}T06:00:00-05:00`) // EST (Eastern Standard Time)
     
-    console.log(`⏳ Hold until date/time: ${holdUntilDateTime} (release orders at tour start time)`)
+    // Convert to UTC for ShipHero API
+    const holdUntilDateTime = easternTime6AM.toISOString()
+    
+    console.log(`⏳ Hold until date/time: ${holdUntilDateTime} (release orders at 6:00 AM Eastern on tour date)`)
     
     return holdUntilDateTime
   }
