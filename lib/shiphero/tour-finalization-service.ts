@@ -484,17 +484,28 @@ export class TourFinalizationService {
     console.log("Executing: Pack-to-Light Workflow using SELECTED SKUs")
     console.log("🎯 Selected SKUs for P2L workflow:", tourData.selected_skus)
     
-    // Create participant orders first (using selected SKUs)
+    // Get workflow configuration
+    const workflowConfig = tourData.workflow_configs?.['pack_to_light']
+    const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
+    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
+    
+    console.log(`Creating ${orderCount} pack-to-light orders...`)
+    console.log(`🎯 Using SKUs for Pack-to-Light:`, workflowSkus)
+    
+    // Step 1: Create participant orders first (using selected SKUs)
     const participantOrders = await this.createParticipantOrders(tourData, "P2L")
     
-    // If no participants, create a sales order for the host for demonstration
-    if (participantOrders.length === 0) {
-      console.log("No participants - creating sales order for host using selected SKUs")
-      await this.createHostSalesOrder(tourData, "P2L-HOST")
+    // Step 2: Create additional demo orders to reach the desired count
+    const remainingOrdersNeeded = Math.max(0, orderCount - participantOrders.length)
+    let additionalOrders = []
+    
+    if (remainingOrdersNeeded > 0) {
+      console.log(`Creating ${remainingOrdersNeeded} additional demo orders for Pack-to-Light`)
+      additionalOrders = await this.createDemoOrders(tourData, "P2L-DEMO", remainingOrdersNeeded, workflowSkus)
     }
     
     // P2L workflow is for fulfillment only - no purchase order needed
-    console.log("Executed: Pack-to-Light Workflow with selected SKUs (Sales Orders Only)")
+    console.log(`✅ Pack-to-Light completed: ${participantOrders.length} participant + ${additionalOrders.length} demo orders`)
   }
 
 
@@ -547,16 +558,28 @@ export class TourFinalizationService {
 
 
   /**
-   * MODULE 5: Creates a batch of 5 multi-item/SKU Sales Orders for "Multi-Item Batch Picking".
+   * MODULE 5: Creates a configurable batch of multi-item/SKU Sales Orders for "Multi-Item Batch Picking".
    */
   private async createMultiItemBatchSOs(tourData: TourData): Promise<void> {
     console.log("🎯 Starting Multi-Item Batch workflow...")
     
+    // Get workflow configuration
+    const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
+    const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
+    
+    console.log(`Creating ${orderCount} multi-item batch orders...`)
+    
     // Step 1: Create participant orders first (they already get multiple SKUs from helper method)
     const participantOrders = await this.createParticipantOrders(tourData, "MULTI")
     
-    // Step 2: Create demo orders with celebrity names and multiple SKUs
-    const demoOrders = await this.createMultiItemDemoOrders(tourData, "MULTI-DEMO", 5)
+    // Step 2: Create additional demo orders to reach the desired count
+    const remainingOrdersNeeded = Math.max(0, orderCount - participantOrders.length)
+    let demoOrders = []
+    
+    if (remainingOrdersNeeded > 0) {
+      console.log(`Creating ${remainingOrdersNeeded} additional multi-item demo orders`)
+      demoOrders = await this.createMultiItemDemoOrders(tourData, "MULTI-DEMO", remainingOrdersNeeded)
+    }
     
     console.log(`✅ Multi-Item Batch completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
   }
