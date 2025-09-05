@@ -383,7 +383,7 @@ export class TourFinalizationService {
         hostName: `${tourData.host.first_name} ${tourData.host.last_name}`,
         selectedWorkflows: selectedOptions,
         selectedSkus: tourData.selected_skus,
-        participantCount: tourData.participants.length,
+        participantCount: tourData.participants?.length || 0,
         orders: {
           created_orders: createdOrders
         },
