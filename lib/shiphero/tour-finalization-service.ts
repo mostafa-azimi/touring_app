@@ -578,7 +578,7 @@ export class TourFinalizationService {
           quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
           price: "12.00",
           product_name: `Product ${tourData.selected_skus[skuIndex]}`,
-          partner_line_item_id: `multi-line-${i + 1}-${j + 1}`,
+          partner_line_item_id: `multi-${Date.now()}-${i + 1}-${j + 1}`,
           fulfillment_status: "pending",
           quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
           warehouse_id: tourData.warehouse.shiphero_warehouse_id
@@ -769,7 +769,7 @@ export class TourFinalizationService {
         quantity: 1,
         price: "10.00",
         product_name: `Product ${sku}`,
-        partner_line_item_id: `participant-line-${i + 1}-${index + 1}`,
+        partner_line_item_id: `participant-${Date.now()}-${i + 1}-${index + 1}`,
         fulfillment_status: "pending",
         quantity_pending_fulfillment: 1,
         warehouse_id: tourData.warehouse.shiphero_warehouse_id
@@ -857,7 +857,7 @@ export class TourFinalizationService {
         quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
         price: "15.00",
         product_name: `Product ${tourData.selected_skus[selectedSkuIndex]}`,
-        partner_line_item_id: `line-${i + 1}`,
+        partner_line_item_id: `demo-${Date.now()}-${i + 1}`,
         fulfillment_status: "pending",
         quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
         warehouse_id: tourData.warehouse.shiphero_warehouse_id
@@ -957,7 +957,7 @@ export class TourFinalizationService {
         quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
         price: "15.00",
         product_name: `Product ${tourData.selected_skus[selectedSkuIndex]}`,
-        partner_line_item_id: `line-${i + 1}`,
+        partner_line_item_id: `demo-${Date.now()}-${i + 1}`,
         fulfillment_status: "pending",
         quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
         warehouse_id: tourData.warehouse.shiphero_warehouse_id
@@ -1037,13 +1037,14 @@ export class TourFinalizationService {
     console.log(`🔧 createHostSalesOrder: Warehouse address:`, warehouseAddress)
     console.log(`🔧 createHostSalesOrder: Standard metadata:`, standardMetadata)
     
-    // Create line items for all selected SKUs
+    // Create line items for all selected SKUs with unique IDs
+    const timestamp = Date.now()
     const lineItems = tourData.selected_skus.map((sku, index) => ({
       sku: sku,
       quantity: 1, // Simple quantity of 1 for host demo
       price: "15.00",
       product_name: `Product ${sku}`,
-      partner_line_item_id: `host-line-${index + 1}`,
+      partner_line_item_id: `host-${timestamp}-${index + 1}`,
       fulfillment_status: "pending",
       quantity_pending_fulfillment: 1,
       warehouse_id: tourData.warehouse.shiphero_warehouse_id
@@ -1140,12 +1141,13 @@ export class TourFinalizationService {
       
       // Use selected SKUs for demo orders, rotate through them
       const selectedSkuIndex = i % tourData.selected_skus.length
+      const timestamp = Date.now()
       const lineItems = [{
         sku: tourData.selected_skus[selectedSkuIndex],
         quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
         price: "15.00",
         product_name: `Product ${tourData.selected_skus[selectedSkuIndex]}`,
-        partner_line_item_id: `host-line-${i + 1}`,
+        partner_line_item_id: `host-demo-${timestamp}-${i + 1}`,
         fulfillment_status: "pending",
         quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
         warehouse_id: tourData.warehouse.shiphero_warehouse_id
@@ -1412,7 +1414,7 @@ export class TourFinalizationService {
           quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
           price: "15.00",
           product_name: `Product ${tourData.selected_skus[skuIndex]}`,
-          partner_line_item_id: `mib-line-${i + 1}-${j + 1}`,
+          partner_line_item_id: `mib-${Date.now()}-${i + 1}-${j + 1}`,
           fulfillment_status: "pending",
           quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
           warehouse_id: tourData.warehouse.shiphero_warehouse_id
