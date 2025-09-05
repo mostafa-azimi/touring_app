@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Calendar, MapPin, Users, Package, Gift, Upload, Download, FileText, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, X, Calendar, MapPin, Users, Gift, Upload, Download, FileText, ChevronDown, ChevronUp } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -201,8 +201,6 @@ export function ScheduleTourPage() {
   const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([])
   const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, selectedSkus: string[], skuQuantities: {[sku: string]: number}}}>({})
   const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([])
-  const [selectedSkus, setSelectedSkus] = useState<string[]>([]) // Legacy - will be replaced by workflowConfigs
-  const [availableSkus, setAvailableSkus] = useState<any[]>([])
   const [allSkus, setAllSkus] = useState<any[]>([]) // Store all SKUs for filtering
   
   
@@ -279,39 +277,7 @@ export function ScheduleTourPage() {
     }))
   }
 
-  const handleSkuChange = (sku: string, checked: boolean) => {
-    if (checked) {
-      setSelectedSkus(prev => [...prev, sku])
-    } else {
-      setSelectedSkus(prev => prev.filter(s => s !== sku))
-    }
-  }
-
-  // Filter SKUs by selected warehouse
-  const filterSkusByWarehouse = (warehouseId: string) => {
-    
-    if (!warehouseId || !allSkus.length) {
-      setAvailableSkus([])
-      return
-    }
-
-    // Find the selected warehouse to get its ShipHero ID
-    const selectedWarehouse = warehouses.find(w => w.id === warehouseId)
-    if (!selectedWarehouse) {
-      setAvailableSkus([])
-      return
-    }
-
-    // Filter SKUs that belong to this warehouse
-    const filteredSkus = allSkus.filter(product => {
-      // Check if product has inventory for this specific warehouse
-      return product.inventory?.warehouse_id === selectedWarehouse.shiphero_warehouse_id
-    })
-
-    setAvailableSkus(filteredSkus)
-  }
-
-  const loadAvailableSkus = async () => {
+  const loadAllSkus = async () => {
     setIsLoadingSkus(true)
     try {
       // Use centralized data service for better caching and performance
@@ -321,15 +287,8 @@ export function ScheduleTourPage() {
       // Sort alphabetically by SKU
       const sortedProducts = activeProducts.sort((a, b) => a.sku.localeCompare(b.sku))
       
-      // Store all SKUs for filtering
+      // Store all SKUs for workflow filtering
       setAllSkus(sortedProducts)
-      // Initially show no SKUs until a warehouse is selected
-      setAvailableSkus([])
-      
-      // If warehouse is already selected, filter immediately
-      if (formData.warehouse_id) {
-        filterSkusByWarehouse(formData.warehouse_id)
-      }
     } catch (error: any) {
       console.error('Failed to load SKUs:', error)
       toast({
@@ -346,7 +305,7 @@ export function ScheduleTourPage() {
     fetchWarehouses()
     fetchHosts()
     // Auto-load SKUs when component mounts for better UX
-    loadAvailableSkus()
+    loadAllSkus()
   }, [])
 
   const fetchWarehouses = async () => {
@@ -705,53 +664,7 @@ export function ScheduleTourPage() {
       }))
     })
     return skuMap
-  }, [availableSkus, selectedWorkflows, workflowConfigs])
-
-  // Memoize main product grid to prevent infinite re-renders  
-  const productGrid = useMemo(() => {
-    return availableSkus.map(product => (
-      <div 
-        key={product.sku} 
-        className={`
-          relative flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer
-          ${selectedSkus.includes(product.sku)
-            ? 'border-primary bg-primary/5 ring-1 ring-primary'
-            : 'border-border bg-card hover:bg-muted/50'
-          }
-        `}
-        onClick={() => handleSkuChange(product.sku, !selectedSkus.includes(product.sku))}
-      >
-        <div onClick={(e) => e.stopPropagation()}>
-          <Checkbox
-            id={product.sku}
-            checked={selectedSkus.includes(product.sku)}
-            onCheckedChange={(checked) => handleSkuChange(product.sku, checked as boolean)}
-            className="mt-1"
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <Label
-            htmlFor={product.sku}
-            className="font-semibold text-sm block text-slate-800 mb-1 pointer-events-none"
-          >
-            {product.name}
-          </Label>
-          <p className="text-xs text-slate-600 mb-2 line-clamp-2 leading-relaxed">
-            {product.sku}
-          </p>
-          <div className="flex items-center">
-            <span className={`text-xs font-medium px-2 py-1 rounded ${
-              (product.inventory?.available || 0) > 0
-                ? 'bg-green-100 text-green-700'
-                : 'bg-slate-100 text-slate-500'
-            }`}>
-              {product.inventory?.available || 0} available
-            </span>
-          </div>
-        </div>
-      </div>
-    ))
-  }, [availableSkus, selectedSkus])
+  }, [allSkus, selectedWorkflows, workflowConfigs])
 
   // CSV Upload functionality
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -949,8 +862,6 @@ export function ScheduleTourPage() {
                   value={formData.warehouse_id}
                   onValueChange={(value) => {
                     setFormData({ ...formData, warehouse_id: value })
-                    setSelectedSkus([]) // Clear selected SKUs when warehouse changes
-                    filterSkusByWarehouse(value) // Filter SKUs by selected warehouse
                   }}
                 >
                   <SelectTrigger id="warehouse" className="cursor-pointer">
@@ -1166,7 +1077,7 @@ export function ScheduleTourPage() {
             {/* Workflow Selection Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
+                <Gift className="h-5 w-5" />
                 <h3 className="text-lg font-semibold">Training Workflows</h3>
                 <span className="text-sm text-muted-foreground">({selectedWorkflows.length} selected)</span>
               </div>
@@ -1275,9 +1186,9 @@ export function ScheduleTourPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto">
                                       {workflowSkusMap.get(option.id) || []}
                                     </div>
-                                    {availableSkus.length === 0 && (
+                                    {allSkus.length === 0 && (
                                       <p className="text-sm text-muted-foreground text-center py-4">
-                                        Select a warehouse to load available SKUs
+                                        Loading available SKUs...
                                       </p>
                                     )}
                                   </div>
@@ -1291,119 +1202,6 @@ export function ScheduleTourPage() {
                   )
                 })}
               </div>
-            </div>
-
-            <Separator />
-
-            {/* SKU Selection Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  <h3 className="text-lg font-semibold">Product SKUs</h3>
-                  <span className="text-sm text-muted-foreground">({selectedSkus.length} selected)</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={loadAvailableSkus}
-                  disabled={isLoadingSkus}
-                >
-                  {isLoadingSkus ? "Loading..." : "Refresh SKUs"}
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Select the specific SKUs to use for this tour. These will be used to create realistic orders instead of placeholder items.
-              </p>
-
-              {isLoadingSkus && (
-                <div className="flex items-center justify-center py-8 text-muted-foreground">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
-                  <p>Loading available SKUs from ShipHero...</p>
-                </div>
-              )}
-
-              {availableSkus.length > 0 && !isLoadingSkus && (
-                <div className="space-y-4">
-                  {/* ShipHero-style header with counts */}
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border">
-                                      <div className="flex items-center gap-4">
-                    <div className="text-sm font-medium text-slate-700">
-                      {availableSkus.length} Active Products
-                    </div>
-                    <div className="text-sm text-slate-500">
-                      {selectedSkus.length} Selected
-                    </div>
-                  </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSkus([])}
-                        className="text-xs px-3 py-1 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* ShipHero-style product grid - no max height, no scrolling */}
-                  {!formData.warehouse_id ? (
-                    <div className="text-sm text-muted-foreground p-8 border rounded-lg bg-slate-50 text-center">
-                      👆 Select a warehouse first to see available products for this tour
-                    </div>
-                  ) : availableSkus.length === 0 ? (
-                    <div className="text-sm text-muted-foreground p-8 border rounded-lg bg-slate-50 text-center">
-                      {isLoadingSkus ? "Loading products..." : "No active products found for the selected warehouse"}
-                    </div>
-                  ) : (
-                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                    {availableSkus.map(product => (
-                      <div 
-                        key={product.sku} 
-                        className={`
-                          relative flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer
-                          ${selectedSkus.includes(product.sku) 
-                            ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200' 
-                            : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25'
-                          }
-                        `}
-                        onClick={() => handleSkuChange(product.sku, !selectedSkus.includes(product.sku))}
-                      >
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            id={product.sku}
-                            checked={selectedSkus.includes(product.sku)}
-                            onCheckedChange={(checked) => handleSkuChange(product.sku, checked as boolean)}
-                            className="mt-1"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <Label 
-                            htmlFor={product.sku} 
-                            className="font-semibold text-sm block text-slate-800 mb-1 pointer-events-none"
-                          >
-                            {product.sku}
-                          </Label>
-                          <p className="text-xs text-slate-600 mb-2 line-clamp-2 leading-relaxed">
-                            {product.name}
-                          </p>
-                          <div className="flex items-center">
-                            <span className={`text-xs font-medium px-2 py-1 rounded ${
-                              (product.inventory?.available || 0) > 0 
-                                ? 'bg-green-100 text-green-700' 
-                                : 'bg-slate-100 text-slate-500'
-                            }`}>
-                              {product.inventory?.available || 0} available
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  )}
-                </div>
-              )}
             </div>
 
             <Separator />
