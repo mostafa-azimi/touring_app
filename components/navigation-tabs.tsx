@@ -6,19 +6,21 @@ import { ScheduleTourPage } from "@/components/schedule-tour-page"
 import { ViewToursPage } from "@/components/view-tours-page"
 import { SettingsPage } from "@/components/settings-page"
 import { tokenManager } from "@/lib/shiphero/token-manager"
+import { APP_VERSION, BUILD_TIMESTAMP } from "@/lib/version"
 
 export function NavigationTabs() {
   const [activeTab, setActiveTab] = useState("schedule")
 
   useEffect(() => {
-    // Generate unique deployment marker with emoji and timestamp
+    // Generate unique deployment marker with version and build ID
     const emojis = ['🚀', '⚡', '🎯', '🔥', '✨', '💫', '🌟', '🎉', '💎', '🏆', '🎊', '🌈']
     const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)]
-    const timestamp = new Date().toISOString()
-    const deploymentId = `${randomEmoji} DEPLOYMENT-${Date.now().toString().slice(-6)}`
+    const buildId = Date.now().toString().slice(-6)
+    const deploymentId = `${randomEmoji} v${APP_VERSION}-${buildId}`
     
     console.log(`${deploymentId} - Touring App Loaded`)
-    console.log(`📅 Deployment Time: ${timestamp}`)
+    console.log(`📅 Build Time: ${BUILD_TIMESTAMP}`)
+    console.log(`📅 Load Time: ${new Date().toISOString()}`)
     console.log(`🔧 Optimizations: Enhanced Token Persistence + API Caching + DB Query Optimization`)
     console.log(`🗄️ Supabase: All operations verified and compatible`)
     console.log(`🎯 Ready for testing!`)

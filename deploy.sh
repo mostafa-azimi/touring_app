@@ -5,7 +5,11 @@
 
 echo "🚀 Starting auto-deployment..."
 
-# Add all changes
+# Increment version number
+echo "📈 Incrementing version..."
+node scripts/increment-version.js
+
+# Add all changes (including updated version)
 git add .
 
 # Check if there are any changes to commit
