@@ -117,7 +117,15 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Warehouse:</span>
-                  <span>{data.warehouseName} ({data.warehouseCode})</span>
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.warehouseAddress)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    {data.warehouseName} ({data.warehouseCode})
+                  </a>
+                  <ExternalLink className="h-3 w-3 text-blue-600" />
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
@@ -170,83 +178,108 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             </CardContent>
           </Card>
 
-          {/* Sales Orders */}
-          {data.orders.sales_orders.length > 0 && (
+          {/* Orders by Workflow */}
+          {(data.orders.sales_orders.length > 0 || data.orders.purchase_orders.length > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5" />
-                  Sales Orders ({data.orders.sales_orders.length})
+                  <FileText className="h-5 w-5" />
+                  Orders by Workflow
                 </CardTitle>
                 <CardDescription>
                   Click order numbers to view in ShipHero
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {data.orders.sales_orders.map((order, index) => (
-                  <div key={index} className="border rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`text-xs ${workflowLabels[order.workflow]?.color || 'bg-gray-100 text-gray-800'}`}>
-                          {workflowLabels[order.workflow]?.label || order.workflow}
+              <CardContent className="space-y-6">
+                {(() => {
+                  // Group all orders by workflow
+                  const ordersByWorkflow: Record<string, { sales: typeof data.orders.sales_orders, purchase: typeof data.orders.purchase_orders }> = {}
+                  
+                  // Group sales orders
+                  data.orders.sales_orders.forEach(order => {
+                    if (!ordersByWorkflow[order.workflow]) {
+                      ordersByWorkflow[order.workflow] = { sales: [], purchase: [] }
+                    }
+                    ordersByWorkflow[order.workflow].sales.push(order)
+                  })
+                  
+                  // Group purchase orders
+                  data.orders.purchase_orders.forEach(po => {
+                    if (!ordersByWorkflow[po.workflow]) {
+                      ordersByWorkflow[po.workflow] = { sales: [], purchase: [] }
+                    }
+                    ordersByWorkflow[po.workflow].purchase.push(po)
+                  })
+                  
+                  return Object.entries(ordersByWorkflow).map(([workflow, orders]) => (
+                    <div key={workflow} className="space-y-3">
+                      {/* Workflow Heading */}
+                      <div className="flex items-center gap-2 border-b pb-2">
+                        <Badge variant="outline" className={`${workflowLabels[workflow]?.color || 'bg-gray-100 text-gray-800'}`}>
+                          {workflowLabels[workflow]?.label || workflow}
                         </Badge>
-                        <a 
-                          href={`https://app.shiphero.com/dashboard/orders/details/${order.legacy_id}`}
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="font-mono font-medium text-blue-600 hover:text-blue-800 underline"
-                        >
-                          {order.order_number}
-                        </a>
-                        <ExternalLink className="h-3 w-3 text-blue-600" />
+                        <span className="text-sm text-muted-foreground">
+                          ({orders.sales.length + orders.purchase.length} orders)
+                        </span>
                       </div>
-                      <span className="text-sm text-muted-foreground">
-                        {order.recipient}
-                      </span>
+                      
+                      {/* Sales Orders for this workflow */}
+                      {orders.sales.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm font-medium text-green-700">
+                            <ShoppingCart className="h-4 w-4" />
+                            Sales Orders ({orders.sales.length})
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ml-6">
+                            {orders.sales.map((order, index) => (
+                              <div key={index} className="flex items-center justify-between p-2 bg-green-50 rounded border border-green-200">
+                                <a 
+                                  href={`https://app.shiphero.com/dashboard/orders/details/${order.legacy_id}`}
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                                >
+                                  {order.order_number}
+                                </a>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-muted-foreground">
+                                    {order.recipient.replace(' (extra)', '')}
+                                  </span>
+                                  <ExternalLink className="h-3 w-3 text-blue-600" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Purchase Orders for this workflow */}
+                      {orders.purchase.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm font-medium text-purple-700">
+                            <Package className="h-4 w-4" />
+                            Purchase Orders ({orders.purchase.length})
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ml-6">
+                            {orders.purchase.map((po, index) => (
+                              <div key={index} className="flex items-center gap-2 p-2 bg-purple-50 rounded border border-purple-200">
+                                <a 
+                                  href={`https://app.shiphero.com/dashboard/purchase-orders/details/${po.legacy_id}`}
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                                >
+                                  {po.po_number}
+                                </a>
+                                <ExternalLink className="h-3 w-3 text-blue-600" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Legacy ID: {order.legacy_id}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Purchase Orders */}
-          {data.orders.purchase_orders.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Purchase Orders ({data.orders.purchase_orders.length})
-                </CardTitle>
-                <CardDescription>
-                  Click PO numbers to view in ShipHero
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {data.orders.purchase_orders.map((po, index) => (
-                  <div key={index} className="border rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className={`text-xs ${workflowLabels[po.workflow]?.color || 'bg-gray-100 text-gray-800'}`}>
-                        {workflowLabels[po.workflow]?.label || po.workflow}
-                      </Badge>
-                      <a 
-                        href={`https://app.shiphero.com/dashboard/purchase-orders/details/${po.legacy_id}`}
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-mono font-medium text-blue-600 hover:text-blue-800 underline"
-                      >
-                        {po.po_number}
-                      </a>
-                      <ExternalLink className="h-3 w-3 text-blue-600" />
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Legacy ID: {po.legacy_id}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                })()}
               </CardContent>
             </Card>
           )}
