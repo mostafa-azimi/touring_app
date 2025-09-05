@@ -1648,4 +1648,73 @@ export class TourFinalizationService {
 
     return successfulOrders
   }
+
+  /**
+   * Helper method to create orders for tour participants
+   */
+  private async createParticipantOrders(tourData: TourData, orderPrefix: string): Promise<any[]> {
+    if (!tourData.participants || tourData.participants.length === 0) {
+      console.log("No participants found, skipping participant orders")
+      return []
+    }
+
+    console.log(`Creating orders for ${tourData.participants.length} participants first...`)
+    
+    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const orderPromises = []
+
+    for (let i = 0; i < tourData.participants.length; i++) {
+      const participant = tourData.participants[i]
+      
+      // Create single-item orders using first available SKU
+      const sku = tourData.selected_skus[0] // Use first SKU for participants
+      const lineItems = [{
+        sku: sku,
+        quantity: 1,
+        price: "12.00",
+        product_name: `Product ${sku}`,
+        partner_line_item_id: `${orderPrefix.toLowerCase()}-participant-${Date.now()}-${i + 1}`,
+        fulfillment_status: "pending",
+        quantity_pending_fulfillment: 1,
+        warehouse_id: tourData.warehouse.shiphero_warehouse_id
+      }]
+
+      const orderData = {
+        order_number: `${orderPrefix}-PARTICIPANT-${Date.now()}-${i + 1}`,
+        shop_name: "Tour Participant Orders",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString().split('T')[0],
+        total_tax: "0.00",
+        subtotal: "12.00",
+        total_discounts: "0.00",
+        total_price: "12.00",
+        shipping_address: {
+          first_name: participant.first_name,
+          last_name: participant.last_name,
+          company: participant.company || "Tour Participant",
+          address1: warehouseAddress.address,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country,
+          phone: warehouseAddress.phone,
+          email: participant.email
+        },
+        line_items: lineItems
+      }
+
+      const promise = this.createSalesOrderViaAPI(orderData)
+      orderPromises.push(promise)
+    }
+
+    const results = await Promise.all(orderPromises)
+    const successful = results.filter(result => result.success)
+    
+    console.log(`✅ Created ${successful.length}/${tourData.participants.length} participant orders`)
+    
+    return successful
+  }
 }
