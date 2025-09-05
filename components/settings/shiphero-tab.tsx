@@ -1300,8 +1300,14 @@ export function ShipHeroTab() {
                         <div className="text-xs text-slate-500 truncate">
                           {product.name}
                         </div>
-                        <div className="text-xs text-slate-400 truncate">
-                          Available: {product.available}
+                        <div className="flex items-center">
+                          <span className={`text-xs font-medium px-2 py-1 rounded ${
+                            (product.available || 0) > 0 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {product.available || 0} available
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1478,48 +1484,86 @@ export function ShipHeroTab() {
                     No active products found for the selected warehouse
                   </div>
                 ) : (
-                <div className="space-y-3">
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                   {products.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`po-product-${product.id}`}
-                          checked={adhocPOData.productIds.includes(product.id)}
-                          className="cursor-pointer"
-                          onChange={(e) => {
-                            const newIds = e.target.checked
-                              ? [...adhocPOData.productIds, product.id]
-                              : adhocPOData.productIds.filter(id => id !== product.id)
-                            
-                            // Reset quantity when unchecking
-                            const newQuantities = { ...adhocPOData.productQuantities }
-                            if (!e.target.checked) {
-                              delete newQuantities[product.id]
-                            } else {
-                              newQuantities[product.id] = 1 // Default to 1
-                            }
-                            
-                            setAdhocPOData({ 
-                              ...adhocPOData, 
-                              productIds: newIds,
-                              productQuantities: newQuantities
-                            })
-                          }}
-                          className="rounded"
-                        />
-                        <Label htmlFor={`po-product-${product.id}`} className="text-sm font-medium cursor-pointer">
-                          {product.name} ({product.sku})
-                          {product.available !== undefined && (
-                            <span className="text-xs text-muted-foreground ml-2">
-                              - {product.available} available
+                    <div 
+                      key={product.id} 
+                      className={`
+                        relative flex flex-col space-y-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer
+                        ${adhocPOData.productIds.includes(product.id)
+                          ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200' 
+                          : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25'
+                        }
+                      `}
+                      onClick={() => {
+                        const newIds = adhocPOData.productIds.includes(product.id)
+                          ? adhocPOData.productIds.filter(id => id !== product.id)
+                          : [...adhocPOData.productIds, product.id]
+                        
+                        // Reset quantity when unchecking
+                        const newQuantities = { ...adhocPOData.productQuantities }
+                        if (adhocPOData.productIds.includes(product.id)) {
+                          delete newQuantities[product.id]
+                        } else {
+                          newQuantities[product.id] = 1 // Default to 1
+                        }
+                        
+                        setAdhocPOData({ 
+                          ...adhocPOData, 
+                          productIds: newIds,
+                          productQuantities: newQuantities
+                        })
+                      }}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            id={`po-product-${product.id}`}
+                            checked={adhocPOData.productIds.includes(product.id)}
+                            onChange={(e) => {
+                              const newIds = e.target.checked
+                                ? [...adhocPOData.productIds, product.id]
+                                : adhocPOData.productIds.filter(id => id !== product.id)
+                              
+                              // Reset quantity when unchecking
+                              const newQuantities = { ...adhocPOData.productQuantities }
+                              if (!e.target.checked) {
+                                delete newQuantities[product.id]
+                              } else {
+                                newQuantities[product.id] = 1 // Default to 1
+                              }
+                              
+                              setAdhocPOData({ 
+                                ...adhocPOData, 
+                                productIds: newIds,
+                                productQuantities: newQuantities
+                              })
+                            }}
+                            className="cursor-pointer mt-1"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-slate-900 truncate">
+                            {product.sku}
+                          </div>
+                          <div className="text-xs text-slate-500 truncate">
+                            {product.name}
+                          </div>
+                          <div className="flex items-center">
+                            <span className={`text-xs font-medium px-2 py-1 rounded ${
+                              (product.available || 0) > 0 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {product.available || 0} available
                             </span>
-                          )}
-                        </Label>
+                          </div>
+                        </div>
                       </div>
                       
                       {adhocPOData.productIds.includes(product.id) && (
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 pt-2 border-t border-slate-200" onClick={(e) => e.stopPropagation()}>
                           <Label className="text-sm text-gray-600">Qty:</Label>
                           <Input
                             type="number"
@@ -1536,7 +1580,7 @@ export function ShipHeroTab() {
                                 }
                               })
                             }}
-                            className="w-20 h-8"
+                            className="flex-1 h-8"
                           />
                         </div>
                       )}
