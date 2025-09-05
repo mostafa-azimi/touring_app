@@ -34,39 +34,13 @@ function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChang
     )
   }
 
-  // Filter products by selected warehouse and remove duplicates
-  const warehouseProducts = allSkus.filter(product => {
-    // Match by warehouse identifier/code - check the inventory object
-    return product.inventory?.warehouse_identifier === selectedWarehouse?.code
+  // Filter products by selected warehouse - use same logic as Adhoc Sales Order
+  const filteredProducts = allSkus.filter(product => {
+    // Check if product has inventory for this specific warehouse
+    return product.inventory?.warehouse_id === selectedWarehouse?.shiphero_warehouse_id
   })
 
-  // Remove duplicates by SKU (keep the first occurrence)
-  const uniqueProducts = warehouseProducts.reduce((acc, product) => {
-    if (!acc.find(p => p.sku === product.sku)) {
-      acc.push(product)
-    }
-    return acc
-  }, [])
-
-  console.log(`🏭 ${workflowName} - Selected warehouse:`, selectedWarehouse?.code)
-  console.log(`🏭 ${workflowName} - Filtered products:`, uniqueProducts.length, 'from', allSkus.length, 'total')
-  
-  // Debug: Log sample product data to understand the structure
-  if (allSkus.length > 0) {
-    console.log(`🔍 ${workflowName} - Sample product data:`, {
-      firstProduct: {
-        sku: allSkus[0].sku,
-        inventory_warehouse_id: allSkus[0].inventory?.warehouse_id,
-        inventory_warehouse_identifier: allSkus[0].inventory?.warehouse_identifier,
-        inventory_warehouse_name: allSkus[0].inventory?.warehouse_name
-      },
-      selectedWarehouseCode: selectedWarehouse?.code,
-      selectedWarehouseId: selectedWarehouse?.id,
-      selectedWarehouseShipHeroId: selectedWarehouse?.shiphero_warehouse_id
-    })
-  }
-
-  if (uniqueProducts.length === 0) {
+  if (filteredProducts.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <p>No products found for warehouse: {selectedWarehouse?.name}</p>
@@ -78,19 +52,32 @@ function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChang
   return (
     <div className="space-y-3">
       <Label className="text-sm font-medium">📦 Select products and quantities for {workflowName} at {selectedWarehouse?.name}:</Label>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto p-4 border rounded-lg bg-muted/20">
-        {uniqueProducts.map(product => {
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        {filteredProducts.map(product => {
           const currentQuantity = workflowConfig?.skuQuantities?.[product.sku] || 0
-          // Get the correct available quantity from inventory data
           const availableQty = product.inventory?.available || product.available || 0
           
           return (
-            <div key={`${product.sku}-${product.inventory?.warehouse_identifier}`} className="p-3 bg-white rounded-lg border space-y-2">
-              <div className="space-y-1">
-                <h4 className="font-medium text-sm leading-tight">{product.name}</h4>
-                <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
-                <p className="text-xs text-green-600">Available: {availableQty}</p>
-                <p className="text-xs text-muted-foreground">Warehouse: {product.inventory?.warehouse_identifier}</p>
+            <div 
+              key={product.sku} 
+              className="relative flex flex-col space-y-3 p-4 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25 transition-all duration-200"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-900 truncate">
+                  {product.sku}
+                </div>
+                <div className="text-xs text-slate-500 truncate">
+                  {product.name}
+                </div>
+                <div className="flex items-center mt-2">
+                  <span className={`text-xs font-medium px-2 py-1 rounded ${
+                    availableQty > 0 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {availableQty} available
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Label htmlFor={`qty-${product.sku}`} className="text-xs">Qty:</Label>
@@ -198,7 +185,6 @@ let renderCount = 0
 
 export function ScheduleTourPage() {
   renderCount++
-  console.log('🔥 RENDER START: ScheduleTourPage component rendering - RENDER #', renderCount, 'at', new Date().toISOString())
   
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [hosts, setHosts] = useState<any[]>([])
@@ -219,37 +205,20 @@ export function ScheduleTourPage() {
   const [availableSkus, setAvailableSkus] = useState<any[]>([])
   const [allSkus, setAllSkus] = useState<any[]>([]) // Store all SKUs for filtering
   
-  console.log('🔄 STATE SNAPSHOT:', {
-    selectedWorkflows: selectedWorkflows.length,
-    workflowConfigsKeys: Object.keys(workflowConfigs),
-    expandedWorkflows: expandedWorkflows.length,
-    availableSkus: availableSkus.length,
-    allSkus: allSkus.length,
-    warehouseId: formData.warehouse_id
-  })
   
   // Add debugging to track what's changing
-  console.log('🔍 DETAILED STATE:', {
-    selectedWorkflows: JSON.stringify(selectedWorkflows),
-    workflowConfigs: JSON.stringify(workflowConfigs),
-    expandedWorkflows: JSON.stringify(expandedWorkflows)
-  })
   const [isLoadingSkus, setIsLoadingSkus] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
 
   const handleWorkflowChange = useCallback((optionId: string, checked: boolean) => {
-    console.log('🎯 WORKFLOW CHANGE:', { optionId, checked, timestamp: Date.now() })
     
     if (checked) {
-      console.log('✅ Adding workflow:', optionId)
       setSelectedWorkflows(prev => {
-        console.log('📝 setSelectedWorkflows: adding', optionId, 'to', prev)
         return [...prev, optionId]
       })
       // Initialize workflow config with defaults
       setWorkflowConfigs(prev => {
-        console.log('📝 setWorkflowConfigs: adding config for', optionId)
         return {
           ...prev,
           [optionId]: {
@@ -261,25 +230,20 @@ export function ScheduleTourPage() {
       })
       // Auto-expand the workflow section
       setExpandedWorkflows(prev => {
-        console.log('📝 setExpandedWorkflows: adding', optionId, 'to', prev)
         return [...prev, optionId]
       })
     } else {
-      console.log('❌ Removing workflow:', optionId)
       setSelectedWorkflows(prev => {
-        console.log('📝 setSelectedWorkflows: removing', optionId, 'from', prev)
         return prev.filter(id => id !== optionId)
       })
       // Remove workflow config
       setWorkflowConfigs(prev => {
-        console.log('📝 setWorkflowConfigs: removing config for', optionId)
         const newConfigs = { ...prev }
         delete newConfigs[optionId]
         return newConfigs
       })
       // Collapse the workflow section
       setExpandedWorkflows(prev => {
-        console.log('📝 setExpandedWorkflows: removing', optionId, 'from', prev)
         return prev.filter(id => id !== optionId)
       })
     }
@@ -325,10 +289,8 @@ export function ScheduleTourPage() {
 
   // Filter SKUs by selected warehouse
   const filterSkusByWarehouse = (warehouseId: string) => {
-    console.log('🏭 FILTER SKUs START:', { warehouseId, allSkusLength: allSkus.length, timestamp: Date.now() })
     
     if (!warehouseId || !allSkus.length) {
-      console.log('🚫 Early return: no warehouse or no SKUs')
       setAvailableSkus([])
       return
     }
@@ -336,7 +298,6 @@ export function ScheduleTourPage() {
     // Find the selected warehouse to get its ShipHero ID
     const selectedWarehouse = warehouses.find(w => w.id === warehouseId)
     if (!selectedWarehouse) {
-      console.log('🚫 Early return: warehouse not found')
       setAvailableSkus([])
       return
     }
@@ -347,18 +308,7 @@ export function ScheduleTourPage() {
       return product.inventory?.warehouse_id === selectedWarehouse.shiphero_warehouse_id
     })
 
-    console.log('🏭 Filtering SKUs by warehouse:', {
-      warehouseId,
-      warehouseName: selectedWarehouse.name,
-      shipHeroWarehouseId: selectedWarehouse.shiphero_warehouse_id,
-      totalSkus: allSkus.length,
-      filteredSkus: filteredSkus.length,
-      sampleFiltered: filteredSkus.slice(0, 3).map(p => ({ sku: p.sku, available: p.inventory?.available }))
-    })
-
-    console.log('📝 setAvailableSkus: setting', filteredSkus.length, 'filtered SKUs')
     setAvailableSkus(filteredSkus)
-    console.log('🏭 FILTER SKUs END:', { timestamp: Date.now() })
   }
 
   const loadAvailableSkus = async () => {
@@ -375,7 +325,6 @@ export function ScheduleTourPage() {
       setAllSkus(sortedProducts)
       // Initially show no SKUs until a warehouse is selected
       setAvailableSkus([])
-      console.log(`✅ Loaded ${sortedProducts.length} active SKUs for tour selection (cached: ${sortedProducts.length > 0})`)
       
       // If warehouse is already selected, filter immediately
       if (formData.warehouse_id) {
@@ -402,7 +351,6 @@ export function ScheduleTourPage() {
 
   const fetchWarehouses = async () => {
     try {
-      console.log('🏢 Loading warehouses from REMOTE database...')
       
       // First, load existing warehouses from remote database
       const { data: existingWarehouses, error: dbError } = await supabase
@@ -415,21 +363,16 @@ export function ScheduleTourPage() {
         throw new Error('Failed to fetch warehouses from remote database')
       }
       
-      console.log(`📊 Found ${existingWarehouses?.length || 0} existing warehouses in remote database`)
       
       // If we have existing warehouses, use them but also check for updates from ShipHero
       if (existingWarehouses && existingWarehouses.length > 0) {
-        console.log('✅ Found existing warehouses, setting them first')
-        console.log('🔍 First warehouse:', existingWarehouses[0])
         setWarehouses(existingWarehouses)
         
         // Continue to check ShipHero for any new warehouses (don't return early)
-        console.log('🔄 Also checking ShipHero for any new warehouses...')
       }
       
       // Sync from ShipHero (either for first time or to check for updates)
       const hasExistingWarehouses = existingWarehouses && existingWarehouses.length > 0
-      console.log(hasExistingWarehouses ? '🔄 Checking ShipHero for new warehouses...' : '🔄 No warehouses found in remote database, syncing from ShipHero...')
       
       const { tokenManager } = await import('@/lib/shiphero/token-manager')
       const accessToken = await tokenManager.getValidAccessToken()
@@ -464,21 +407,18 @@ export function ScheduleTourPage() {
       const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
       
       if (shipHeroWarehouses.length === 0) {
-        console.log('⚠️ No warehouses found in ShipHero')
         if (!hasExistingWarehouses) {
           setWarehouses([])
         }
         return
       }
       
-      console.log(`📦 Found ${shipHeroWarehouses.length} warehouses in ShipHero`)
       
       // Check which warehouses are new (not in local database)
       const existingShipHeroIds = new Set(existingWarehouses?.map(w => w.shiphero_warehouse_id) || [])
       const newWarehouses = shipHeroWarehouses.filter(warehouse => !existingShipHeroIds.has(warehouse.id))
       
       if (newWarehouses.length > 0) {
-        console.log(`🆕 Found ${newWarehouses.length} new warehouses to add to remote database...`)
         
         const warehousesToCreate = newWarehouses.map(warehouse => ({
           name: warehouse.address?.name || warehouse.identifier,
@@ -499,10 +439,8 @@ export function ScheduleTourPage() {
         
         if (createError) {
           console.error('❌ Error creating new warehouses in remote database:', createError)
-          console.log('❌ Create error details:', createError)
           // Don't throw error, just log it - we still have existing warehouses
         } else {
-          console.log(`✅ Created ${createdWarehouses?.length || 0} new warehouses in remote database`)
           
           // Merge existing and new warehouses
           const allWarehouses = [...(existingWarehouses || []), ...(createdWarehouses || [])]
@@ -515,7 +453,6 @@ export function ScheduleTourPage() {
           })
         }
       } else {
-        console.log('✅ All ShipHero warehouses already exist in remote database')
         if (hasExistingWarehouses) {
           // Warehouses already set above, no need to update
         } else {
@@ -600,7 +537,6 @@ export function ScheduleTourPage() {
 
     // Allow tours without participants for testing
     if (participants.length === 0) {
-      console.log('⚠️ Creating tour without participants (testing mode)')
     }
 
     setIsLoading(true)
@@ -624,20 +560,8 @@ export function ScheduleTourPage() {
         workflow_configs: workflowConfigs, // New detailed configuration
       }
       
-      console.log('🔍 Tour creation data:', tourInsertData)
-      console.log('🏢 Warehouse ID format:', typeof formData.warehouse_id, formData.warehouse_id)
-      console.log('👤 Host ID format:', typeof formData.host_id, formData.host_id)
-      console.log('🎯 Selected workflows:', selectedWorkflows)
-      console.log('📦 Selected SKUs:', selectedSkus)
       
       // DETAILED DEBUGGING - Show exactly what's being sent
-      console.log('🚨 DETAILED DEBUG - Raw form data:')
-      console.log('  warehouse_id:', JSON.stringify(formData.warehouse_id))
-      console.log('  host_id:', JSON.stringify(formData.host_id))
-      console.log('  selected_workflows type:', typeof selectedWorkflows, Array.isArray(selectedWorkflows))
-      console.log('  selected_skus type:', typeof selectedSkus, Array.isArray(selectedSkus))
-      console.log('🚨 DETAILED DEBUG - Payload being sent to Supabase:')
-      console.log(JSON.stringify(tourInsertData, null, 2))
 
       // Validate data before sending
       if (!formData.warehouse_id) {
@@ -664,7 +588,6 @@ export function ScheduleTourPage() {
         throw new Error(`Invalid host ID format: ${formData.host_id}. Expected UUID format.`)
       }
 
-      console.log('✅ Data validation passed, creating tour...')
 
       // Optimized: Create tour and get related data in one query with joins
       const { data: tourData, error: tourError } = await supabase
@@ -728,31 +651,25 @@ export function ScheduleTourPage() {
   }
 
   const selectedWarehouse = useMemo(() => {
-    console.log('🏗️ MEMO: selectedWarehouse recalculating', { warehouseId: formData.warehouse_id, warehousesLength: warehouses.length })
     const result = warehouses.find((w) => w.id === formData.warehouse_id)
-    console.log('🏗️ MEMO: selectedWarehouse result', result ? result.name : 'not found')
     return result
   }, [warehouses, formData.warehouse_id])
 
   // Memoize category options to prevent re-renders
   const getCategoryOptions = useMemo(() => {
-    console.log('🏗️ MEMO: getCategoryOptions recalculating')
     const categoryMap = new Map()
     categories.forEach(category => {
       const result = workflowOptions.filter(option => option.category === category)
       categoryMap.set(category, result)
-      console.log('🏗️ MEMO: categoryOptions for', category, ':', result.length, 'options')
     })
     return categoryMap
   }, []) // workflowOptions and categories are static constants
 
   // Memoize workflow SKUs to prevent infinite re-renders
   const workflowSkusMap = useMemo(() => {
-    console.log('🏗️ MEMO: workflowSkusMap recalculating - availableSkus length:', availableSkus.length)
     const skuMap = new Map()
     selectedWorkflows.forEach(workflowId => {
       skuMap.set(workflowId, availableSkus.map((product, index) => {
-        if (index === 0) console.log('🎨 MEMOIZING WORKFLOW SKUs for', workflowId, '- total:', availableSkus.length)
         return (
           <div
             key={product.sku}
@@ -792,7 +709,6 @@ export function ScheduleTourPage() {
 
   // Memoize main product grid to prevent infinite re-renders  
   const productGrid = useMemo(() => {
-    console.log('🏗️ MEMO: productGrid recalculating - availableSkus length:', availableSkus.length)
     return availableSkus.map(product => (
       <div 
         key={product.sku} 
@@ -1260,7 +1176,6 @@ export function ScheduleTourPage() {
 
               <div className="space-y-6">
                 {categories.map(category => {
-                  console.log('🏗️ CATEGORY RENDER:', category, 'at', Date.now())
                   const categoryOptions = getCategoryOptions.get(category) || []
                   
                   return (
