@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { RefreshCw, TestTube, Plus, ShoppingCart, Package } from "lucide-react"
+import { RefreshCw, TestTube, Plus, ShoppingCart, Package, Copy } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -961,6 +961,32 @@ export function ShipHeroTab() {
               <p className="text-sm text-muted-foreground">
                 Enter your ShipHero refresh token to enable API access. This token is stored locally and securely in your browser.
               </p>
+            </div>
+          </div>
+
+          {/* DEV ONLY: Quick copy refresh token */}
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1">
+                <Label className="text-xs text-amber-700 font-medium">DEV ONLY - Quick Copy Token</Label>
+                <div className="text-xs text-amber-600 font-mono break-all mt-1">
+                  hFvnmq8bQGwlbn48SwNqnzFIpOlSizyb1aubxZtB5d42-
+                </div>
+              </div>
+              <Button
+                onClick={() => {
+                  navigator.clipboard.writeText("hFvnmq8bQGwlbn48SwNqnzFIpOlSizyb1aubxZtB5d42-")
+                  toast({
+                    title: "📋 Copied!",
+                    description: "Dev refresh token copied to clipboard",
+                  })
+                }}
+                variant="outline"
+                size="sm"
+                className="text-amber-700 border-amber-300 hover:bg-amber-100"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
             </div>
           </div>
 
