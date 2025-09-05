@@ -320,13 +320,16 @@ export function ShipHeroTab() {
         const expiresIn = data.expires_in
         
         if (newAccessToken) {
-          // Store the access token in localStorage
+          // Store the tokens using enhanced persistence (localStorage + IndexedDB + cookies)
+          const { tokenManager } = await import('@/lib/shiphero/token-manager')
+          tokenManager.storeNewTokens(newAccessToken, refreshToken)
+          
+          // Also store in localStorage for backward compatibility
           localStorage.setItem('shiphero_access_token', newAccessToken)
+          localStorage.setItem('shiphero_refresh_token', refreshToken)
           
           // Calculate expiration date
           const expirationDate = new Date(Date.now() + (expiresIn * 1000))
-          
-          // Store expiration date in localStorage
           localStorage.setItem('shiphero_token_expires_at', expirationDate.toISOString())
           setTokenExpiresAt(expirationDate.toISOString())
           
