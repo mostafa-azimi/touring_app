@@ -370,6 +370,8 @@ export function ViewToursPage() {
 
   const handleViewInstructions = async (tourId: string) => {
     try {
+      console.log('🔍 DEBUG: Fetching tour summary for ID:', tourId)
+      
       // Fetch comprehensive tour data including order summary
       const { data: tourData, error: tourError } = await supabase
         .from('tours')
@@ -389,12 +391,17 @@ export function ViewToursPage() {
         .eq('id', tourId)
         .single()
 
+      console.log('🔍 DEBUG: Tour data response:', { tourData, tourError })
+      console.log('🔍 DEBUG: Order summary data:', tourData?.order_summary)
+
       if (tourError || !tourData) {
+        console.error('❌ DEBUG: Failed to fetch tour data:', tourError)
         throw new Error('Failed to fetch tour data')
       }
 
       // Check if we have order summary data
       if (!tourData.order_summary) {
+        console.warn('⚠️ DEBUG: No order_summary found in database')
         toast({
           title: "No Tour Summary Available",
           description: "This tour was finalized before comprehensive summaries were saved. Please re-finalize the tour to generate a summary.",
@@ -402,6 +409,8 @@ export function ViewToursPage() {
         })
         return
       }
+
+      console.log('✅ DEBUG: Order summary found, creating tour summary...')
 
       // Create comprehensive tour summary
       const tourSummary = {
@@ -453,8 +462,10 @@ export function ViewToursPage() {
         `.trim()
       }
 
+      console.log('🔍 DEBUG: Setting finalization result:', tourSummary)
       setFinalizationResult(tourSummary)
       setShowFinalizationResults(true)
+      console.log('✅ DEBUG: Popup should now be visible')
 
       toast({
         title: "Tour Summary Retrieved",

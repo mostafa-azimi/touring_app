@@ -419,32 +419,21 @@ export class TourFinalizationService {
         }
       }
 
-      // Update tour status to finalized (critical)
-      console.log('🔄 Updating tour status to finalized...')
+      // Update tour status to finalized and store order summary in database
+      console.log('🔄 Updating tour status to finalized and storing order summary...')
       const { error: statusError } = await this.supabase
         .from('tours')
-        .update({ status: 'finalized' })
+        .update({ 
+          status: 'finalized',
+          order_summary: orderSummary
+        })
         .eq('id', tourId)
 
       if (statusError) {
         console.error('⚠️ Failed to update tour status:', statusError)
         // Don't fail the entire operation for a status update error
       } else {
-        console.log('✅ Tour status updated to finalized')
-      }
-
-      // Try to store order summary (optional - may fail if column doesn't exist)
-      console.log('🔄 Attempting to store order summary...')
-      const { error: summaryError } = await this.supabase
-        .from('tours')
-        .update({ order_summary: orderSummary })
-        .eq('id', tourId)
-
-      if (summaryError) {
-        console.warn('⚠️ Failed to store order summary (column may not exist):', summaryError)
-        console.log('📝 Order summary data:', JSON.stringify(orderSummary, null, 2))
-      } else {
-        console.log('✅ Order summary stored successfully')
+        console.log('✅ Tour status updated to finalized and order summary stored')
       }
 
       // Print final summary of all created orders
