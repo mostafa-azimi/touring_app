@@ -12,7 +12,6 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
 import { TourFinalizationResults } from "@/components/tour-finalization-results"
-import { TourCancellationDialog } from "@/components/tour-cancellation-dialog"
 
 interface Tour {
   id: string
@@ -21,7 +20,6 @@ interface Tour {
 
   status?: string
   created_at: string
-  canceled_at?: string
   tour_numeric_id?: number
   shiphero_purchase_order_id?: string
   shiphero_purchase_order_number?: string
@@ -71,11 +69,8 @@ export function ViewToursPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
-  const [cancellingTourId, setCancellingTourId] = useState<string | null>(null)
   const [finalizationResult, setFinalizationResult] = useState<any>(null)
   const [showFinalizationResults, setShowFinalizationResults] = useState(false)
-  const [tourToCancel, setTourToCancel] = useState<Tour | null>(null)
-  const [showCancellationDialog, setShowCancellationDialog] = useState(false)
 
   const [sortField, setSortField] = useState<string>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -164,7 +159,6 @@ export function ViewToursPage() {
           time,
           status,
           created_at,
-          canceled_at,
           tour_numeric_id,
           shiphero_purchase_order_id,
           shiphero_purchase_order_number,
@@ -178,8 +172,6 @@ export function ViewToursPage() {
         `,
         )
 
-      // Always filter out cancelled tours for clean UI
-      query = query.neq('status', 'cancelled')
 
       const { data, error } = await query
         .order("date", { ascending: false })
@@ -208,60 +200,6 @@ export function ViewToursPage() {
 
   // REMOVED: handleValidateTour function - tours now go directly to finalize
 
-  const handleCancelTour = async (tourId: string) => {
-    if (cancellingTourId === tourId) return // Prevent double-clicks
-    
-    if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
-      return
-    }
-
-    setCancellingTourId(tourId)
-
-    // Optimistically update UI first for immediate feedback
-    setTours(prevTours => 
-      prevTours.map(tour => 
-        tour.id === tourId 
-          ? { ...tour, status: 'cancelled' } 
-          : tour
-      )
-    )
-
-    try {
-      // Update tour status to cancelled
-      const { error: updateError } = await supabase
-        .from('tours')
-        .update({ status: 'cancelled' })
-        .eq('id', tourId)
-
-      if (updateError) {
-        throw updateError
-      }
-
-      toast({
-        title: "Tour Cancelled",
-        description: "The tour has been cancelled successfully",
-      })
-    } catch (error) {
-      console.error('Error cancelling tour:', error)
-      
-      // Revert optimistic update on error
-      setTours(prevTours => 
-        prevTours.map(tour => 
-          tour.id === tourId 
-            ? { ...tour, status: 'scheduled' } // Revert to original status
-            : tour
-        )
-      )
-      
-      toast({
-        title: "Error",
-        description: "Failed to cancel tour",
-        variant: "destructive",
-      })
-    } finally {
-      setCancellingTourId(null)
-    }
-  }
 
   const handleFinalizeTour = async (tourId: string) => {
     console.log('🚀 DEPLOYMENT MARKER V8 - Finalize button clicked - TIMESTAMP:', new Date().toISOString())
@@ -316,7 +254,6 @@ export function ViewToursPage() {
               time,
               status,
               created_at,
-              canceled_at,
               tour_numeric_id,
               shiphero_purchase_order_id,
               shiphero_purchase_order_number,
@@ -661,12 +598,11 @@ export function ViewToursPage() {
                           <div className="xl:hidden text-xs text-muted-foreground mt-1">
                             <Badge 
                               variant={
-                                tour.canceled_at ? 'destructive' : 
-                                tour.status === 'finalized' ? 'default' : 'secondary'
+                                    tour.status === 'finalized' ? 'default' : 'secondary'
                               } 
                               className="text-xs"
                             >
-                              {tour.canceled_at ? 'canceled' : tour.status || 'scheduled'}
+                              {tour.status || 'scheduled'}
                             </Badge>
                           </div>
                         </div>
@@ -719,18 +655,17 @@ export function ViewToursPage() {
                       <TableCell className="hidden xl:table-cell">
                         <Badge 
                           variant={
-                            tour.canceled_at ? 'destructive' : 
                             tour.status === 'finalized' ? 'default' : 'secondary'
                           }
                           className="capitalize"
                         >
-                          {tour.canceled_at ? 'canceled' : tour.status || 'scheduled'}
+                          {tour.status || 'scheduled'}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-2">
                           {/* Primary Action - Finalize Tour */}
-                          {tour.status === 'scheduled' && !tour.canceled_at && (
+                          {tour.status === 'scheduled' && (
                             <Button 
                               variant="default" 
                               size="sm" 
@@ -744,7 +679,7 @@ export function ViewToursPage() {
                           )}
                           
                           {/* View Instructions for Finalized Tours */}
-                          {tour.status === 'finalized' && !tour.canceled_at && (
+                          {tour.status === 'finalized' && (
                             <>
                               <Button 
                                 variant="default" 
