@@ -29,7 +29,8 @@ export interface TourData {
     code?: string
   }
   selected_workflows: string[]
-  selected_skus: string[]
+  selected_skus: string[] // Legacy - aggregated from all workflows
+  workflow_configs?: {[key: string]: {orderCount: number, selectedSkus: string[]}} // New per-workflow configuration
 }
 
 export type WorkflowOption = 
@@ -501,16 +502,24 @@ export class TourFinalizationService {
   }
 
   /**
-   * MODULE 3: Creates a batch of 10 Sales Orders for "Bulk Shipping".
+   * MODULE 3: Creates a batch of Sales Orders for "Bulk Shipping".
    */
   private async createBulkShippingSOs(tourData: TourData): Promise<void> {
     console.log("🎯 Starting Bulk Shipping workflow...")
     
+    // Get workflow configuration
+    const workflowConfig = tourData.workflow_configs?.['bulk_shipping']
+    const orderCount = workflowConfig?.orderCount || 10 // Default to 10 if no config
+    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
+    
+    console.log(`Creating ${orderCount} bulk shipping orders...`)
+    console.log(`🎯 Using SKUs for Bulk Shipping:`, workflowSkus)
+    
     // Step 1: Create participant orders first
     const participantOrders = await this.createParticipantOrders(tourData, "BULK")
     
-    // Step 2: Create demo orders with celebrity names
-    const demoOrders = await this.createDemoOrders(tourData, "BULK-DEMO", 10)
+    // Step 2: Create demo orders with celebrity names using workflow-specific SKUs
+    const demoOrders = await this.createDemoOrders(tourData, "BULK-DEMO", orderCount, workflowSkus)
     
     console.log(`✅ Bulk Shipping completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
   }
@@ -522,11 +531,19 @@ export class TourFinalizationService {
   private async createSingleItemBatchSOs(tourData: TourData): Promise<void> {
     console.log("🎯 Starting Single-Item Batch workflow...")
     
+    // Get workflow configuration
+    const workflowConfig = tourData.workflow_configs?.['single_item_batch']
+    const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
+    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
+    
+    console.log(`Creating ${orderCount} single-item batch orders...`)
+    console.log(`🎯 Using SKUs for Single-Item Batch:`, workflowSkus)
+    
     // Step 1: Create participant orders first
     const participantOrders = await this.createParticipantOrders(tourData, "SINGLE")
     
-    // Step 2: Create demo orders with celebrity names (5 single-item orders)
-    const demoOrders = await this.createDemoOrders(tourData, "SINGLE-DEMO", 5)
+    // Step 2: Create demo orders with celebrity names using workflow-specific SKUs
+    const demoOrders = await this.createDemoOrders(tourData, "SINGLE-DEMO", orderCount, workflowSkus)
     
     console.log(`✅ Single-Item Batch completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
   }
@@ -914,10 +931,11 @@ export class TourFinalizationService {
   /**
    * Helper method to create demo orders using celebrity names and selected SKUs
    */
-  private async createDemoOrders(tourData: TourData, orderPrefix: string, count: number): Promise<any[]> {
+  private async createDemoOrders(tourData: TourData, orderPrefix: string, count: number, workflowSkus?: string[]): Promise<any[]> {
     console.log(`Creating ${count} demo orders with celebrity names...`)
     
-    if (tourData.selected_skus.length === 0) {
+    const skusToUse = workflowSkus || tourData.selected_skus
+    if (skusToUse.length === 0) {
       throw new Error("No SKUs selected for orders. Please select SKUs when creating the tour.")
     }
 
@@ -928,13 +946,13 @@ export class TourFinalizationService {
     for (let i = 0; i < count; i++) {
       const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
       
-      // Use selected SKUs for demo orders, rotate through them
-      const selectedSkuIndex = i % tourData.selected_skus.length
+      // Use workflow-specific SKUs for demo orders, rotate through them
+      const selectedSkuIndex = i % skusToUse.length
       const lineItems = [{
-        sku: tourData.selected_skus[selectedSkuIndex],
+        sku: skusToUse[selectedSkuIndex],
         quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
         price: "15.00",
-        product_name: `Product ${tourData.selected_skus[selectedSkuIndex]}`,
+        product_name: `Product ${skusToUse[selectedSkuIndex]}`,
         partner_line_item_id: `demo-${Date.now()}-${i + 1}`,
         fulfillment_status: "pending",
         quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
@@ -1429,12 +1447,16 @@ export class TourFinalizationService {
       console.log('No participants found, skipping participant orders')
     }
 
-    // Create demo orders with celebrity names for training variety
-    const demoOrderCount = 5
-    console.log(`Creating ${demoOrderCount} multi-item demo orders with celebrity names...`)
+    // Get workflow configuration
+    const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
+    const demoOrderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
+    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
     
-    if (tourData.selected_skus.length === 0) {
-      throw new Error("No SKUs selected for orders. Please select SKUs when creating the tour.")
+    console.log(`Creating ${demoOrderCount} multi-item demo orders with celebrity names...`)
+    console.log(`🎯 Using SKUs for Multi-Item Batch:`, workflowSkus)
+    
+    if (workflowSkus.length === 0) {
+      throw new Error("No SKUs selected for Multi-Item Batch workflow. Please select SKUs when creating the tour.")
     }
 
     const warehouseAddress = this.getWarehouseShippingAddress(tourData)
@@ -1445,23 +1467,41 @@ export class TourFinalizationService {
       // Get celebrity name
       const celebrity = getCelebrityNames(1)[0]
       
-      // Create multi-item line items (2-4 items per order)
-      const itemCount = Math.floor(Math.random() * 3) + 2 // 2-4 items
+      // Create multi-item line items - MAXIMUM 3 unique SKUs per order
+      const maxSkusPerOrder = Math.min(3, workflowSkus.length) // Never exceed 3 SKUs
+      const itemCount = Math.min(maxSkusPerOrder, Math.floor(Math.random() * 3) + 1) // 1-3 items, but max 3
       const lineItems = []
       
+      // Use Set to ensure unique SKUs per order
+      const usedSkus = new Set<string>()
+      
       for (let j = 0; j < itemCount; j++) {
-        const skuIndex = (i + j) % tourData.selected_skus.length
-        lineItems.push({
-          sku: tourData.selected_skus[skuIndex],
-          quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
-          price: "15.00",
-          product_name: `Product ${tourData.selected_skus[skuIndex]}`,
-          partner_line_item_id: `mib-${Date.now()}-${i + 1}-${j + 1}`,
-          fulfillment_status: "pending",
-          quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
-          warehouse_id: tourData.warehouse.shiphero_warehouse_id
-        })
+        let sku: string
+        let attempts = 0
+        
+        // Find a unique SKU for this order (max 10 attempts to avoid infinite loop)
+        do {
+          const skuIndex = (i + j + attempts) % workflowSkus.length
+          sku = workflowSkus[skuIndex]
+          attempts++
+        } while (usedSkus.has(sku) && attempts < 10)
+        
+        if (!usedSkus.has(sku)) {
+          usedSkus.add(sku)
+          lineItems.push({
+            sku: sku,
+            quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
+            price: "15.00",
+            product_name: `Product ${sku}`,
+            partner_line_item_id: `mib-${Date.now()}-${i + 1}-${j + 1}`,
+            fulfillment_status: "pending",
+            quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
+            warehouse_id: tourData.warehouse.shiphero_warehouse_id
+          })
+        }
       }
+      
+      console.log(`📦 Order ${i + 1}: ${lineItems.length} unique SKUs: ${lineItems.map(item => item.sku).join(', ')}`)
 
       const orderData = {
         order_number: `DEMO-MIB-${Date.now()}-${i + 1}`,
