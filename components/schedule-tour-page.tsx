@@ -638,6 +638,18 @@ export function ScheduleTourPage() {
     return result
   }, [warehouses, formData.warehouse_id])
 
+  // Memoize category options to prevent re-renders
+  const getCategoryOptions = useMemo(() => {
+    console.log('🏗️ MEMO: getCategoryOptions recalculating')
+    const categoryMap = new Map()
+    categories.forEach(category => {
+      const result = workflowOptions.filter(option => option.category === category)
+      categoryMap.set(category, result)
+      console.log('🏗️ MEMO: categoryOptions for', category, ':', result.length, 'options')
+    })
+    return categoryMap
+  }, []) // workflowOptions and categories are static constants
+
   // CSV Upload functionality
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1062,12 +1074,7 @@ export function ScheduleTourPage() {
               <div className="space-y-6">
                 {categories.map(category => {
                   console.log('🏗️ CATEGORY RENDER:', category, 'at', Date.now())
-                  const categoryOptions = useMemo(() => {
-                    console.log('🏗️ MEMO: categoryOptions recalculating for', category)
-                    const result = workflowOptions.filter(option => option.category === category)
-                    console.log('🏗️ MEMO: categoryOptions result for', category, ':', result.length, 'options')
-                    return result
-                  }, [category])
+                  const categoryOptions = getCategoryOptions.get(category) || []
                   
                   return (
                     <div key={category} className="space-y-3">
