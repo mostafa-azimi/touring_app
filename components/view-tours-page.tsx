@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
+import { Eye, Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download, XCircle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
 import { TourFinalizationResults } from "@/components/tour-finalization-results"
+import { TourCancellationDialog } from "@/components/tour-cancellation-dialog"
 
 interface Tour {
   id: string
@@ -20,6 +21,7 @@ interface Tour {
 
   status?: string
   created_at: string
+  canceled_at?: string
   tour_numeric_id?: number
   shiphero_purchase_order_id?: string
   shiphero_purchase_order_number?: string
@@ -72,7 +74,8 @@ export function ViewToursPage() {
   const [cancellingTourId, setCancellingTourId] = useState<string | null>(null)
   const [finalizationResult, setFinalizationResult] = useState<any>(null)
   const [showFinalizationResults, setShowFinalizationResults] = useState(false)
-
+  const [tourToCancel, setTourToCancel] = useState<Tour | null>(null)
+  const [showCancellationDialog, setShowCancellationDialog] = useState(false)
 
   const [sortField, setSortField] = useState<string>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -161,6 +164,7 @@ export function ViewToursPage() {
           time,
           status,
           created_at,
+          canceled_at,
           tour_numeric_id,
           shiphero_purchase_order_id,
           shiphero_purchase_order_number,
@@ -312,6 +316,7 @@ export function ViewToursPage() {
               time,
               status,
               created_at,
+              canceled_at,
               tour_numeric_id,
               shiphero_purchase_order_id,
               shiphero_purchase_order_number,
@@ -364,6 +369,18 @@ export function ViewToursPage() {
       setIsFinalizingTour(false)
       setFinalizingTourId(null)
     }
+  }
+
+  const handleOpenCancelDialog = (tour: Tour) => {
+    setTourToCancel(tour)
+    setShowCancellationDialog(true)
+  }
+
+  const handleCancellationComplete = () => {
+    // Refresh the tours list after cancellation
+    fetchTours()
+    setTourToCancel(null)
+    setShowCancellationDialog(false)
   }
 
   const handleViewInstructions = async (tourId: string) => {
@@ -642,8 +659,14 @@ export function ViewToursPage() {
                             {tour.participants.length} participant{tour.participants.length !== 1 ? 's' : ''}
                           </div>
                           <div className="xl:hidden text-xs text-muted-foreground mt-1">
-                            <Badge variant={tour.status === 'finalized' ? 'default' : 'secondary'} className="text-xs">
-                              {tour.status || 'scheduled'}
+                            <Badge 
+                              variant={
+                                tour.canceled_at ? 'destructive' : 
+                                tour.status === 'finalized' ? 'default' : 'secondary'
+                              } 
+                              className="text-xs"
+                            >
+                              {tour.canceled_at ? 'canceled' : tour.status || 'scheduled'}
                             </Badge>
                           </div>
                         </div>
@@ -695,16 +718,19 @@ export function ViewToursPage() {
                       </TableCell>
                       <TableCell className="hidden xl:table-cell">
                         <Badge 
-                          variant={tour.status === 'finalized' ? 'default' : tour.status === 'cancelled' ? 'destructive' : 'secondary'}
+                          variant={
+                            tour.canceled_at ? 'destructive' : 
+                            tour.status === 'finalized' ? 'default' : 'secondary'
+                          }
                           className="capitalize"
                         >
-                          {tour.status || 'scheduled'}
+                          {tour.canceled_at ? 'canceled' : tour.status || 'scheduled'}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-2">
                           {/* Primary Action - Finalize Tour */}
-                          {tour.status === 'scheduled' && (
+                          {tour.status === 'scheduled' && !tour.canceled_at && (
                             <Button 
                               variant="default" 
                               size="sm" 
@@ -718,16 +744,40 @@ export function ViewToursPage() {
                           )}
                           
                           {/* View Instructions for Finalized Tours */}
-                          {tour.status === 'finalized' && (
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              onClick={() => handleViewInstructions(tour.id)}
-                              className="w-full bg-green-600 hover:bg-green-700"
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              View Instructions
-                            </Button>
+                          {tour.status === 'finalized' && !tour.canceled_at && (
+                            <>
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                onClick={() => handleViewInstructions(tour.id)}
+                                className="w-full bg-green-600 hover:bg-green-700"
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                View Instructions
+                              </Button>
+                              
+                              {/* Cancel Tour Button for Finalized Tours */}
+                              <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={() => handleOpenCancelDialog(tour)}
+                                className="w-full"
+                              >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Cancel Tour
+                              </Button>
+                            </>
+                          )}
+                          
+                          {/* Canceled Tour Status */}
+                          {tour.canceled_at && (
+                            <div className="text-center text-sm text-muted-foreground">
+                              <XCircle className="h-4 w-4 mx-auto mb-1 text-red-500" />
+                              <div>Canceled</div>
+                              <div className="text-xs">
+                                {new Date(tour.canceled_at).toLocaleDateString()}
+                              </div>
+                            </div>
                           )}
                           
                           {/* Secondary Actions */}
@@ -817,6 +867,17 @@ export function ViewToursPage() {
         onClose={() => setShowFinalizationResults(false)}
         result={finalizationResult}
       />
+
+      {/* Tour Cancellation Dialog */}
+      {tourToCancel && (
+        <TourCancellationDialog
+          isOpen={showCancellationDialog}
+          onClose={() => setShowCancellationDialog(false)}
+          tourId={tourToCancel.id}
+          tourTitle={`${formatDate(tourToCancel.date)} at ${formatTime(tourToCancel.time)} - ${tourToCancel.warehouse.name}`}
+          onCancellationComplete={handleCancellationComplete}
+        />
+      )}
     </div>
   )
 }
