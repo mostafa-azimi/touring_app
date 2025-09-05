@@ -36,8 +36,8 @@ function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChang
 
   // Filter products by selected warehouse and remove duplicates
   const warehouseProducts = allSkus.filter(product => {
-    // Match by warehouse identifier/code
-    return product.warehouse_identifier === selectedWarehouse?.code
+    // Match by warehouse identifier/code - check the inventory object
+    return product.inventory?.warehouse_identifier === selectedWarehouse?.code
   })
 
   // Remove duplicates by SKU (keep the first occurrence)
@@ -70,12 +70,12 @@ function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChang
           const availableQty = product.inventory?.available || product.available || 0
           
           return (
-            <div key={`${product.sku}-${product.warehouse_identifier}`} className="p-3 bg-white rounded-lg border space-y-2">
+            <div key={`${product.sku}-${product.inventory?.warehouse_identifier}`} className="p-3 bg-white rounded-lg border space-y-2">
               <div className="space-y-1">
                 <h4 className="font-medium text-sm leading-tight">{product.name}</h4>
                 <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
                 <p className="text-xs text-green-600">Available: {availableQty}</p>
-                <p className="text-xs text-muted-foreground">Warehouse: {product.warehouse_identifier}</p>
+                <p className="text-xs text-muted-foreground">Warehouse: {product.inventory?.warehouse_identifier}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Label htmlFor={`qty-${product.sku}`} className="text-xs">Qty:</Label>
@@ -198,7 +198,7 @@ export function ScheduleTourPage() {
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const [isUploadingCSV, setIsUploadingCSV] = useState(false)
   const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([])
-  const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, selectedSkus: string[]}}>({})
+  const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, selectedSkus: string[], skuQuantities: {[sku: string]: number}}}>({})
   const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([])
   const [selectedSkus, setSelectedSkus] = useState<string[]>([]) // Legacy - will be replaced by workflowConfigs
   const [availableSkus, setAvailableSkus] = useState<any[]>([])
