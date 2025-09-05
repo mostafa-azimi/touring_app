@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+// Sheet imports removed - no longer using view details functionality
 import { Badge } from "@/components/ui/badge"
-import { Eye, Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download, XCircle } from "lucide-react"
+import { Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
@@ -65,7 +65,7 @@ export function ViewToursPage() {
   const [filteredTours, setFilteredTours] = useState<Tour[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedTour, setSelectedTour] = useState<Tour | null>(null)
+  // selectedTour state removed - no longer using view details functionality
   const [currentPage, setCurrentPage] = useState(1)
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
@@ -251,7 +251,7 @@ export function ViewToursPage() {
       
       if (selectedWorkflows.length === 0) {
         console.log('⚠️ No workflows selected, showing toast')
-        toast({
+      toast({
           title: "No Workflows Selected",
           description: "This tour has no workflows selected. Please edit the tour to add training workflows before finalizing.",
           variant: "destructive",
@@ -270,48 +270,11 @@ export function ViewToursPage() {
         // Refresh tours to get updated order information
         await fetchTours()
         
-        // Update selected tour if it's currently open by fetching fresh data
-        if (selectedTour && selectedTour.id === tourId) {
-          const { data: updatedTourData } = await supabase
-            .from("tours")
-            .select(`
-              id,
-              date,
-              time,
-              status,
-              created_at,
-              tour_numeric_id,
-              shiphero_purchase_order_id,
-              shiphero_purchase_order_number,
-              shiphero_purchase_order_url,
-              host_shiphero_sales_order_id,
-              host_shiphero_sales_order_number,
-              host_shiphero_sales_order_url,
-              warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
-              host:team_members(id, first_name, last_name, email),
-              participants:tour_participants(id, first_name, last_name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
-            `)
-            .eq('id', tourId)
-            .single()
-          
-          if (updatedTourData) {
-            const processedTour = {
-              ...updatedTourData,
-              warehouse: Array.isArray(updatedTourData.warehouse) ? updatedTourData.warehouse[0] : updatedTourData.warehouse,
-              host: Array.isArray(updatedTourData.host) ? updatedTourData.host[0] : updatedTourData.host,
-              participants: Array.isArray(updatedTourData.participants) ? updatedTourData.participants : [],
-            }
-            setSelectedTour(processedTour)
-          }
-        }
+        // selectedTour update logic removed - no longer using view details functionality
 
-        // Show the finalization results popup
-        if (result.finalizationResult) {
-          setFinalizationResult(result.finalizationResult)
-          setShowFinalizationResults(true)
-        }
-
-        toast({
+        // Finalization results popup removed - using tour summary instead
+      
+      toast({
           title: "🎉 Tour Finalized Successfully!",
           description: result.message,
         })
@@ -334,15 +297,7 @@ export function ViewToursPage() {
     }
   }
 
-  const handleOpenCancelDialog = (tour: Tour) => {
-    setTourToCancel(tour)
-    setShowCancellationDialog(true)
-  }
-
-  const handleCancellationComplete = () => {
-    // Legacy function - no longer used
-    fetchTours()
-  }
+  // Removed cancel dialog functions - no longer needed
 
   const handleClearAllTours = async () => {
     if (!confirm('⚠️ ARE YOU SURE? This will permanently delete ALL tours from the database. This action cannot be undone!')) {
@@ -401,22 +356,22 @@ export function ViewToursPage() {
       // Fetch comprehensive tour data including order summary
       const { data: tourData, error: tourError } = await supabase
         .from('tours')
-        .select(`
-          id,
-          date,
-          time,
-          status,
-          tour_numeric_id,
+          .select(`
+            id,
+            date,
+            time,
+            status,
+            tour_numeric_id,
           selected_workflows,
           selected_skus,
           order_summary,
           warehouse:warehouses(id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id),
-          host:team_members(id, first_name, last_name, email),
+            host:team_members(id, first_name, last_name, email),
           participants:tour_participants(id, first_name, last_name, email, company, title)
-        `)
-        .eq('id', tourId)
-        .single()
-
+          `)
+          .eq('id', tourId)
+          .single()
+        
       console.log('🔍 DEBUG: Tour data response:', { tourData, tourError })
       console.log('🔍 DEBUG: Order summary data:', tourData?.order_summary)
 
@@ -447,6 +402,11 @@ export function ViewToursPage() {
 
         console.log('🔍 DEBUG: Date formatted successfully:', formattedDate)
 
+        // Handle array vs object data structure from Supabase joins
+        const warehouse = Array.isArray(tourData.warehouse) ? tourData.warehouse[0] : tourData.warehouse
+        const host = Array.isArray(tourData.host) ? tourData.host[0] : tourData.host
+        const participants = Array.isArray(tourData.participants) ? tourData.participants : []
+
         // Create comprehensive tour summary
         const tourSummary = {
           tourId: tourData.id,
@@ -454,15 +414,15 @@ export function ViewToursPage() {
           tourTime: tourData.time,
           tourNumericId: tourData.tour_numeric_id,
           status: tourData.status,
-          warehouseName: tourData.warehouse?.name || 'Unknown Warehouse',
-          warehouseCode: tourData.warehouse?.code || '',
-          warehouseAddress: `${tourData.warehouse?.address || ''} ${tourData.warehouse?.city || ''} ${tourData.warehouse?.state || ''} ${tourData.warehouse?.zip || ''}`.trim() || 'Address not available',
-          hostName: `${tourData.host?.first_name || ''} ${tourData.host?.last_name || ''}`.trim(),
-          hostEmail: tourData.host?.email || '',
+          warehouseName: warehouse?.name || 'Unknown Warehouse',
+          warehouseCode: warehouse?.code || '',
+          warehouseAddress: `${warehouse?.address || ''} ${warehouse?.city || ''} ${warehouse?.state || ''} ${warehouse?.zip || ''}`.trim() || 'Address not available',
+          hostName: `${host?.first_name || ''} ${host?.last_name || ''}`.trim(),
+          hostEmail: host?.email || '',
           selectedWorkflows: tourData.selected_workflows || [],
           selectedSkus: tourData.selected_skus || [],
-          participantCount: tourData.participants?.length || 0,
-          participants: tourData.participants || [],
+          participantCount: participants?.length || 0,
+          participants: participants || [],
           orders: {
             sales_orders: tourData.order_summary?.sales_orders || [],
             purchase_orders: tourData.order_summary?.purchase_orders || []
@@ -475,12 +435,12 @@ export function ViewToursPage() {
 - **Date:** ${formattedDate}
 - **Time:** ${tourData.time}
 - **Status:** ${tourData.status?.toUpperCase()}
-- **Warehouse:** ${tourData.warehouse?.name} (${tourData.warehouse?.code})
-- **Address:** ${tourData.warehouse?.address}, ${tourData.warehouse?.city}, ${tourData.warehouse?.state} ${tourData.warehouse?.zip}
+- **Warehouse:** ${warehouse?.name} (${warehouse?.code})
+- **Address:** ${warehouse?.address}, ${warehouse?.city}, ${warehouse?.state} ${warehouse?.zip}
 
 ## 👥 Tour Host & Participants
-- **Host:** ${tourData.host?.first_name} ${tourData.host?.last_name} (${tourData.host?.email})
-- **Participants:** ${tourData.participants?.length || 0} registered
+- **Host:** ${host?.first_name} ${host?.last_name} (${host?.email})
+- **Participants:** ${participants?.length || 0} registered
 
 ## 📦 Order Summary
 - **Total Orders Created:** ${tourData.order_summary?.summary?.total_orders || 0}
@@ -660,11 +620,11 @@ export function ViewToursPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                View Tours
-              </CardTitle>
-              <CardDescription>Browse and manage existing warehouse tours</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            View Tours
+          </CardTitle>
+          <CardDescription>Browse and manage existing warehouse tours</CardDescription>
             </div>
             <Button 
               variant="destructive" 
@@ -672,7 +632,7 @@ export function ViewToursPage() {
               onClick={handleClearAllTours}
               className="bg-red-600 hover:bg-red-700"
             >
-              <XCircle className="h-4 w-4 mr-2" />
+                                            {/* XCircle icon removed with cancel button */}
               Clear All Tours
             </Button>
           </div>
@@ -840,36 +800,12 @@ export function ViewToursPage() {
                                 View Summary
                               </Button>
                               
-                              {/* Cancel Tour Button for Finalized Tours */}
-                              <Button 
-                                variant="destructive" 
-                                size="sm" 
-                                onClick={() => handleOpenCancelDialog(tour)}
-                                className="w-full"
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancel Tour
-                              </Button>
+                              {/* Cancel button removed per user request */}
                             </>
-                          )}
+                            )}
                           
                           
-                          {/* Secondary Actions */}
-                          <div className="flex items-center gap-1">
-                            <Sheet>
-                              <SheetTrigger asChild>
-                                <Button variant="ghost" size="sm" onClick={() => setSelectedTour(tour)} title="View Details">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </SheetTrigger>
-                              <SheetContent className="w-[600px] sm:max-w-[600px] overflow-y-auto">
-                                <TourDetailsSheet tour={selectedTour || tour} onTourUpdated={fetchTours} />
-                              </SheetContent>
-                            </Sheet>
-                            
-
-                            
-                          </div>
+                          {/* View details functionality removed per user request */}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -934,264 +870,4 @@ export function ViewToursPage() {
   )
 }
 
-function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?: () => Promise<void> }) {
-  const [isCancellingTour, setIsCancellingTour] = useState(false)
-  const { toast } = useToast()
-
-  const formatDate = (dateString: string) => {
-    // Parse date as local date to avoid timezone conversion issues
-    const [year, month, day] = dateString.split('-').map(Number)
-    const date = new Date(year, month - 1, day) // month is 0-indexed
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
-
-  const formatTime = (timeString: string) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
-  // Generate ShipHero URL with tour tag filter and date range
-  const generateShipHeroFilterUrl = (tourNumericId: number): string => {
-    const tourTag = `tour-${tourNumericId}`
-    
-    // Use current date for order date range (since orders are created "today")
-    const today = new Date()
-    const startDate = new Date(today)
-    startDate.setDate(today.getDate() - 1) // Day before order creation
-    
-    const endDate = new Date(today)
-    endDate.setDate(today.getDate() + 7) // Week after order creation for buffer
-    
-    // Format dates as MM%2FDD%2FYYYY (URL encoded MM/DD/YYYY)
-    const formatDateForUrl = (date: Date): string => {
-      const month = (date.getMonth() + 1).toString().padStart(2, '0')
-      const day = date.getDate().toString().padStart(2, '0')
-      const year = date.getFullYear()
-      return `${month}%2F${day}%2F${year}`
-    }
-    
-    const startDateStr = formatDateForUrl(startDate)
-    const endDateStr = formatDateForUrl(endDate)
-    
-    return `https://app.shiphero.com/dashboard/orders/v2/manage?tags=${tourTag}&start_date=${startDateStr}&preselectedDate=custom&end_date=${endDateStr}&fulfillment_status=unfulfilled`
-  }
-
-  const handleCancelTour = async () => {
-    if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
-      return
-    }
-
-    setIsCancellingTour(true)
-    try {
-      const supabase = createClient()
-      
-      // Update tour status to cancelled
-      const { error: updateError } = await supabase
-        .from('tours')
-        .update({ status: 'cancelled' })
-        .eq('id', tour.id)
-
-      if (updateError) {
-        throw updateError
-      }
-
-      toast({
-        title: "Tour Cancelled",
-        description: "The tour has been cancelled successfully",
-      })
-    } catch (error) {
-      console.error('Error cancelling tour:', error)
-      toast({
-        title: "Error",
-        description: "Failed to cancel tour",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCancellingTour(false)
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <SheetHeader>
-        <SheetTitle>Tour Details</SheetTitle>
-        <SheetDescription>View complete information about this warehouse tour</SheetDescription>
-      </SheetHeader>
-
-      {/* Tour Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Tour Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Date</p>
-              <p className="font-medium">{formatDate(tour.date)}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Time</p>
-              <p className="font-medium">{formatTime(tour.time)}</p>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Warehouse</p>
-            <p className="font-medium">{tour.warehouse.name}</p>
-            <div className="text-sm text-muted-foreground">
-              <p className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {tour.warehouse.city && tour.warehouse.state 
-                  ? `${tour.warehouse.address}, ${tour.warehouse.city}, ${tour.warehouse.state} ${tour.warehouse.zip || ''}`.trim()
-                  : tour.warehouse.address
-                }
-              </p>
-              {tour.warehouse.code && (
-                <p className="text-xs">Code: {tour.warehouse.code}</p>
-              )}
-            </div>
-          </div>
-          {tour.host && (
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Host</p>
-              <p className="font-medium">{tour.host.first_name} {tour.host.last_name}</p>
-              <p className="text-sm text-muted-foreground">{tour.host.email}</p>
-            </div>
-          )}
-          {tour.tour_numeric_id && (
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Tour ID</p>
-              <div className="flex items-center gap-2">
-                <p className="font-medium font-mono">{tour.tour_numeric_id}</p>
-                <a 
-                  href={generateShipHeroFilterUrl(tour.tour_numeric_id)}
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 text-sm underline cursor-pointer"
-                >
-                  View Orders in ShipHero →
-                </a>
-              </div>
-            </div>
-          )}
-
-        </CardContent>
-      </Card>
-
-      {/* Participants */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Participants ({tour.participants.length + (tour.host ? 1 : 0)})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {tour.participants.length === 0 && !tour.host ? (
-            <p className="text-sm text-muted-foreground">No participants registered</p>
-          ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-              {/* Show host first if exists */}
-              {tour.host && (
-                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="grid gap-1">
-                    <p className="font-medium">{tour.host.first_name} {tour.host.last_name}</p>
-                    <p className="text-sm text-muted-foreground">{tour.host.email}</p>
-                    {tour.host_shiphero_sales_order_url && (
-                      <div className="mt-1">
-                        <a 
-                          href={tour.host_shiphero_sales_order_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-xs underline cursor-pointer"
-                        >
-                          SO: {tour.host_shiphero_sales_order_number || 'View Order'}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  <Badge variant="default" className="bg-blue-600">Host</Badge>
-                </div>
-              )}
-              {/* Show regular participants */}
-              {tour.participants.map((participant) => (
-                <div key={participant.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <div className="grid gap-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{participant.first_name} {participant.last_name}</p>
-                      {participant.title && (
-                        <span className="text-sm text-muted-foreground">- {participant.title}</span>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{participant.email}</p>
-                    {participant.shiphero_sales_order_url && (
-                      <div className="mt-1">
-                        <a 
-                          href={participant.shiphero_sales_order_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-xs underline cursor-pointer"
-                        >
-                          SO: {participant.shiphero_sales_order_number || 'View Order'}
-                        </a>
-                      </div>
-                    )}
-                    {participant.company && (
-                      <p className="text-sm text-muted-foreground">{participant.company}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-
-
-      {/* Purchase Order Details */}
-      {tour.shiphero_purchase_order_url && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Purchase Order
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Order Number:</span>
-                <span className="font-medium">{tour.shiphero_purchase_order_number}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">ShipHero Link:</span>
-                <a 
-                  href={tour.shiphero_purchase_order_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 text-sm underline cursor-pointer"
-                >
-                  View in ShipHero →
-                </a>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-
-
-    </div>
-  )
-}
+// TourDetailsSheet component removed per user request
