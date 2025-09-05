@@ -318,6 +318,56 @@ export function ViewToursPage() {
     fetchTours()
   }
 
+  const handleClearAllTours = async () => {
+    if (!confirm('⚠️ ARE YOU SURE? This will permanently delete ALL tours from the database. This action cannot be undone!')) {
+      return
+    }
+
+    if (!confirm('🚨 FINAL WARNING: This will delete ALL tour data including participants, orders, and history. Type YES to confirm you understand this is for TESTING ONLY.')) {
+      return
+    }
+
+    try {
+      console.log('🗑️ CLEARING ALL TOURS - Starting deletion process...')
+      
+      const supabase = createClient()
+      
+      // Delete all tours (cascade should handle related data)
+      const { error: deleteError } = await supabase
+        .from('tours')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all tours
+      
+      if (deleteError) {
+        console.error('❌ Error deleting tours:', deleteError)
+        toast({
+          title: "Error",
+          description: `Failed to clear tours: ${deleteError.message}`,
+          variant: "destructive"
+        })
+        return
+      }
+
+      console.log('✅ All tours cleared successfully')
+      toast({
+        title: "Success",
+        description: "All tours have been cleared from the database",
+        variant: "default"
+      })
+
+      // Refresh the tours list
+      fetchTours()
+      
+    } catch (error) {
+      console.error('❌ Error clearing tours:', error)
+      toast({
+        title: "Error",
+        description: "Failed to clear tours. Please try again.",
+        variant: "destructive"
+      })
+    }
+  }
+
   const handleViewInstructions = async (tourId: string) => {
     try {
       // Fetch tour data including saved instruction guide
@@ -520,11 +570,24 @@ export function ViewToursPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            View Tours
-          </CardTitle>
-          <CardDescription>Browse and manage existing warehouse tours</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                View Tours
+              </CardTitle>
+              <CardDescription>Browse and manage existing warehouse tours</CardDescription>
+            </div>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleClearAllTours}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Clear All Tours
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {/* Search Bar and Controls */}
