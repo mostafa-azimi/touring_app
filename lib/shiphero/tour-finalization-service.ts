@@ -383,8 +383,7 @@ export class TourFinalizationService {
         selectedSkus: tourData.selected_skus,
         participantCount: tourData.participants.length,
         orders: {
-          sales_orders: salesOrders,
-          purchase_orders: purchaseOrders
+          created_orders: createdOrders
         },
         instructions: instructionGuide
       }
