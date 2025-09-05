@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Calendar, MapPin, Users, Package, Gift, Upload, Download, FileText } from "lucide-react"
+import { Plus, X, Calendar, MapPin, Users, Package, Gift, Upload, Download, FileText, ChevronDown, ChevronUp } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -118,7 +118,9 @@ export function ScheduleTourPage() {
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const [isUploadingCSV, setIsUploadingCSV] = useState(false)
   const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([])
-  const [selectedSkus, setSelectedSkus] = useState<string[]>([])
+  const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, selectedSkus: string[]}}>({})
+  const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([])
+  const [selectedSkus, setSelectedSkus] = useState<string[]>([]) // Legacy - will be replaced by workflowConfigs
   const [availableSkus, setAvailableSkus] = useState<any[]>([])
   const [allSkus, setAllSkus] = useState<any[]>([]) // Store all SKUs for filtering
   const [isLoadingSkus, setIsLoadingSkus] = useState(false)
@@ -128,9 +130,57 @@ export function ScheduleTourPage() {
   const handleWorkflowChange = (optionId: string, checked: boolean) => {
     if (checked) {
       setSelectedWorkflows(prev => [...prev, optionId])
+      // Initialize workflow config with defaults
+      setWorkflowConfigs(prev => ({
+        ...prev,
+        [optionId]: {
+          orderCount: 5, // Default to 5 orders
+          selectedSkus: []
+        }
+      }))
+      // Auto-expand the workflow section
+      setExpandedWorkflows(prev => [...prev, optionId])
     } else {
       setSelectedWorkflows(prev => prev.filter(id => id !== optionId))
+      // Remove workflow config
+      setWorkflowConfigs(prev => {
+        const newConfigs = { ...prev }
+        delete newConfigs[optionId]
+        return newConfigs
+      })
+      // Collapse the workflow section
+      setExpandedWorkflows(prev => prev.filter(id => id !== optionId))
     }
+  }
+
+  const toggleWorkflowExpansion = (workflowId: string) => {
+    setExpandedWorkflows(prev => 
+      prev.includes(workflowId) 
+        ? prev.filter(id => id !== workflowId)
+        : [...prev, workflowId]
+    )
+  }
+
+  const updateWorkflowOrderCount = (workflowId: string, count: number) => {
+    setWorkflowConfigs(prev => ({
+      ...prev,
+      [workflowId]: {
+        ...prev[workflowId],
+        orderCount: count
+      }
+    }))
+  }
+
+  const handleWorkflowSkuChange = (workflowId: string, sku: string, checked: boolean) => {
+    setWorkflowConfigs(prev => ({
+      ...prev,
+      [workflowId]: {
+        ...prev[workflowId],
+        selectedSkus: checked 
+          ? [...prev[workflowId].selectedSkus, sku]
+          : prev[workflowId].selectedSkus.filter(s => s !== sku)
+      }
+    }))
   }
 
   const handleSkuChange = (sku: string, checked: boolean) => {
@@ -419,6 +469,11 @@ export function ScheduleTourPage() {
 
     try {
       // Debug: Log the data being sent
+      // Aggregate all SKUs from all workflows for backward compatibility
+      const allSelectedSkus = Array.from(new Set(
+        Object.values(workflowConfigs).flatMap(config => config.selectedSkus)
+      ))
+
       const tourInsertData = {
         warehouse_id: formData.warehouse_id,
         host_id: formData.host_id,
@@ -427,7 +482,8 @@ export function ScheduleTourPage() {
         status: 'scheduled',
         tour_numeric_id: generateTourNumericId(),
         selected_workflows: selectedWorkflows,
-        selected_skus: selectedSkus,
+        selected_skus: allSelectedSkus, // Aggregated SKUs from all workflows
+        workflow_configs: workflowConfigs, // New detailed configuration
       }
       
       console.log('🔍 Tour creation data:', tourInsertData)
@@ -625,6 +681,11 @@ export function ScheduleTourPage() {
             continue
           }
 
+          // Aggregate all SKUs from all workflows for backward compatibility
+          const allSelectedSkus = Array.from(new Set(
+            Object.values(workflowConfigs).flatMap(config => config.selectedSkus)
+          ))
+
           // Create tour
           const { data: tourResult, error: tourError } = await supabase
             .from("tours")
@@ -636,7 +697,8 @@ export function ScheduleTourPage() {
               status: 'scheduled',
               tour_numeric_id: generateTourNumericId(),
               selected_workflows: selectedWorkflows,
-              selected_skus: selectedSkus
+              selected_skus: allSelectedSkus,
+              workflow_configs: workflowConfigs
             }])
             .select()
             .single()
@@ -965,27 +1027,110 @@ export function ScheduleTourPage() {
                         <Separator className="flex-1" />
                       </div>
                       
-                      <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-3">
                         {categoryOptions.map(option => (
-                          <div key={option.id} className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50">
-                            <Checkbox
-                              id={option.id}
-                              checked={selectedWorkflows.includes(option.id)}
-                              onCheckedChange={(checked) => handleWorkflowChange(option.id, checked as boolean)}
-                            />
-                            <div className="flex-1 space-y-1">
-                              <div className="flex items-center gap-2">
-                                <Label htmlFor={option.id} className="font-medium cursor-pointer">
-                                  {option.name}
-                                </Label>
-                                <Badge variant={option.badge === "Original" ? "default" : "secondary"} className="text-xs">
-                                  {option.badge}
-                                </Badge>
+                          <div key={option.id} className="space-y-3">
+                            {/* Workflow Selection Row */}
+                            <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50">
+                              <Checkbox
+                                id={option.id}
+                                checked={selectedWorkflows.includes(option.id)}
+                                onCheckedChange={(checked) => handleWorkflowChange(option.id, checked as boolean)}
+                              />
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Label htmlFor={option.id} className="font-medium cursor-pointer">
+                                    {option.name}
+                                  </Label>
+                                  <Badge variant={option.badge === "Original" ? "default" : "secondary"} className="text-xs">
+                                    {option.badge}
+                                  </Badge>
+                                  {selectedWorkflows.includes(option.id) && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => toggleWorkflowExpansion(option.id)}
+                                      className="ml-auto h-6 px-2"
+                                    >
+                                      {expandedWorkflows.includes(option.id) ? (
+                                        <ChevronUp className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {option.description}
+                                </p>
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                {option.description}
-                              </p>
                             </div>
+
+                            {/* Expandable Configuration Section */}
+                            {selectedWorkflows.includes(option.id) && expandedWorkflows.includes(option.id) && (
+                              <div className="ml-6 p-4 bg-muted/30 rounded-lg border space-y-4">
+                                {/* Order Count Input */}
+                                <div className="flex items-center gap-4">
+                                  <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
+                                    📦 Orders to Create:
+                                  </Label>
+                                  <Input
+                                    id={`${option.id}-count`}
+                                    type="number"
+                                    min="1"
+                                    max="50"
+                                    value={workflowConfigs[option.id]?.orderCount || 5}
+                                    onChange={(e) => updateWorkflowOrderCount(option.id, parseInt(e.target.value) || 5)}
+                                    className="w-20"
+                                  />
+                                </div>
+
+                                {/* SKU Selection for this workflow */}
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">🏷️ SKUs for this workflow:</Label>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto">
+                                    {availableSkus.map((product) => (
+                                      <div
+                                        key={product.sku}
+                                        className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
+                                          workflowConfigs[option.id]?.selectedSkus.includes(product.sku)
+                                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                            : 'border-border bg-card hover:bg-muted/50'
+                                        }`}
+                                        onClick={() => handleWorkflowSkuChange(option.id, product.sku, !workflowConfigs[option.id]?.selectedSkus.includes(product.sku))}
+                                      >
+                                        <div className="space-y-2">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <h4 className="font-medium text-sm leading-tight truncate">
+                                              {product.name}
+                                            </h4>
+                                            <Checkbox
+                                              checked={workflowConfigs[option.id]?.selectedSkus.includes(product.sku)}
+                                              onChange={() => {}} // Handled by parent click
+                                              className="pointer-events-none"
+                                            />
+                                          </div>
+                                          <p className="text-xs text-muted-foreground font-mono">
+                                            {product.sku}
+                                          </p>
+                                          <div className="flex items-center justify-between text-xs">
+                                            <span className="text-muted-foreground">
+                                              Qty: {product.quantity_available || 0}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {availableSkus.length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                      Select a warehouse to load available SKUs
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
