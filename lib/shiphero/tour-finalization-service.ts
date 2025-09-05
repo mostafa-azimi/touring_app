@@ -737,7 +737,14 @@ export class TourFinalizationService {
       line_items: poLineItems.map(item => ({
         sku: item.sku,
         quantity: item.quantity,
-        expected_cost_per_unit: "0.00"
+        expected_weight_in_lbs: "1.00",
+        vendor_id: "1076735",
+        quantity_received: 0,
+        quantity_rejected: 0,
+        price: "0.00",
+        product_name: item.sku, // Use SKU as product name fallback
+        fulfillment_status: "pending",
+        sell_ahead: 0
       }))
     }
 
