@@ -1307,6 +1307,11 @@ export class TourFinalizationService {
     const demoOrderCount = 5
     console.log(`Creating ${demoOrderCount} multi-item demo orders with celebrity names...`)
     
+    if (tourData.selected_skus.length === 0) {
+      throw new Error("No SKUs selected for orders. Please select SKUs when creating the tour.")
+    }
+
+    const warehouseAddress = this.getWarehouseShippingAddress(tourData)
     const orderPromises = []
     
     for (let i = 0; i < demoOrderCount; i++) {
@@ -1322,13 +1327,18 @@ export class TourFinalizationService {
         lineItems.push({
           sku: tourData.selected_skus[skuIndex],
           quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
-          price: "15.00"
+          price: "15.00",
+          product_name: `Product ${tourData.selected_skus[skuIndex]}`,
+          partner_line_item_id: `mib-line-${i + 1}-${j + 1}`,
+          fulfillment_status: "pending",
+          quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
+          warehouse_id: tourData.warehouse.shiphero_warehouse_id
         })
       }
 
       const orderData = {
         order_number: `DEMO-MIB-${Date.now()}-${i + 1}`,
-        shop_name: "Demo Store",
+        shop_name: "Touring App",
         fulfillment_status: "pending",
         order_date: new Date().toISOString(),
         total_tax: "0.00",
@@ -1345,30 +1355,30 @@ export class TourFinalizationService {
           first_name: celebrity.firstName,
           last_name: celebrity.lastName,
           company: "",
-          address1: tourData.warehouse.address.address1,
-          address2: tourData.warehouse.address.address2 || "",
-          city: tourData.warehouse.address.city,
-          state: tourData.warehouse.address.state,
-          state_code: tourData.warehouse.address.state,
-          zip: tourData.warehouse.address.zip,
-          country: tourData.warehouse.address.country,
-          country_code: tourData.warehouse.address.country,
-          phone: tourData.warehouse.address.phone || "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country,
+          phone: warehouseAddress.phone,
           email: `demo.mib${i + 1}@example.com`
         },
         billing_address: {
           first_name: celebrity.firstName,
           last_name: celebrity.lastName,
           company: "",
-          address1: tourData.warehouse.address.address1,
-          address2: tourData.warehouse.address.address2 || "",
-          city: tourData.warehouse.address.city,
-          state: tourData.warehouse.address.state,
-          state_code: tourData.warehouse.address.state,
-          zip: tourData.warehouse.address.zip,
-          country: tourData.warehouse.address.country,
-          country_code: tourData.warehouse.address.country,
-          phone: tourData.warehouse.address.phone || "",
+          address1: warehouseAddress.address1,
+          address2: warehouseAddress.address2,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          state_code: warehouseAddress.state,
+          zip: warehouseAddress.zip,
+          country: warehouseAddress.country,
+          country_code: warehouseAddress.country,
+          phone: warehouseAddress.phone,
           email: `demo.mib${i + 1}@example.com`
         },
         line_items: lineItems,
