@@ -34,11 +34,13 @@ function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChang
     )
   }
 
-  // Filter products by selected warehouse - use same logic as Adhoc Sales Order
-  const filteredProducts = allSkus.filter(product => {
-    // Check if product has inventory for this specific warehouse
-    return product.inventory?.warehouse_id === selectedWarehouse?.shiphero_warehouse_id
-  })
+  // Filter products by selected warehouse - use same logic as Adhoc Sales Order (memoized to prevent infinite re-renders)
+  const filteredProducts = useMemo(() => {
+    return allSkus.filter(product => {
+      // Check if product has inventory for this specific warehouse
+      return product.inventory?.warehouse_id === selectedWarehouse?.shiphero_warehouse_id
+    })
+  }, [allSkus, selectedWarehouse?.shiphero_warehouse_id])
 
   if (filteredProducts.length === 0) {
     return (
