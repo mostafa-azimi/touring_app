@@ -55,53 +55,52 @@ function generateTourNumericId(): number {
 // Workflow options for tour finalization
 const workflowOptions = [
   {
-    id: "receive_to_light" as WorkflowOption,
-    name: "Receive to Light",
-    description: "Creates participant orders using selected SKUs for light-guided receiving demonstrations",
-    category: "As-Is Workflows",
-    badge: "Enhanced"
-  },
-  {
-    id: "pack_to_light" as WorkflowOption,
-    name: "Pack to Light",
-    description: "Creates participant orders using selected SKUs for light-guided packing demonstrations",
-    category: "As-Is Workflows",
-    badge: "Enhanced"
-  },
-  {
     id: "standard_receiving" as WorkflowOption,
     name: "Standard Receiving",
     description: "Creates a purchase order using your selected SKUs with realistic quantities for receiving training",
-    category: "Purchase Orders",
+    category: "Inbound",
+    badge: "Standard"
+  },
+  {
+    id: "receive_to_light" as WorkflowOption,
+    name: "Receive to Light",
+    description: "Creates participant orders using selected SKUs for light-guided receiving demonstrations",
+    category: "Inbound",
     badge: "Attainable Automation"
   },
   {
     id: "bulk_shipping" as WorkflowOption,
     name: "Bulk Shipping",
     description: "Creates identical orders with same SKUs shipping to different customer addresses (demonstrates bulk processing efficiency)",
-    category: "Sales Orders",
-    badge: "Attainable Automation"
+    category: "Fulfillment",
+    badge: "Standard"
   },
   {
     id: "single_item_batch" as WorkflowOption,
     name: "Single-Item Batch",
     description: "Creates single line-item orders with different SKUs shipping to different customer addresses (demonstrates single-item batch efficiency)",
-    category: "Sales Orders",
-    badge: "Attainable Automation"
+    category: "Fulfillment",
+    badge: "Standard"
   },
   {
     id: "multi_item_batch" as WorkflowOption,
     name: "Multi-Item Batch",
     description: "Creates participant orders + random demonstration orders with multiple SKUs for complex batch picking training",
-    category: "Sales Orders",
+    category: "Fulfillment",
+    badge: "Standard"
+  },
+  {
+    id: "pack_to_light" as WorkflowOption,
+    name: "Pack to Light",
+    description: "Creates participant orders using selected SKUs for light-guided packing demonstrations",
+    category: "Fulfillment",
     badge: "Attainable Automation"
   }
 ]
 
 const categories = [
-  "As-Is Workflows",
-  "Purchase Orders", 
-  "Sales Orders"
+  "Inbound",
+  "Fulfillment"
 ]
 
 export function ScheduleTourPage() {
