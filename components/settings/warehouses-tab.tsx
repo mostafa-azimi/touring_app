@@ -300,7 +300,7 @@ export function WarehousesTab() {
                   <TableHead className="w-[4%] hidden 2xl:table-cell">ShipHero ID</TableHead>
                 </TableRow>
               </TableHeader>
-                <TableBody>
+              <TableBody>
                   {shipHeroWarehouses.map((warehouse) => {
                     const warehouseNumber = decodeWarehouseId(warehouse.id)
                     const currentCode = warehouseCodes[warehouse.id] || ''
