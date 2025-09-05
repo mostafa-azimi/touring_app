@@ -431,7 +431,7 @@ export function ShipHeroTab() {
       })
       toast({
         title: "Missing Information",
-        description: "Please select a warehouse, host, and at least one swag item",
+        description: "Please select a warehouse, host, and at least one product",
         variant: "destructive",
       })
       return
@@ -465,15 +465,15 @@ export function ShipHeroTab() {
       // Find selected data
       const warehouse = warehouses.find(w => w.id === adhocOrderData.warehouseId)
       const host = hosts.find(h => h.id === adhocOrderData.hostId)
-      const selectedSwagItems = swagItems.filter(s => adhocOrderData.swagItemIds.includes(s.id))
+      const selectedProducts = products.filter(p => adhocOrderData.productIds.includes(p.id))
 
-      if (!warehouse || !host || selectedSwagItems.length === 0) {
+      if (!warehouse || !host || selectedProducts.length === 0) {
         throw new Error('Selected data not found')
       }
 
       // Create line items
-      const lineItems = selectedSwagItems.map(swagItem => ({
-        sku: swagItem.sku || swagItem.name,
+      const lineItems = selectedProducts.map(product => ({
+        sku: product.sku || product.name,
         quantity: 1,
         price: "0.00"
       }))
@@ -546,7 +546,7 @@ export function ShipHeroTab() {
       console.log('Creating adhoc order with data:', JSON.stringify(orderData, null, 2))
       console.log('Selected warehouse:', warehouse)
       console.log('Selected host:', host)
-      console.log('Selected swag items:', selectedSwagItems)
+      console.log('Selected products:', selectedProducts)
 
       // Create sales order
       console.log('Making request to /api/shiphero/orders with access token:', accessToken ? 'Present' : 'Missing')
@@ -675,7 +675,7 @@ export function ShipHeroTab() {
       setAdhocOrderData({
         warehouseId: '',
         hostId: '',
-        swagItemIds: [],
+        productIds: [],
         notes: '',
         orderDate: ''
       })
@@ -718,7 +718,7 @@ export function ShipHeroTab() {
       })
       toast({
         title: "Missing Information",
-        description: "Please select a warehouse, host, and at least one swag item",
+        description: "Please select a warehouse, host, and at least one product",
         variant: "destructive",
       })
       return
@@ -752,22 +752,22 @@ export function ShipHeroTab() {
       // Find selected data
       const warehouse = warehouses.find(w => w.id === adhocPOData.warehouseId)
       const host = hosts.find(h => h.id === adhocPOData.hostId)
-      const selectedSwagItems = swagItems.filter(s => adhocPOData.swagItemIds.includes(s.id))
+      const selectedProducts = products.filter(p => adhocPOData.productIds.includes(p.id))
 
-      if (!warehouse || !host || selectedSwagItems.length === 0) {
+      if (!warehouse || !host || selectedProducts.length === 0) {
         throw new Error('Selected data not found')
       }
 
       // Create line items for PO
-      const lineItems = selectedSwagItems.map(swagItem => ({
-        sku: swagItem.sku || swagItem.name,
-        quantity: adhocPOData.swagQuantities[swagItem.id] || 1,
+      const lineItems = selectedProducts.map(product => ({
+        sku: product.sku || product.name,
+        quantity: adhocPOData.productQuantities[product.id] || 1,
         expected_weight_in_lbs: "1.00",
         vendor_id: "1076735",
         quantity_received: 0,
         quantity_rejected: 0,
         price: "0.00",
-        product_name: swagItem.name,
+        product_name: product.name,
         fulfillment_status: "Tour_Orders",
         sell_ahead: 0
       }))
@@ -880,8 +880,8 @@ export function ShipHeroTab() {
       setAdhocPOData({
         warehouseId: '',
         hostId: '',
-        swagItemIds: [],
-        swagQuantities: {},
+        productIds: [],
+        productQuantities: {},
         notes: '',
         poDate: ''
       })

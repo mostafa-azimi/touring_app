@@ -57,7 +57,7 @@ interface Tour {
     shiphero_sales_order_number?: string
     shiphero_sales_order_url?: string
   }>
-  // Removed swag_allocations - swag items will be added manually
+  // Products are managed through ShipHero inventory API
 }
 
 const ITEMS_PER_PAGE = 10

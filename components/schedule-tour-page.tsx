@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import { WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
-// Removed swag allocation imports - swag items will be added manually, not allocated automatically
+// Products are managed through ShipHero inventory API
 
 interface Warehouse {
   id: string
@@ -39,13 +39,6 @@ interface Participant {
   title: string
 }
 
-interface SwagPreview {
-  name: string
-  totalAvailable: number
-  itemsPerParticipant: number
-  participantsGettingExtra: number
-  totalToAllocate: number
-}
 
 // Generate a 6-digit numeric tour ID
 function generateTourNumericId(): number {
@@ -113,7 +106,6 @@ export function ScheduleTourPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [hosts, setHosts] = useState<any[]>([])
   const [participants, setParticipants] = useState<Participant[]>([])
-  const [swagPreview, setSwagPreview] = useState<SwagPreview[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     warehouse_id: "",
@@ -616,7 +608,6 @@ export function ScheduleTourPage() {
             // Reset form
       setFormData({ warehouse_id: "", host_id: "", date: "2025-11-15", time: "09:00" })
       setParticipants([])
-      setSwagPreview([])
       setSelectedWorkflows([])
       setSelectedSkus([])
     } catch (error: any) {
