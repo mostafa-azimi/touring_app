@@ -314,10 +314,8 @@ export function ViewToursPage() {
   }
 
   const handleCancellationComplete = () => {
-    // Refresh the tours list after cancellation
+    // Legacy function - no longer used
     fetchTours()
-    setTourToCancel(null)
-    setShowCancellationDialog(false)
   }
 
   const handleViewInstructions = async (tourId: string) => {
@@ -781,16 +779,6 @@ export function ViewToursPage() {
         result={finalizationResult}
       />
 
-      {/* Tour Cancellation Dialog */}
-      {tourToCancel && (
-        <TourCancellationDialog
-          isOpen={showCancellationDialog}
-          onClose={() => setShowCancellationDialog(false)}
-          tourId={tourToCancel.id}
-          tourTitle={`${formatDate(tourToCancel.date)} at ${formatTime(tourToCancel.time)} - ${tourToCancel.warehouse.name}`}
-          onCancellationComplete={handleCancellationComplete}
-        />
-      )}
     </div>
   )
 }
