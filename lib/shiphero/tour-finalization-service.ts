@@ -485,7 +485,12 @@ export class TourFinalizationService {
     // Get workflow configuration
     const workflowConfig = tourData.workflow_configs?.['pack_to_light']
     const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
-    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
+    
+    // Extract SKUs from skuQuantities (new format) or fall back to legacy
+    const skuQuantities = workflowConfig?.skuQuantities || {}
+    const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0).length > 0 
+      ? Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
+      : tourData.selected_skus // Fallback to legacy
     
     console.log(`Creating ${orderCount} pack-to-light orders...`)
     console.log(`🎯 Using SKUs for Pack-to-Light:`, workflowSkus)
@@ -516,7 +521,12 @@ export class TourFinalizationService {
     // Get workflow configuration
     const workflowConfig = tourData.workflow_configs?.['bulk_shipping']
     const orderCount = workflowConfig?.orderCount || 10 // Default to 10 if no config
-    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
+    
+    // Extract SKUs from skuQuantities (new format) or fall back to legacy
+    const skuQuantities = workflowConfig?.skuQuantities || {}
+    const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0).length > 0 
+      ? Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
+      : tourData.selected_skus // Fallback to legacy
     
     console.log(`Creating ${orderCount} bulk shipping orders...`)
     console.log(`🎯 Using SKUs for Bulk Shipping:`, workflowSkus)
