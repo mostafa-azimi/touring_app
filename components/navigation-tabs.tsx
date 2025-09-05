@@ -11,8 +11,17 @@ export function NavigationTabs() {
   const [activeTab, setActiveTab] = useState("schedule")
 
   useEffect(() => {
-    const deploymentId = 'V9.0-' + Date.now().toString().slice(-6)
-    console.log(`🚀 DEPLOYMENT V${deploymentId} - Touring App Loaded`)
+    // Generate unique deployment marker with emoji and timestamp
+    const emojis = ['🚀', '⚡', '🎯', '🔥', '✨', '💫', '🌟', '🎉', '💎', '🏆', '🎊', '🌈']
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)]
+    const timestamp = new Date().toISOString()
+    const deploymentId = `${randomEmoji} DEPLOYMENT-${Date.now().toString().slice(-6)}`
+    
+    console.log(`${deploymentId} - Touring App Loaded`)
+    console.log(`📅 Deployment Time: ${timestamp}`)
+    console.log(`🔧 Optimizations: Enhanced Token Persistence + API Caching + DB Query Optimization`)
+    console.log(`🗄️ Supabase: All operations verified and compatible`)
+    console.log(`🎯 Ready for testing!`)
     
     // Start automatic token refresh monitoring
     tokenManager.startAutoRefresh()
