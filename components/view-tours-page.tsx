@@ -77,6 +77,32 @@ export function ViewToursPage() {
   const { toast } = useToast()
   const supabase = createClient()
 
+  // Generate ShipHero URL with tour tag filter and date range
+  const generateShipHeroFilterUrl = (tourNumericId: number): string => {
+    const tourTag = `tour-${tourNumericId}`
+    
+    // Use current date for order date range (since orders are created "today")
+    const today = new Date()
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - 1) // Day before order creation
+    
+    const endDate = new Date(today)
+    endDate.setDate(today.getDate() + 7) // Week after order creation for buffer
+    
+    // Format dates as MM%2FDD%2FYYYY (URL encoded MM/DD/YYYY)
+    const formatDateForUrl = (date: Date): string => {
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const day = date.getDate().toString().padStart(2, '0')
+      const year = date.getFullYear()
+      return `${month}%2F${day}%2F${year}`
+    }
+    
+    const startDateStr = formatDateForUrl(startDate)
+    const endDateStr = formatDateForUrl(endDate)
+    
+    return `https://app.shiphero.com/dashboard/orders/v2/manage?tags=${tourTag}&start_date=${startDateStr}&preselectedDate=custom&end_date=${endDateStr}&fulfillment_status=unfulfilled`
+  }
+
   useEffect(() => {
     fetchTours()
   }, [])
