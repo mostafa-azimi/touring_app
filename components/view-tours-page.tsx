@@ -11,7 +11,7 @@ import { Eye, Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, Shoppi
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
-import { TourFinalizationResults } from "@/components/tour-finalization-results"
+import { TourSummaryDialog } from "@/components/tour-summary-dialog"
 
 interface Tour {
   id: string
@@ -69,8 +69,8 @@ export function ViewToursPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
-  const [finalizationResult, setFinalizationResult] = useState<any>(null)
-  const [showFinalizationResults, setShowFinalizationResults] = useState(false)
+  const [tourSummaryData, setTourSummaryData] = useState<any>(null)
+  const [showTourSummary, setShowTourSummary] = useState(false)
 
   const [sortField, setSortField] = useState<string>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -412,37 +412,41 @@ export function ViewToursPage() {
 
       console.log('✅ DEBUG: Order summary found, creating tour summary...')
 
-      // Create comprehensive tour summary
-      const tourSummary = {
-        tourId: tourData.id,
-        tourDate: tourData.date,
-        tourTime: tourData.time,
-        tourNumericId: tourData.tour_numeric_id,
-        status: tourData.status,
-        warehouseName: tourData.warehouse?.name || 'Unknown Warehouse',
-        warehouseCode: tourData.warehouse?.code || '',
-        warehouseAddress: `${tourData.warehouse?.address || ''} ${tourData.warehouse?.city || ''} ${tourData.warehouse?.state || ''} ${tourData.warehouse?.zip || ''}`.trim() || 'Address not available',
-        hostName: `${tourData.host?.first_name || ''} ${tourData.host?.last_name || ''}`.trim(),
-        hostEmail: tourData.host?.email || '',
-        selectedWorkflows: tourData.selected_workflows || [],
-        selectedSkus: tourData.selected_skus || [],
-        participantCount: tourData.participants?.length || 0,
-        participants: tourData.participants || [],
-        orders: {
-          sales_orders: tourData.order_summary?.sales_orders || [],
-          purchase_orders: tourData.order_summary?.purchase_orders || []
-        },
-        summary: tourData.order_summary?.summary || {},
-        instructions: `
-# 🎯 Tour Summary
+      try {
+        // Format the date safely
+        const [year, month, day] = tourData.date.split('-').map(Number);
+        const formattedDate = new Date(year, month - 1, day).toLocaleDateString('en-US', { 
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        });
+
+        console.log('🔍 DEBUG: Date formatted successfully:', formattedDate)
+
+        // Create comprehensive tour summary
+        const tourSummary = {
+          tourId: tourData.id,
+          tourDate: tourData.date,
+          tourTime: tourData.time,
+          tourNumericId: tourData.tour_numeric_id,
+          status: tourData.status,
+          warehouseName: tourData.warehouse?.name || 'Unknown Warehouse',
+          warehouseCode: tourData.warehouse?.code || '',
+          warehouseAddress: `${tourData.warehouse?.address || ''} ${tourData.warehouse?.city || ''} ${tourData.warehouse?.state || ''} ${tourData.warehouse?.zip || ''}`.trim() || 'Address not available',
+          hostName: `${tourData.host?.first_name || ''} ${tourData.host?.last_name || ''}`.trim(),
+          hostEmail: tourData.host?.email || '',
+          selectedWorkflows: tourData.selected_workflows || [],
+          selectedSkus: tourData.selected_skus || [],
+          participantCount: tourData.participants?.length || 0,
+          participants: tourData.participants || [],
+          orders: {
+            sales_orders: tourData.order_summary?.sales_orders || [],
+            purchase_orders: tourData.order_summary?.purchase_orders || []
+          },
+          summary: tourData.order_summary?.summary || {},
+          instructions: `# 🎯 Tour Summary
 
 ## 📋 Tour Information
 - **Tour ID:** ${tourData.tour_numeric_id}
-- **Date:** ${(() => {
-  const [year, month, day] = tourData.date.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-})()}
+- **Date:** ${formattedDate}
 - **Time:** ${tourData.time}
 - **Status:** ${tourData.status?.toUpperCase()}
 - **Warehouse:** ${tourData.warehouse?.name} (${tourData.warehouse?.code})
@@ -462,14 +466,21 @@ export function ViewToursPage() {
 
 ---
 
-*This summary was generated automatically when the tour was finalized.*
-        `.trim()
-      }
+*This summary was generated automatically when the tour was finalized.*`
+        }
 
-      console.log('🔍 DEBUG: Setting finalization result:', tourSummary)
-      setFinalizationResult(tourSummary)
-      setShowFinalizationResults(true)
-      console.log('✅ DEBUG: Popup should now be visible')
+        console.log('✅ DEBUG: Tour summary object created successfully')
+        
+        // Set the tour summary data for the new dialog
+        setTourSummaryData(tourSummary)
+        setShowTourSummary(true)
+        
+        console.log('✅ DEBUG: Tour summary dialog should now be visible')
+        
+      } catch (error) {
+        console.error('❌ DEBUG: Error creating tour summary:', error)
+        throw error
+      }
 
       toast({
         title: "Tour Summary Retrieved",
@@ -886,11 +897,11 @@ export function ViewToursPage() {
         </CardContent>
       </Card>
 
-      {/* Tour Finalization Results Popup */}
-      <TourFinalizationResults
-        isOpen={showFinalizationResults}
-        onClose={() => setShowFinalizationResults(false)}
-        result={finalizationResult}
+      {/* Tour Summary Dialog */}
+      <TourSummaryDialog
+        isOpen={showTourSummary}
+        onClose={() => setShowTourSummary(false)}
+        data={tourSummaryData}
       />
 
     </div>
