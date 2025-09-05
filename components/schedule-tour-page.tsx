@@ -19,10 +19,11 @@ import { WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
 // Products are managed through ShipHero inventory API
 
 // Simple component for Standard Receiving product selection
-function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChange }: {
+function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChange, selectedWarehouse }: {
   allSkus: any[]
   workflowConfig: any
   onSkuQuantityChange: (sku: string, quantity: number) => void
+  selectedWarehouse: any
 }) {
   if (allSkus.length === 0) {
     return (
@@ -32,18 +33,48 @@ function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChang
     )
   }
 
+  // Filter products by selected warehouse and remove duplicates
+  const warehouseProducts = allSkus.filter(product => {
+    // Match by warehouse identifier/code
+    return product.warehouse_identifier === selectedWarehouse?.code
+  })
+
+  // Remove duplicates by SKU (keep the first occurrence)
+  const uniqueProducts = warehouseProducts.reduce((acc, product) => {
+    if (!acc.find(p => p.sku === product.sku)) {
+      acc.push(product)
+    }
+    return acc
+  }, [])
+
+  console.log('🏭 StandardReceiving - Selected warehouse:', selectedWarehouse?.code)
+  console.log('🏭 StandardReceiving - Filtered products:', uniqueProducts.length, 'from', allSkus.length, 'total')
+
+  if (uniqueProducts.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>No products found for warehouse: {selectedWarehouse?.name}</p>
+        <p className="text-xs mt-2">Warehouse code: {selectedWarehouse?.code}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
-      <Label className="text-sm font-medium">📦 Select products and quantities:</Label>
+      <Label className="text-sm font-medium">📦 Select products and quantities for {selectedWarehouse?.name}:</Label>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto p-4 border rounded-lg bg-muted/20">
-        {allSkus.map(product => {
+        {uniqueProducts.map(product => {
           const currentQuantity = workflowConfig?.skuQuantities?.[product.sku] || 0
+          // Get the correct available quantity from inventory data
+          const availableQty = product.inventory?.available || product.available || 0
+          
           return (
-            <div key={product.sku} className="p-3 bg-white rounded-lg border space-y-2">
+            <div key={`${product.sku}-${product.warehouse_identifier}`} className="p-3 bg-white rounded-lg border space-y-2">
               <div className="space-y-1">
                 <h4 className="font-medium text-sm leading-tight">{product.name}</h4>
                 <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
-                <p className="text-xs text-green-600">Available: {product.quantity_available || 0}</p>
+                <p className="text-xs text-green-600">Available: {availableQty}</p>
+                <p className="text-xs text-muted-foreground">Warehouse: {product.warehouse_identifier}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Label htmlFor={`qty-${product.sku}`} className="text-xs">Qty:</Label>
@@ -1289,6 +1320,7 @@ export function ScheduleTourPage() {
                                   <StandardReceivingProducts 
                                     allSkus={allSkus}
                                     workflowConfig={workflowConfigs[option.id]}
+                                    selectedWarehouse={selectedWarehouse}
                                     onSkuQuantityChange={(sku, quantity) => {
                                       setWorkflowConfigs(prev => ({
                                         ...prev,
