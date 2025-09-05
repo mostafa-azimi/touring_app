@@ -69,10 +69,28 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
   // Helper function to get ShipHero access token
   const getAccessToken = async () => {
     try {
+      if (typeof window === 'undefined') {
+        throw new Error('Must be called from browser environment')
+      }
+
+      const refreshToken = localStorage.getItem('shiphero_refresh_token')
+      
+      if (!refreshToken) {
+        throw new Error('ShipHero refresh token is required. Please configure it in Settings → ShipHero tab.')
+      }
+
       const response = await fetch('/api/shiphero/refresh-token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refresh_token: refreshToken
+        })
       })
+
+      if (!response.ok) {
+        throw new Error('Failed to get ShipHero access token. Please check your refresh token in Settings.')
+      }
+
       const result = await response.json()
       return result.access_token
     } catch (error) {
