@@ -415,8 +415,11 @@ export class TourFinalizationService {
     console.log("Executing: Receive-to-Light Workflow (PO ONLY) using SELECTED SKUs")
     console.log("🎯 Selected SKUs for R2L workflow:", tourData.selected_skus)
     
-    // R2L is just receiving - only create purchase order
-    await this.createStandardReceivingPO(tourData, "R2L")
+    // Calculate quantities needed based on P2L workflow requirements
+    const quantitiesNeeded = this.calculateR2LQuantitiesFromP2L(tourData)
+    
+    // R2L is just receiving - create purchase order with calculated quantities
+    await this.createSmartReceivingPO(tourData, "R2L", quantitiesNeeded)
 
     console.log("Executed: Receive-to-Light Workflow - PO created for receiving")
   }
@@ -688,6 +691,78 @@ export class TourFinalizationService {
     } catch (error) {
       console.error('Failed to decode warehouse ID:', base64Id, error)
       return 'Unknown'
+    }
+  }
+
+  /**
+   * Calculate R2L PO quantities based on what P2L workflow will need
+   */
+  private calculateR2LQuantitiesFromP2L(tourData: TourData): { [sku: string]: number } {
+    const quantities: { [sku: string]: number } = {}
+    
+    // Initialize all selected SKUs with 0
+    tourData.selected_skus.forEach(sku => {
+      quantities[sku] = 0
+    })
+    
+    // Calculate quantities needed for participants
+    const participantCount = tourData.participants.length
+    if (participantCount > 0) {
+      // Each participant gets up to 3 SKUs, 1 unit each
+      const skusPerParticipant = Math.min(3, tourData.selected_skus.length)
+      tourData.selected_skus.slice(0, skusPerParticipant).forEach(sku => {
+        quantities[sku] += participantCount // 1 unit per participant
+      })
+    } else {
+      // If no participants, host gets all selected SKUs, 1 unit each
+      tourData.selected_skus.forEach(sku => {
+        quantities[sku] += 1 // 1 unit for host demo
+      })
+    }
+    
+    console.log("🧮 Calculated R2L quantities based on P2L needs:", quantities)
+    return quantities
+  }
+
+  /**
+   * Create smart receiving PO with calculated quantities
+   */
+  private async createSmartReceivingPO(
+    tourData: TourData, 
+    workflowName: string, 
+    quantities: { [sku: string]: number }
+  ): Promise<void> {
+    const poLineItems = Object.entries(quantities).map(([sku, quantity]) => ({
+      sku: sku,
+      quantity: quantity
+    }))
+
+    console.log(`Creating ${workflowName} PO with calculated quantities:`, poLineItems)
+
+    const poData = {
+      po_number: `${workflowName}-${tourData.host.name}-${new Date().toISOString().slice(0, 10)}`,
+      po_date: new Date().toISOString().slice(0, 10),
+      vendor_id: "1076735",
+      warehouse_id: tourData.warehouse.shiphero_warehouse_id,
+      subtotal: "0.00",
+      tax: "0.00", 
+      shipping_price: "0.00",
+      total_price: "0.00",
+      fulfillment_status: "pending",
+      discount: "0.00",
+      line_items: poLineItems.map(item => ({
+        sku: item.sku,
+        quantity: item.quantity,
+        expected_cost_per_unit: "0.00"
+      }))
+    }
+
+    const data = await this.createPurchaseOrderViaAPI(poData)
+
+    if (data.data?.purchase_order_create?.purchase_order) {
+      console.log(`Executed: ${workflowName} PO with smart quantities`)
+    } else {
+      throw new Error(`Failed to create ${workflowName} PO: ${data.errors?.[0]?.message || 'Unknown error'}`)
     }
   }
 
