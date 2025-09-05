@@ -1173,8 +1173,9 @@ export function ScheduleTourPage() {
                                             </span>
                                           </div>
                                         </div>
-                                      </div>
-                                    ))}
+                                        </div>
+                                      )
+                                    })}
                                   </div>
                                   {availableSkus.length === 0 && (
                                     <p className="text-sm text-muted-foreground text-center py-4">
