@@ -50,6 +50,21 @@ function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChang
 
   console.log(`🏭 ${workflowName} - Selected warehouse:`, selectedWarehouse?.code)
   console.log(`🏭 ${workflowName} - Filtered products:`, uniqueProducts.length, 'from', allSkus.length, 'total')
+  
+  // Debug: Log sample product data to understand the structure
+  if (allSkus.length > 0) {
+    console.log(`🔍 ${workflowName} - Sample product data:`, {
+      firstProduct: {
+        sku: allSkus[0].sku,
+        inventory_warehouse_id: allSkus[0].inventory?.warehouse_id,
+        inventory_warehouse_identifier: allSkus[0].inventory?.warehouse_identifier,
+        inventory_warehouse_name: allSkus[0].inventory?.warehouse_name
+      },
+      selectedWarehouseCode: selectedWarehouse?.code,
+      selectedWarehouseId: selectedWarehouse?.id,
+      selectedWarehouseShipHeroId: selectedWarehouse?.shiphero_warehouse_id
+    })
+  }
 
   if (uniqueProducts.length === 0) {
     return (
