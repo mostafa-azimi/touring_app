@@ -423,11 +423,11 @@ export function ShipHeroTab() {
   const handleCreateAdhocOrder = async () => {
     console.log('🚀🚀🚀 handleCreateAdhocOrder called with data:', adhocOrderData)
     
-    if (!adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0) {
+    if (!adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.productIds.length === 0) {
       console.log('Validation failed:', {
         warehouseId: adhocOrderData.warehouseId,
         hostId: adhocOrderData.hostId,
-        swagItemIds: adhocOrderData.swagItemIds
+        productIds: adhocOrderData.productIds
       })
       toast({
         title: "Missing Information",
@@ -710,11 +710,11 @@ export function ShipHeroTab() {
   const handleCreateAdhocPO = async () => {
     console.log('🚀🚀🚀 handleCreateAdhocPO called with data:', adhocPOData)
     
-    if (!adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.swagItemIds.length === 0) {
+    if (!adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.productIds.length === 0) {
       console.log('PO Validation failed:', {
         warehouseId: adhocPOData.warehouseId,
         hostId: adhocPOData.hostId,
-        swagItemIds: adhocPOData.swagItemIds
+        productIds: adhocPOData.productIds
       })
       toast({
         title: "Missing Information",
