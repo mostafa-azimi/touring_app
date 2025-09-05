@@ -785,7 +785,7 @@ export class TourFinalizationService {
     console.log('🏷️ Generated tags:', tags)
 
     const metadata = {
-      fulfillment_status: "Tour_Orders",
+      fulfillment_status: "pending",
       order_date: orderDate.toISOString(),
       required_ship_date: tourDate.toISOString().slice(0, 10),
       shipping_lines: {

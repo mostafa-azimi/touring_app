@@ -487,7 +487,7 @@ export function ShipHeroTab() {
       const orderData = {
         order_number: orderNumber,
         shop_name: "Warehouse Tours - Adhoc",
-        fulfillment_status: "Tour_Orders",
+        fulfillment_status: "pending",
         order_date: orderDate,
         total_tax: "0.00",
         subtotal: "0.00",
@@ -535,7 +535,7 @@ export function ShipHeroTab() {
           quantity: item.quantity,
           price: item.price,
           product_name: item.sku,
-          fulfillment_status: "Tour_Orders",
+          fulfillment_status: "pending",
           quantity_pending_fulfillment: item.quantity,
           warehouse_id: warehouse.shiphero_warehouse_id
         })),
@@ -768,7 +768,7 @@ export function ShipHeroTab() {
         quantity_rejected: 0,
         price: "0.00",
         product_name: product.name,
-        fulfillment_status: "Tour_Orders",
+        fulfillment_status: "pending",
         sell_ahead: 0
       }))
 
@@ -786,7 +786,7 @@ export function ShipHeroTab() {
         total_price: "0.00",
         warehouse_id: warehouse.shiphero_warehouse_id,
         line_items: lineItems,
-        fulfillment_status: "Tour_Orders",
+        fulfillment_status: "pending",
         discount: "0.00",
         vendor_id: "1076735"
       }
