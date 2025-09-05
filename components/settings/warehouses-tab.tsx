@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -301,98 +299,97 @@ export function WarehousesTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                  {shipHeroWarehouses.map((warehouse) => {
-                    const warehouseNumber = decodeWarehouseId(warehouse.id)
-                    const currentCode = warehouseCodes[warehouse.id] || ''
-                    const isEditing = editingCodeId === warehouse.id
+                {shipHeroWarehouses.map((warehouse) => {
+                  const warehouseNumber = decodeWarehouseId(warehouse.id)
+                  const currentCode = warehouseCodes[warehouse.id] || ''
+                  const isEditing = editingCodeId === warehouse.id
 
-                    return (
-                      <TableRow key={warehouse.id}>
-                        <TableCell className="font-medium">
-                          <div className="truncate">
-                            {warehouse.address?.name || warehouse.identifier || '-'}
-                          </div>
-                          {/* Show mobile info */}
-                          <div className="lg:hidden text-xs text-muted-foreground mt-1">
-                            {warehouse.address?.city && warehouse.address?.state && 
-                              `${warehouse.address.city}, ${warehouse.address.state}`
-                            }
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {isEditing ? (
-                            <div className="flex flex-col gap-2">
-                              <Input
-                                value={editingCodeValue}
-                                onChange={(e) => setEditingCodeValue(e.target.value)}
-                                className="w-full h-8"
-                                placeholder="Code"
-                                autoFocus
-                              />
-                              <div className="flex gap-1">
-                                <Button
-                                  size="sm"
-                                  onClick={() => saveWarehouseCode(warehouse.id, editingCodeValue)}
-                                  className="h-6 px-2 text-xs"
-                                >
-                                  Save
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={cancelEditingCode}
-                                  className="h-6 px-2 text-xs"
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
+                  return (
+                    <TableRow key={warehouse.id}>
+                      <TableCell className="font-medium">
+                        <div className="truncate">
+                          {warehouse.address?.name || warehouse.identifier || '-'}
+                        </div>
+                        {/* Show mobile info */}
+                        <div className="lg:hidden text-xs text-muted-foreground mt-1">
+                          {warehouse.address?.city && warehouse.address?.state && 
+                            `${warehouse.address.city}, ${warehouse.address.state}`
+                          }
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {isEditing ? (
+                          <div className="flex flex-col gap-2">
+                            <Input
+                              value={editingCodeValue}
+                              onChange={(e) => setEditingCodeValue(e.target.value)}
+                              className="w-full h-8"
+                              placeholder="Code"
+                              autoFocus
+                            />
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                onClick={() => saveWarehouseCode(warehouse.id, editingCodeValue)}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={cancelEditingCode}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Cancel
+                              </Button>
                             </div>
-                          ) : (
-                            <div 
-                              className="cursor-pointer hover:bg-muted/50 p-1 rounded"
-                              onClick={() => startEditingCode(warehouse.id, currentCode)}
-                            >
-                              <span className="font-mono text-sm truncate block">
-                                {currentCode || 'Add'}
-                              </span>
-                              <Edit className="h-3 w-3 text-muted-foreground mt-1" />
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="truncate">
-                            {warehouse.address?.address1 || '-'}
                           </div>
-                          {/* Show mobile warehouse info */}
-                          <div className="md:hidden text-xs text-muted-foreground mt-1">
-                            Warehouse #{warehouseNumber}
+                        ) : (
+                          <div 
+                            className="cursor-pointer hover:bg-muted/50 p-1 rounded"
+                            onClick={() => startEditingCode(warehouse.id, currentCode)}
+                          >
+                            <span className="font-mono text-sm truncate block">
+                              {currentCode || 'Add'}
+                            </span>
+                            <Edit className="h-3 w-3 text-muted-foreground mt-1" />
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <div className="truncate">
-                            {warehouse.address?.city || '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden xl:table-cell">
-                          {warehouse.address?.state || '-'}
-                        </TableCell>
-                        <TableCell className="hidden xl:table-cell">
-                          {warehouse.address?.zip || '-'}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm font-medium hidden md:table-cell">
-                          {warehouseNumber}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground hidden 2xl:table-cell">
-                          <div className="truncate" title={warehouse.id}>
-                            {warehouse.id}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="truncate">
+                          {warehouse.address?.address1 || '-'}
+                        </div>
+                        {/* Show mobile warehouse info */}
+                        <div className="md:hidden text-xs text-muted-foreground mt-1">
+                          Warehouse #{warehouseNumber}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="truncate">
+                          {warehouse.address?.city || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        {warehouse.address?.state || '-'}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        {warehouse.address?.zip || '-'}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm font-medium hidden md:table-cell">
+                        {warehouseNumber}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground hidden 2xl:table-cell">
+                        <div className="truncate" title={warehouse.id}>
+                          {warehouse.id}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
           </div>
         </div>
       ) : (
