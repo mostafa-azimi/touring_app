@@ -633,10 +633,16 @@ export class TourFinalizationService {
     workflowSkus: string[], 
     skuQuantities: {[sku: string]: number}
   ): Promise<void> {
-    console.log(`🚀 Creating ${orderCount} ${prefix} orders with exact adhoc format`)
+    console.log(`🚀 STARTING ${prefix.toUpperCase()} WORKFLOW - Creating ${orderCount} orders`)
+    console.log(`📋 Tour ID: ${tourData.id}, Tour Numeric ID: ${tourData.tour_numeric_id}`)
+    console.log(`🏢 Warehouse: ${tourData.warehouse.name} (${tourData.warehouse.code})`)
+    console.log(`📦 Selected SKUs:`, workflowSkus)
+    console.log(`🔢 SKU Quantities:`, skuQuantities)
     
     // Get recipients in priority order: host -> participants -> extras
+    console.log(`👥 Getting recipients for ${orderCount} orders...`)
     const recipients = await this.getFulfillmentRecipients(tourData, orderCount)
+    console.log(`✅ Got ${recipients.length} recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     
     // Create each order using exact adhoc format
     for (let i = 0; i < Math.min(orderCount, recipients.length); i++) {
@@ -718,12 +724,36 @@ export class TourFinalizationService {
       }
       
       console.log(`📦 Creating ${prefix} order ${i + 1}/${orderCount} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)
+      console.log(`🔗 Order Number: ${orderNumber}`)
+      console.log(`📧 Recipient Email: ${recipient.email}`)
+      console.log(`🏷️ Order Tags:`, orderData.tags)
+      console.log(`📋 Line Items:`, orderData.line_items.map(item => `${item.sku} x${item.quantity}`).join(', '))
       
       try {
+        console.log(`🌐 Sending API request to create ${prefix} order...`)
         const result = await this.createSalesOrderViaAPI(orderData)
-        console.log(`✅ ${prefix} order created successfully:`, result?.data?.order_create?.order?.order_number)
+        
+        if (result?.data?.order_create?.order) {
+          const orderInfo = result.data.order_create.order
+          console.log(`✅ ${prefix} order ${i + 1} created successfully!`)
+          console.log(`   📋 Order Number: ${orderInfo.order_number}`)
+          console.log(`   🆔 ShipHero ID: ${orderInfo.id}`)
+          console.log(`   💰 Total Price: ${orderInfo.total_price}`)
+          console.log(`   📊 Status: ${orderInfo.fulfillment_status}`)
+        } else {
+          console.error(`⚠️ ${prefix} order ${i + 1} API response missing order data:`, result)
+        }
+        
+        if (result?.errors && result.errors.length > 0) {
+          console.error(`🚨 GraphQL errors for ${prefix} order ${i + 1}:`, result.errors)
+        }
+        
       } catch (error) {
-        console.error(`❌ Failed to create ${prefix} order ${i + 1}:`, error)
+        console.error(`❌ CRITICAL ERROR creating ${prefix} order ${i + 1}:`)
+        console.error(`   👤 Recipient: ${recipient.first_name} ${recipient.last_name} (${recipient.type})`)
+        console.error(`   📋 Order Number: ${orderNumber}`)
+        console.error(`   🔥 Error Details:`, error)
+        console.error(`   📦 Order Data:`, JSON.stringify(orderData, null, 2))
       }
     }
   }
@@ -734,15 +764,21 @@ export class TourFinalizationService {
   private async getFulfillmentRecipients(tourData: TourData, orderCount: number) {
     const recipients = []
     
+    console.log(`🔍 Building recipient list for ${orderCount} orders...`)
+    console.log(`👤 Host available: ${tourData.host ? 'YES' : 'NO'}`)
+    console.log(`👥 Participants available: ${tourData.participants?.length || 0}`)
+    
     // Add host first
     if (tourData.host) {
+      const hostEmail = `${tourData.host.first_name.toLowerCase()}.${tourData.host.last_name.toLowerCase()}@shiphero.com`
       recipients.push({
         first_name: tourData.host.first_name,
         last_name: tourData.host.last_name,
-        email: `${tourData.host.first_name.toLowerCase()}.${tourData.host.last_name.toLowerCase()}@shiphero.com`,
+        email: hostEmail,
         company: 'ShipHero',
         type: 'host'
       })
+      console.log(`✅ Added host: ${tourData.host.first_name} ${tourData.host.last_name} (${hostEmail})`)
     }
     
     // Add participants
@@ -755,27 +791,42 @@ export class TourFinalizationService {
           company: participant.company,
           type: 'participant'
         })
+        console.log(`✅ Added participant: ${participant.first_name} ${participant.last_name} (${participant.email})`)
       }
     }
+    
+    console.log(`📊 Real people count: ${recipients.length}, Orders needed: ${orderCount}`)
     
     // Add extras if needed
     if (recipients.length < orderCount) {
       const extrasNeeded = orderCount - recipients.length
-      console.log(`🔄 Need ${extrasNeeded} extra customers for ${orderCount} orders`)
+      console.log(`🔄 Need ${extrasNeeded} extra customers from database`)
       
-      const extras = await this.getExtrasFromDatabase(extrasNeeded)
-      for (const extra of extras) {
-        recipients.push({
-          first_name: extra.first_name,
-          last_name: extra.last_name,
-          email: extra.email,
-          company: extra.company,
-          type: 'extra'
-        })
+      try {
+        const extras = await this.getExtrasFromDatabase(extrasNeeded)
+        console.log(`📥 Retrieved ${extras.length} extras from database`)
+        
+        for (const extra of extras) {
+          recipients.push({
+            first_name: extra.first_name,
+            last_name: extra.last_name,
+            email: extra.email,
+            company: extra.company,
+            type: 'extra'
+          })
+          console.log(`✅ Added extra: ${extra.first_name} ${extra.last_name} (${extra.email})`)
+        }
+      } catch (error) {
+        console.error(`❌ Failed to get extras from database:`, error)
       }
+    } else {
+      console.log(`✅ Real people sufficient - no extras needed`)
     }
     
-    return recipients.slice(0, orderCount)
+    const finalRecipients = recipients.slice(0, orderCount)
+    console.log(`🎯 Final recipient list (${finalRecipients.length}):`, finalRecipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`))
+    
+    return finalRecipients
   }
 
   /**
