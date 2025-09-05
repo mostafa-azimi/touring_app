@@ -3,6 +3,8 @@ import { getCelebrityNames } from '@/lib/celebrity-names'
 
 export interface TourData {
   id: string
+  date: string
+  time: string
   host: {
     id: string
     name: string
@@ -23,6 +25,8 @@ export interface TourData {
     name: string
     address: any
     shiphero_warehouse_id: string
+    warehouse_code?: string
+    warehouse_number?: string
   }
   selected_workflows: string[]
   selected_skus: string[]
@@ -131,10 +135,10 @@ export class TourFinalizationService {
   async getTourDetails(tourId: string): Promise<TourData> {
     console.log('🔍 Fetching tour details for:', tourId)
     
-    // First, get basic tour data
+    // First, get basic tour data including date
     const { data: tour, error: tourError } = await this.supabase
       .from('tours')
-      .select('id, warehouse_id, host_id, selected_workflows, selected_skus')
+      .select('id, warehouse_id, host_id, selected_workflows, selected_skus, date, time')
       .eq('id', tourId)
       .single()
 
@@ -142,10 +146,10 @@ export class TourFinalizationService {
     
     console.log('✅ Basic tour data:', tour)
     
-    // Get warehouse data separately
+    // Get warehouse data separately including warehouse code
     const { data: warehouse, error: warehouseError } = await this.supabase
       .from('warehouses')
-      .select('id, name, address, shiphero_warehouse_id')
+      .select('id, name, address, shiphero_warehouse_id, warehouse_code, warehouse_number')
       .eq('id', tour.warehouse_id)
       .single()
       
@@ -172,6 +176,8 @@ export class TourFinalizationService {
 
     return {
       id: tour.id,
+      date: tour.date,
+      time: tour.time,
       host: {
         id: host.id,
         name: host.name,
@@ -183,7 +189,9 @@ export class TourFinalizationService {
         id: warehouse.id,
         name: warehouse.name,
         address: warehouse.address,
-        shiphero_warehouse_id: warehouse.shiphero_warehouse_id
+        shiphero_warehouse_id: warehouse.shiphero_warehouse_id,
+        warehouse_code: warehouse.warehouse_code,
+        warehouse_number: warehouse.warehouse_number
       },
       selected_workflows: tour.selected_workflows || [],
       selected_skus: tour.selected_skus || []
@@ -662,6 +670,39 @@ export class TourFinalizationService {
   }
 
   /**
+   * Helper method to generate standardized order metadata for all sales orders
+   */
+  private getStandardOrderMetadata(tourData: TourData) {
+    // Calculate dates
+    const tourDate = new Date(tourData.date)
+    const orderDate = new Date(tourDate)
+    orderDate.setDate(orderDate.getDate() - 1) // Day before tour
+    
+    // Generate tags
+    const tags = [
+      'tour_orders',
+      `tour_${tourData.id}`,
+      tourData.warehouse.warehouse_code || 'WH001',
+      tourData.warehouse.warehouse_number || '001'
+    ]
+
+    return {
+      fulfillment_status: "Tour_Orders",
+      order_date: orderDate.toISOString(),
+      required_ship_date: tourDate.toISOString().slice(0, 10),
+      shipping_lines: {
+        title: "Generic Shipping",
+        price: "0.00",
+        carrier: "generic",
+        method: "generic"
+      },
+      tags: tags,
+      total_tax: "0.00",
+      total_discounts: "0.00"
+    }
+  }
+
+  /**
    * Helper method to create participant orders using selected SKUs
    */
   private async createParticipantOrders(tourData: TourData, orderPrefix: string): Promise<any[]> {
@@ -677,6 +718,7 @@ export class TourFinalizationService {
     }
 
     const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const standardMetadata = this.getStandardOrderMetadata(tourData)
     const orderPromises = []
 
     for (let i = 0; i < tourData.participants.length; i++) {
@@ -697,18 +739,9 @@ export class TourFinalizationService {
       const orderData = {
         order_number: `${orderPrefix}-PARTICIPANT-${i + 1}`,
         shop_name: "Touring App",
-        fulfillment_status: "pending",
-        order_date: new Date().toISOString(),
-        total_tax: "0.00",
+        ...standardMetadata,
         subtotal: (lineItems.length * 10).toString(),
-        total_discounts: "0.00",
         total_price: (lineItems.length * 10).toString(),
-        shipping_lines: {
-          title: "Standard Shipping",
-          price: "0.00",
-          carrier: "Demo Carrier",
-          method: "Standard"
-        },
         shipping_address: {
           first_name: participant.first_name || "Participant",
           last_name: participant.last_name || `${i + 1}`,
@@ -717,10 +750,10 @@ export class TourFinalizationService {
           address2: warehouseAddress.address2,
           city: warehouseAddress.city,
           state: warehouseAddress.state,
-          state_code: warehouseAddress.state_code,
+          state_code: warehouseAddress.state,
           zip: warehouseAddress.zip,
           country: warehouseAddress.country,
-          country_code: warehouseAddress.country_code,
+          country_code: warehouseAddress.country,
           phone: warehouseAddress.phone,
           email: participant.email || `participant${i + 1}@demo.com`
         },
@@ -739,9 +772,7 @@ export class TourFinalizationService {
           phone: warehouseAddress.phone,
           email: participant.email || `participant${i + 1}@demo.com`
         },
-        line_items: lineItems,
-        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        tags: ["participant", "tour"]
+        line_items: lineItems
       }
 
       const promise = this.createSalesOrderViaAPI(orderData)
@@ -873,6 +904,7 @@ export class TourFinalizationService {
     }
 
     const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const standardMetadata = this.getStandardOrderMetadata(tourData)
     const orderPromises = []
 
     for (let i = 0; i < count; i++) {
@@ -895,18 +927,9 @@ export class TourFinalizationService {
       const orderData = {
         order_number: `${orderPrefix}-${i + 1}`,
         shop_name: "Touring App",
-        fulfillment_status: "pending",
-        order_date: new Date().toISOString(),
-        total_tax: "0.00",
+        ...standardMetadata,
         subtotal: (lineItems[0].quantity * 15).toString(),
-        total_discounts: "0.00",
         total_price: (lineItems[0].quantity * 15).toString(),
-        shipping_lines: {
-          title: "Standard Shipping",
-          price: "0.00",
-          carrier: "Demo Carrier",
-          method: "Standard"
-        },
         shipping_address: {
           first_name: demoCustomer.first,
           last_name: demoCustomer.last,
@@ -937,9 +960,7 @@ export class TourFinalizationService {
           phone: warehouseAddress.phone,
           email: `demo.customer${i + 1}@example.com`
         },
-        line_items: lineItems,
-        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        tags: ["demo", "simple", "tour"]
+        line_items: lineItems
       }
 
       const promise = this.createSalesOrderViaAPI(orderData)
@@ -973,7 +994,9 @@ export class TourFinalizationService {
     }
 
     const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const standardMetadata = this.getStandardOrderMetadata(tourData)
     console.log(`🔧 createHostSalesOrder: Warehouse address:`, warehouseAddress)
+    console.log(`🔧 createHostSalesOrder: Standard metadata:`, standardMetadata)
     
     // Create line items for all selected SKUs
     const lineItems = tourData.selected_skus.map((sku, index) => ({
@@ -990,18 +1013,9 @@ export class TourFinalizationService {
     const orderData = {
       order_number: `${orderPrefix}-${tourData.host.first_name || 'HOST'}`,
       shop_name: "Touring App",
-      fulfillment_status: "pending",
-      order_date: new Date().toISOString(),
-      total_tax: "0.00",
+      ...standardMetadata,
       subtotal: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
-      total_discounts: "0.00",
       total_price: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
-      shipping_lines: {
-        title: "Standard Shipping",
-        price: "0.00",
-        carrier: "Demo Carrier",
-        method: "Standard"
-      },
       shipping_address: {
         first_name: tourData.host.first_name || "Host",
         last_name: tourData.host.last_name || "Demo",
@@ -1032,9 +1046,7 @@ export class TourFinalizationService {
         phone: warehouseAddress.phone,
         email: "host@example.com"
       },
-      line_items: lineItems,
-      required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      tags: ["host", "tour", "pack-to-light"]
+      line_items: lineItems
     }
 
     console.log(`🔧 createHostSalesOrder: Final order data:`, JSON.stringify(orderData, null, 2))
@@ -1062,6 +1074,7 @@ export class TourFinalizationService {
     }
 
     const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const standardMetadata = this.getStandardOrderMetadata(tourData)
     const orderPromises = []
 
     for (let i = 0; i < count; i++) {
@@ -1087,18 +1100,9 @@ export class TourFinalizationService {
       const orderData = {
         order_number: `${orderPrefix}-${i + 1}`,
         shop_name: "Touring App",
-        fulfillment_status: "pending",
-        order_date: new Date().toISOString(),
-        total_tax: "0.00",
+        ...standardMetadata,
         subtotal: (lineItems[0].quantity * 15).toString(),
-        total_discounts: "0.00",
         total_price: (lineItems[0].quantity * 15).toString(),
-        shipping_lines: {
-          title: "Standard Shipping",
-          price: "0.00",
-          carrier: "Demo Carrier",
-          method: "Standard"
-        },
         shipping_address: {
           first_name: hostName.first,
           last_name: hostName.last,
@@ -1129,9 +1133,7 @@ export class TourFinalizationService {
           phone: warehouseAddress.phone,
           email: `host.demo${i + 1}@example.com`
         },
-        line_items: lineItems,
-        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        tags: ["demo", "host", "tour"]
+        line_items: lineItems
       }
 
       const promise = this.createSalesOrderViaAPI(orderData)
@@ -1338,6 +1340,7 @@ export class TourFinalizationService {
     }
 
     const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    const standardMetadata = this.getStandardOrderMetadata(tourData)
     const orderPromises = []
     
     for (let i = 0; i < demoOrderCount; i++) {
@@ -1365,18 +1368,9 @@ export class TourFinalizationService {
       const orderData = {
         order_number: `DEMO-MIB-${Date.now()}-${i + 1}`,
         shop_name: "Touring App",
-        fulfillment_status: "pending",
-        order_date: new Date().toISOString(),
-        total_tax: "0.00",
+        ...standardMetadata,
         subtotal: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
-        total_discounts: "0.00",
         total_price: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
-        shipping_lines: {
-          title: "Standard Shipping",
-          price: "0.00",
-          carrier: "Demo Carrier",
-          method: "Standard"
-        },
         shipping_address: {
           first_name: celebrity.firstName,
           last_name: celebrity.lastName,
@@ -1407,9 +1401,7 @@ export class TourFinalizationService {
           phone: warehouseAddress.phone,
           email: `demo.mib${i + 1}@example.com`
         },
-        line_items: lineItems,
-        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        tags: ["demo", "multi-item", "batch", "tour"]
+        line_items: lineItems
       }
 
       const promise = this.createSalesOrderViaAPI(orderData)
