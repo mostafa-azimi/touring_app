@@ -80,7 +80,7 @@ export function SimpleOrderCreator() {
 
       // Load hosts
       const { data: hostsData, error: hostsError } = await supabase
-        .from("hosts")
+        .from("team_members")
         .select("*")
         .order("first_name")
 

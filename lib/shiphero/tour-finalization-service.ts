@@ -276,7 +276,7 @@ export class TourFinalizationService {
       time: tour.time,
       tour_numeric_id: tour.tour_numeric_id,
       host: tour.host,
-      participants: tour.participants?.map((tp: any) => tp.hosts) || [],
+      participants: tour.participants || [],
       warehouse: tour.warehouse,
       selected_workflows: tour.selected_workflows || [],
       selected_skus: tour.selected_skus || [],
