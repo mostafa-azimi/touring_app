@@ -59,6 +59,13 @@ export class TourFinalizationService {
     recipient: string
   }> = []
 
+  private createdPurchaseOrders: Array<{
+    workflow: string
+    po_number: string
+    shiphero_id: string
+    legacy_id: string
+  }> = []
+
   constructor() {
     this.supabase = createClient()
   }
@@ -461,7 +468,7 @@ export class TourFinalizationService {
     }))
 
     const poData = {
-      po_number: `STANDARD-RECEIVING-${tourData.tour_numeric_id}-${Date.now()}`,
+      po_number: `STD_REC-${tourData.tour_numeric_id}-${Date.now()}`,
       po_date: new Date().toISOString().slice(0, 10),
       vendor_id: "1076735",
       warehouse_id: tourData.warehouse.shiphero_warehouse_id,
@@ -478,7 +485,20 @@ export class TourFinalizationService {
     const result = await this.createPurchaseOrderViaAPI(poData)
 
     if (result.data?.purchase_order_create?.purchase_order) {
+      const poInfo = result.data.purchase_order_create.purchase_order
       console.log("✅ Standard Receiving PO created successfully")
+      console.log(`   📋 PO Number: ${poInfo.po_number}`)
+      console.log(`   🆔 ShipHero ID: ${poInfo.id}`)
+      console.log(`   🆔 Legacy ID: ${poInfo.legacy_id}`)
+      console.log(`   💰 Total Price: ${poInfo.total_price}`)
+      
+      // Store for final summary
+      this.createdPurchaseOrders.push({
+        workflow: "STD_REC",
+        po_number: poInfo.po_number,
+        shiphero_id: poInfo.id,
+        legacy_id: poInfo.legacy_id
+      })
     } else {
       throw new Error(`Standard Receiving PO creation failed: ${result.errors?.[0]?.message || 'Unknown error'}`)
     }
@@ -534,7 +554,20 @@ export class TourFinalizationService {
     const result = await this.createPurchaseOrderViaAPI(poData)
 
     if (result.data?.purchase_order_create?.purchase_order) {
+      const poInfo = result.data.purchase_order_create.purchase_order
       console.log("✅ Receive to Light PO created successfully")
+      console.log(`   📋 PO Number: ${poInfo.po_number}`)
+      console.log(`   🆔 ShipHero ID: ${poInfo.id}`)
+      console.log(`   🆔 Legacy ID: ${poInfo.legacy_id}`)
+      console.log(`   💰 Total Price: ${poInfo.total_price}`)
+      
+      // Store for final summary
+      this.createdPurchaseOrders.push({
+        workflow: "R2L",
+        po_number: poInfo.po_number,
+        shiphero_id: poInfo.id,
+        legacy_id: poInfo.legacy_id
+      })
     } else {
       throw new Error(`Receive to Light PO creation failed: ${result.errors?.[0]?.message || 'Unknown error'}`)
     }
@@ -856,32 +889,63 @@ export class TourFinalizationService {
   private printFinalOrderSummary() {
     console.log('\n🎉 ========== FINAL ORDER SUMMARY ==========')
     
-    if (this.createdOrders.length === 0) {
+    const totalOrders = this.createdOrders.length + this.createdPurchaseOrders.length
+    
+    if (totalOrders === 0) {
       console.log('❌ No orders were created')
       return
     }
     
-    // Group orders by workflow
-    const ordersByWorkflow = this.createdOrders.reduce((acc, order) => {
-      if (!acc[order.workflow]) {
-        acc[order.workflow] = []
-      }
-      acc[order.workflow].push(order)
-      return acc
-    }, {} as {[key: string]: typeof this.createdOrders})
+    console.log(`✅ Successfully created ${totalOrders} total orders:`)
+    console.log(`   📦 ${this.createdOrders.length} Sales Orders`)
+    console.log(`   📋 ${this.createdPurchaseOrders.length} Purchase Orders`)
     
-    console.log(`✅ Successfully created ${this.createdOrders.length} orders across ${Object.keys(ordersByWorkflow).length} workflows:`)
-    
-    // Print each workflow's orders
-    Object.entries(ordersByWorkflow).forEach(([workflow, orders]) => {
-      console.log(`\n📦 ${workflow.toUpperCase()} WORKFLOW (${orders.length} orders):`)
-      orders.forEach((order, index) => {
-        console.log(`   ${index + 1}. ${order.order_number}`)
-        console.log(`      🆔 ShipHero ID: ${order.shiphero_id}`)
-        console.log(`      🆔 Legacy ID: ${order.legacy_id}`)
-        console.log(`      👤 Recipient: ${order.recipient}`)
+    // Print Purchase Orders first (inbound workflows)
+    if (this.createdPurchaseOrders.length > 0) {
+      console.log('\n📋 ========== PURCHASE ORDERS ==========')
+      
+      // Group POs by workflow
+      const posByWorkflow = this.createdPurchaseOrders.reduce((acc, po) => {
+        if (!acc[po.workflow]) {
+          acc[po.workflow] = []
+        }
+        acc[po.workflow].push(po)
+        return acc
+      }, {} as {[key: string]: typeof this.createdPurchaseOrders})
+      
+      Object.entries(posByWorkflow).forEach(([workflow, pos]) => {
+        console.log(`\n📦 ${workflow.toUpperCase()} WORKFLOW (${pos.length} POs):`)
+        pos.forEach((po, index) => {
+          console.log(`   ${index + 1}. ${po.po_number}`)
+          console.log(`      🆔 ShipHero ID: ${po.shiphero_id}`)
+          console.log(`      🆔 Legacy ID: ${po.legacy_id}`)
+        })
       })
-    })
+    }
+    
+    // Print Sales Orders (fulfillment workflows)
+    if (this.createdOrders.length > 0) {
+      console.log('\n📦 ========== SALES ORDERS ==========')
+      
+      // Group orders by workflow
+      const ordersByWorkflow = this.createdOrders.reduce((acc, order) => {
+        if (!acc[order.workflow]) {
+          acc[order.workflow] = []
+        }
+        acc[order.workflow].push(order)
+        return acc
+      }, {} as {[key: string]: typeof this.createdOrders})
+      
+      Object.entries(ordersByWorkflow).forEach(([workflow, orders]) => {
+        console.log(`\n📦 ${workflow.toUpperCase()} WORKFLOW (${orders.length} orders):`)
+        orders.forEach((order, index) => {
+          console.log(`   ${index + 1}. ${order.order_number}`)
+          console.log(`      🆔 ShipHero ID: ${order.shiphero_id}`)
+          console.log(`      🆔 Legacy ID: ${order.legacy_id}`)
+          console.log(`      👤 Recipient: ${order.recipient}`)
+        })
+      })
+    }
     
     console.log('\n🎯 All orders created successfully! Check ShipHero dashboard for details.')
     console.log('========================================\n')
