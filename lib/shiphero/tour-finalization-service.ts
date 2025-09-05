@@ -359,19 +359,17 @@ export class TourFinalizationService {
         }
       }
 
-      // Generate instruction guide with created orders
-      const instructionGuide = await this.generateInstructionGuide(tourId, createdOrders)
-      console.log("📋 Generated instruction guide:", instructionGuide.substring(0, 200) + "...")
-
-      // Save instruction guide to database
-      await this.saveInstructionGuide(tourId, instructionGuide)
+      // Instruction guide generation disabled for now
+      // const instructionGuide = await this.generateInstructionGuide(tourId, createdOrders)
+      // await this.saveInstructionGuide(tourId, instructionGuide)
+      const instructionGuide = "Instruction guide generation temporarily disabled."
 
       // Update tour status to finalized
       await this.updateTourStatus(tourId, "finalized")
 
       const successMessage = errors.length > 0 
-        ? `Tour finalized with ${errors.length} workflow error(s). Instruction guide generated.`
-        : "Tour finalized successfully with all selected workflows. Instruction guide generated."
+        ? `Tour finalized with ${errors.length} workflow error(s).`
+        : "Tour finalized successfully with all selected workflows."
 
       // Create finalization result
       const finalizationResult = {
