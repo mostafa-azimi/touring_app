@@ -596,7 +596,7 @@ export function ScheduleTourPage() {
       setFormData({ warehouse_id: "", host_id: "", date: "2025-11-15", time: "09:00" })
       setParticipants([])
       setSelectedWorkflows([])
-      setSelectedSkus([])
+      setWorkflowConfigs({})
     } catch (error: any) {
       console.error('Tour creation error:', error)
       toast({
