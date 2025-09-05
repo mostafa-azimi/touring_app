@@ -19,12 +19,13 @@ import { WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
 // Products are managed through ShipHero inventory API
 
 // Generic component for product selection with quantities (used by all workflows)
-function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange, selectedWarehouse, workflowName }: {
+function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange, selectedWarehouse, workflowName, workflowId }: {
   allSkus: any[]
   workflowConfig: any
   onSkuQuantityChange: (sku: string, quantity: number) => void
   selectedWarehouse: any
   workflowName: string
+  workflowId?: string
 }) {
   if (allSkus.length === 0) {
     return (
@@ -33,6 +34,12 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
       </div>
     )
   }
+
+  // Check if this is Single Item Batch workflow (limit to 1 SKU)
+  const isSingleItemBatch = workflowId === 'single_item_batch'
+  const selectedSkuCount = Object.keys(workflowConfig?.skuQuantities || {}).filter(sku => 
+    (workflowConfig?.skuQuantities?.[sku] || 0) > 0
+  ).length
 
   // Filter products by selected warehouse - use same logic as Adhoc Sales Order (memoized to prevent infinite re-renders)
   const filteredProducts = useMemo(() => {
@@ -53,16 +60,30 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
 
   return (
     <div className="space-y-3">
-      <Label className="text-sm font-medium">📦 Select products and quantities for {workflowName} at {selectedWarehouse?.name}:</Label>
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">📦 Select products and quantities for {workflowName} at {selectedWarehouse?.name}:</Label>
+        {isSingleItemBatch && (
+          <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+            <strong>Single Item Batch:</strong> You can only select 1 SKU for this workflow. {selectedSkuCount > 0 && `Currently selected: ${selectedSkuCount}/1`}
+          </p>
+        )}
+      </div>
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {filteredProducts.map(product => {
           const currentQuantity = workflowConfig?.skuQuantities?.[product.sku] || 0
           const availableQty = product.inventory?.available || product.available || 0
           
+          // For Single Item Batch, disable products if one is already selected and this isn't it
+          const isDisabled = isSingleItemBatch && selectedSkuCount >= 1 && currentQuantity === 0
+          
           return (
             <div 
               key={product.sku} 
-              className="relative flex flex-col space-y-3 p-4 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25 transition-all duration-200"
+              className={`relative flex flex-col space-y-3 p-4 rounded-lg border transition-all duration-200 ${
+                isDisabled 
+                  ? 'border-slate-100 bg-slate-50 opacity-50' 
+                  : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25'
+              }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-slate-900 truncate">
@@ -88,7 +109,20 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
                   type="number"
                   min="0"
                   value={currentQuantity}
-                  onChange={(e) => onSkuQuantityChange(product.sku, parseInt(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const newQuantity = parseInt(e.target.value) || 0
+                    // For Single Item Batch, clear other SKUs when selecting a new one
+                    if (isSingleItemBatch && newQuantity > 0) {
+                      // Clear all other SKUs first
+                      Object.keys(workflowConfig?.skuQuantities || {}).forEach(sku => {
+                        if (sku !== product.sku) {
+                          onSkuQuantityChange(sku, 0)
+                        }
+                      })
+                    }
+                    onSkuQuantityChange(product.sku, newQuantity)
+                  }}
+                  disabled={isDisabled}
                   className="w-20 h-8 text-sm"
                   placeholder="0"
                 />
@@ -510,12 +544,12 @@ export function ScheduleTourPage() {
       ))
 
       const tourInsertData = {
-        warehouse_id: formData.warehouse_id,
-        host_id: formData.host_id,
-        date: formData.date,
-        time: formData.time,
-        status: 'scheduled',
-        tour_numeric_id: generateTourNumericId(),
+            warehouse_id: formData.warehouse_id,
+            host_id: formData.host_id,
+            date: formData.date,
+            time: formData.time,
+            status: 'scheduled',
+            tour_numeric_id: generateTourNumericId(),
         selected_workflows: selectedWorkflows,
         selected_skus: allSelectedSkus, // Aggregated SKUs from all workflows
         workflow_configs: workflowConfigs, // New detailed configuration
@@ -570,22 +604,22 @@ export function ScheduleTourPage() {
       // Add participants in batch for better performance
       let insertedParticipants = null
       if (participants.length > 0) {
-        const participantInserts = participants.map((participant) => ({
-          tour_id: tourData.id,
-          name: `${participant.first_name} ${participant.last_name}`, // Keep name field for backward compatibility
-          first_name: participant.first_name,
-          last_name: participant.last_name,
-          email: participant.email,
-          company: participant.company,
-          title: participant.title,
-        }))
+      const participantInserts = participants.map((participant) => ({
+        tour_id: tourData.id,
+        name: `${participant.first_name} ${participant.last_name}`, // Keep name field for backward compatibility
+        first_name: participant.first_name,
+        last_name: participant.last_name,
+        email: participant.email,
+        company: participant.company,
+        title: participant.title,
+      }))
 
         const { data: participantData, error: participantError } = await supabase
-          .from("tour_participants")
-          .insert(participantInserts)
+        .from("tour_participants")
+        .insert(participantInserts)
           .select("id, first_name, last_name, email, company, title")
 
-        if (participantError) throw participantError
+      if (participantError) throw participantError
         insertedParticipants = participantData
       }
 
@@ -849,7 +883,7 @@ export function ScheduleTourPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-800 mb-2 flex items-center gap-3">
           <Calendar className="h-6 w-6 text-blue-600" />
-          Schedule a New Tour
+            Schedule a New Tour
         </h1>
         <p className="text-slate-600">Create a new warehouse tour and configure training workflows and products for realistic demonstrations.</p>
       </div>
@@ -1172,6 +1206,7 @@ export function ScheduleTourPage() {
                                   workflowConfig={workflowConfigs[option.id]}
                                   selectedWarehouse={selectedWarehouse}
                                   workflowName={option.name}
+                                  workflowId={option.id}
                                   onSkuQuantityChange={(sku, quantity) => {
                                     setWorkflowConfigs(prev => ({
                                       ...prev,
