@@ -30,7 +30,7 @@ export interface TourData {
   }
   selected_workflows: string[]
   selected_skus: string[] // Legacy - aggregated from all workflows
-  workflow_configs?: {[key: string]: {orderCount: number, selectedSkus: string[]}} // New per-workflow configuration
+  workflow_configs?: {[key: string]: {orderCount: number, selectedSkus: string[], skuQuantities?: {[sku: string]: number}}} // New per-workflow configuration
 }
 
 export type WorkflowOption = 
@@ -417,19 +417,22 @@ export class TourFinalizationService {
     
     // Get workflow configuration
     const workflowConfig = tourData.workflow_configs?.['receive_to_light']
-    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
+    const skuQuantities = workflowConfig?.skuQuantities || {}
     
-    console.log("🎯 Selected SKUs for R2L workflow:", workflowSkus)
+    // Get SKUs that have quantities > 0
+    const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
+    
+    console.log("🎯 Selected SKUs for Receive-to-Light workflow:", workflowSkus)
+    console.log("📦 SKU Quantities:", skuQuantities)
     
     if (workflowSkus.length === 0) {
-      throw new Error("No SKUs selected for Receive-to-Light workflow. Please select SKUs when creating the tour.")
+      throw new Error("No SKUs with quantities > 0 selected for Receive-to-Light workflow. Please enter quantities when creating the tour.")
     }
     
-    // Use workflow-specific SKUs with specified quantities
+    // Use the actual quantities entered by the user
     const quantities: { [sku: string]: number } = {}
     workflowSkus.forEach(sku => {
-      // Use the quantity specified in workflow config, default to 10
-      quantities[sku] = 10 // Fixed quantity for receiving
+      quantities[sku] = skuQuantities[sku] // Use actual user-entered quantities
     })
     
     // R2L is just receiving - create purchase order with workflow quantities
@@ -447,18 +450,22 @@ export class TourFinalizationService {
     
     // Get workflow configuration
     const workflowConfig = tourData.workflow_configs?.['standard_receiving']
-    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
+    const skuQuantities = workflowConfig?.skuQuantities || {}
+    
+    // Get SKUs that have quantities > 0
+    const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
     
     console.log("🎯 Selected SKUs for Standard Receiving workflow:", workflowSkus)
+    console.log("📦 SKU Quantities:", skuQuantities)
     
     if (workflowSkus.length === 0) {
-      throw new Error("No SKUs selected for Standard Receiving workflow. Please select SKUs when creating the tour.")
+      throw new Error("No SKUs with quantities > 0 selected for Standard Receiving workflow. Please enter quantities when creating the tour.")
     }
     
-    // Use workflow-specific SKUs with specified quantities
+    // Use the actual quantities entered by the user
     const quantities: { [sku: string]: number } = {}
     workflowSkus.forEach(sku => {
-      quantities[sku] = 10 // Fixed quantity for receiving
+      quantities[sku] = skuQuantities[sku] // Use actual user-entered quantities
     })
     
     // Standard Receiving is just receiving - create purchase order
