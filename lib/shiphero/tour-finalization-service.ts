@@ -964,13 +964,16 @@ export class TourFinalizationService {
    * Helper method to create a single sales order for the host (for Pack-to-Light when no participants)
    */
   private async createHostSalesOrder(tourData: TourData, orderPrefix: string): Promise<any> {
-    console.log(`Creating host sales order using: ${tourData.host.name}`)
+    console.log(`🔧 createHostSalesOrder: Creating host sales order using: ${tourData.host.name}`)
+    console.log(`🔧 createHostSalesOrder: Order prefix: ${orderPrefix}`)
+    console.log(`🔧 createHostSalesOrder: Selected SKUs:`, tourData.selected_skus)
     
     if (tourData.selected_skus.length === 0) {
       throw new Error("No SKUs selected for orders. Please select SKUs when creating the tour.")
     }
 
     const warehouseAddress = this.getWarehouseShippingAddress(tourData)
+    console.log(`🔧 createHostSalesOrder: Warehouse address:`, warehouseAddress)
     
     // Create line items for all selected SKUs
     const lineItems = tourData.selected_skus.map((sku, index) => ({
@@ -987,40 +990,63 @@ export class TourFinalizationService {
     const orderData = {
       order_number: `${orderPrefix}-${tourData.host.first_name || 'HOST'}`,
       shop_name: "Touring App",
-      email: "host@example.com",
-      phone: "555-0123",
+      fulfillment_status: "pending",
+      order_date: new Date().toISOString(),
+      total_tax: "0.00",
+      subtotal: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
+      total_discounts: "0.00",
+      total_price: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
+      shipping_lines: {
+        title: "Standard Shipping",
+        price: "0.00",
+        carrier: "Demo Carrier",
+        method: "Standard"
+      },
       shipping_address: {
         first_name: tourData.host.first_name || "Host",
         last_name: tourData.host.last_name || "Demo",
+        company: "",
         address1: warehouseAddress.address1,
-        address2: warehouseAddress.address2 || "",
+        address2: warehouseAddress.address2,
         city: warehouseAddress.city,
         state: warehouseAddress.state,
+        state_code: warehouseAddress.state,
         zip: warehouseAddress.zip,
         country: warehouseAddress.country,
-        phone: "555-0123"
+        country_code: warehouseAddress.country,
+        phone: warehouseAddress.phone,
+        email: "host@example.com"
       },
       billing_address: {
         first_name: tourData.host.first_name || "Host",
         last_name: tourData.host.last_name || "Demo",
+        company: "",
         address1: warehouseAddress.address1,
-        address2: warehouseAddress.address2 || "",
+        address2: warehouseAddress.address2,
         city: warehouseAddress.city,
         state: warehouseAddress.state,
+        state_code: warehouseAddress.state,
         zip: warehouseAddress.zip,
         country: warehouseAddress.country,
-        phone: "555-0123"
+        country_code: warehouseAddress.country,
+        phone: warehouseAddress.phone,
+        email: "host@example.com"
       },
       line_items: lineItems,
+      required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
       tags: ["host", "tour", "pack-to-light"]
     }
+
+    console.log(`🔧 createHostSalesOrder: Final order data:`, JSON.stringify(orderData, null, 2))
 
     try {
       const result = await this.createSalesOrderViaAPI(orderData)
       console.log(`✅ Created host sales order: ${orderData.order_number}`)
+      console.log(`✅ Host sales order result:`, result)
       return result
     } catch (error) {
       console.error(`❌ Failed to create host sales order:`, error)
+      console.error(`❌ Order data that failed:`, JSON.stringify(orderData, null, 2))
       throw error
     }
   }

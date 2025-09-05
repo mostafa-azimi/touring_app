@@ -16,6 +16,30 @@ export async function POST(request: NextRequest) {
       data: JSON.stringify(data, null, 2)
     })
 
+    // Validate required fields for sales order
+    if (type === 'sales_order') {
+      const requiredFields = ['order_number', 'shop_name', 'shipping_lines', 'shipping_address', 'billing_address', 'line_items']
+      for (const field of requiredFields) {
+        if (!data[field]) {
+          console.error(`❌ Missing required field: ${field}`)
+          return NextResponse.json(
+            { error: `Missing required field: ${field}`, details: `Field '${field}' is required for sales orders` },
+            { status: 400 }
+          )
+        }
+      }
+      
+      // Validate shipping_lines structure
+      if (!data.shipping_lines.title) {
+        console.error(`❌ Missing shipping_lines.title`)
+        console.error(`❌ shipping_lines data:`, data.shipping_lines)
+        return NextResponse.json(
+          { error: 'Missing shipping_lines.title', details: 'shipping_lines must have a title field' },
+          { status: 400 }
+        )
+      }
+    }
+
     let query: string
     let variables: any
 
