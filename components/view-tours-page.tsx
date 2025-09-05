@@ -704,16 +704,6 @@ export function ViewToursPage() {
                             </>
                           )}
                           
-                          {/* Canceled Tour Status */}
-                          {tour.canceled_at && (
-                            <div className="text-center text-sm text-muted-foreground">
-                              <XCircle className="h-4 w-4 mx-auto mb-1 text-red-500" />
-                              <div>Canceled</div>
-                              <div className="text-xs">
-                                {new Date(tour.canceled_at).toLocaleDateString()}
-                              </div>
-                            </div>
-                          )}
                           
                           {/* Secondary Actions */}
                           <div className="flex items-center gap-1">
@@ -730,18 +720,6 @@ export function ViewToursPage() {
                             
 
                             
-                            {tour.status !== 'cancelled' && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                title="Cancel Tour" 
-                                onClick={() => handleCancelTour(tour.id)}
-                                disabled={cancellingTourId === tour.id}
-                                className={`text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50 ${cancellingTourId === tour.id ? 'cursor-wait' : ''}`}
-                              >
-                                <X className={`h-4 w-4 ${cancellingTourId === tour.id ? 'animate-spin' : ''}`} />
-                              </Button>
-                            )}
                           </div>
                         </div>
                       </TableCell>

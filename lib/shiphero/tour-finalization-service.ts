@@ -382,6 +382,20 @@ export class TourFinalizationService {
       const sales_orders = createdOrders.filter(order => order.type === 'sales_order')
       const purchase_orders = createdOrders.filter(order => order.type === 'purchase_order')
 
+      // Update tour status to finalized in database
+      console.log('🔄 Updating tour status to finalized...')
+      const { error: statusError } = await this.supabase
+        .from('tours')
+        .update({ status: 'finalized' })
+        .eq('id', tourId)
+
+      if (statusError) {
+        console.error('⚠️ Failed to update tour status:', statusError)
+        // Don't fail the entire operation for a status update error
+      } else {
+        console.log('✅ Tour status updated to finalized')
+      }
+
       // Generate instruction guide (disabled as requested)
       const instruction_guide = "Instruction guide generation disabled."
       
