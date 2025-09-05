@@ -18,6 +18,56 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
 // Products are managed through ShipHero inventory API
 
+// Simple component for Standard Receiving product selection
+function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChange }: {
+  allSkus: any[]
+  workflowConfig: any
+  onSkuQuantityChange: (sku: string, quantity: number) => void
+}) {
+  if (allSkus.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>Select a warehouse to load products</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <Label className="text-sm font-medium">📦 Select products and quantities:</Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto p-4 border rounded-lg bg-muted/20">
+        {allSkus.map(product => {
+          const currentQuantity = workflowConfig?.skuQuantities?.[product.sku] || 0
+          return (
+            <div key={product.sku} className="p-3 bg-white rounded-lg border space-y-2">
+              <div className="space-y-1">
+                <h4 className="font-medium text-sm leading-tight">{product.name}</h4>
+                <p className="text-xs text-muted-foreground font-mono">{product.sku}</p>
+                <p className="text-xs text-green-600">Available: {product.quantity_available || 0}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor={`qty-${product.sku}`} className="text-xs">Qty:</Label>
+                <Input
+                  id={`qty-${product.sku}`}
+                  type="number"
+                  min="0"
+                  value={currentQuantity}
+                  onChange={(e) => onSkuQuantityChange(product.sku, parseInt(e.target.value) || 0)}
+                  className="w-20 h-8 text-sm"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Enter quantities for products you want to include in the purchase order. Set to 0 to exclude.
+      </p>
+    </div>
+  )
+}
+
 interface Warehouse {
   id: string
   name: string
@@ -130,6 +180,13 @@ export function ScheduleTourPage() {
     allSkus: allSkus.length,
     warehouseId: formData.warehouse_id
   })
+  
+  // Add debugging to track what's changing
+  console.log('🔍 DETAILED STATE:', {
+    selectedWorkflows: JSON.stringify(selectedWorkflows),
+    workflowConfigs: JSON.stringify(workflowConfigs),
+    expandedWorkflows: JSON.stringify(expandedWorkflows)
+  })
   const [isLoadingSkus, setIsLoadingSkus] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
@@ -150,7 +207,8 @@ export function ScheduleTourPage() {
           ...prev,
           [optionId]: {
             orderCount: 5, // Default to 5 orders
-            selectedSkus: []
+            selectedSkus: [],
+            skuQuantities: {} // For Standard Receiving quantities
           }
         }
       })
@@ -640,6 +698,97 @@ export function ScheduleTourPage() {
     })
     return categoryMap
   }, []) // workflowOptions and categories are static constants
+
+  // Memoize workflow SKUs to prevent infinite re-renders
+  const workflowSkusMap = useMemo(() => {
+    console.log('🏗️ MEMO: workflowSkusMap recalculating - availableSkus length:', availableSkus.length)
+    const skuMap = new Map()
+    selectedWorkflows.forEach(workflowId => {
+      skuMap.set(workflowId, availableSkus.map((product, index) => {
+        if (index === 0) console.log('🎨 MEMOIZING WORKFLOW SKUs for', workflowId, '- total:', availableSkus.length)
+        return (
+          <div
+            key={product.sku}
+            className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
+              (workflowConfigs[workflowId]?.selectedSkus || []).includes(product.sku)
+                ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                : 'border-border bg-card hover:bg-muted/50'
+            }`}
+            onClick={() => handleWorkflowSkuChange(workflowId, product.sku, !(workflowConfigs[workflowId]?.selectedSkus || []).includes(product.sku))}
+          >
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="font-medium text-sm leading-tight truncate">
+                  {product.name}
+                </h4>
+                <Checkbox
+                  checked={(workflowConfigs[workflowId]?.selectedSkus || []).includes(product.sku)}
+                  onChange={() => {}} // Handled by parent click
+                  className="pointer-events-none"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground font-mono">
+                {product.sku}
+              </p>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">
+                  Qty: {product.quantity_available || 0}
+                </span>
+              </div>
+            </div>
+          </div>
+        )
+      }))
+    })
+    return skuMap
+  }, [availableSkus, selectedWorkflows, workflowConfigs])
+
+  // Memoize main product grid to prevent infinite re-renders  
+  const productGrid = useMemo(() => {
+    console.log('🏗️ MEMO: productGrid recalculating - availableSkus length:', availableSkus.length)
+    return availableSkus.map(product => (
+      <div 
+        key={product.sku} 
+        className={`
+          relative flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer
+          ${selectedSkus.includes(product.sku)
+            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+            : 'border-border bg-card hover:bg-muted/50'
+          }
+        `}
+        onClick={() => handleSkuChange(product.sku, !selectedSkus.includes(product.sku))}
+      >
+        <div onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            id={product.sku}
+            checked={selectedSkus.includes(product.sku)}
+            onCheckedChange={(checked) => handleSkuChange(product.sku, checked as boolean)}
+            className="mt-1"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <Label
+            htmlFor={product.sku}
+            className="font-semibold text-sm block text-slate-800 mb-1 pointer-events-none"
+          >
+            {product.name}
+          </Label>
+          <p className="text-xs text-slate-600 mb-2 line-clamp-2 leading-relaxed">
+            {product.sku}
+          </p>
+          <div className="flex items-center">
+            <span className={`text-xs font-medium px-2 py-1 rounded ${
+              (product.inventory?.available || 0) > 0
+                ? 'bg-green-100 text-green-700'
+                : 'bg-slate-100 text-slate-500'
+            }`}>
+              {product.inventory?.available || 0} available
+            </span>
+          </div>
+        </div>
+      </div>
+    ))
+  }, [availableSkus, selectedSkus])
 
   // CSV Upload functionality
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1135,52 +1284,40 @@ export function ScheduleTourPage() {
                                   </div>
                                 )}
 
-                                {/* SKU Selection for this workflow */}
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">🏷️ SKUs for this workflow:</Label>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto">
-                                    {availableSkus.map((product, index) => {
-                                      if (index === 0) console.log('🎨 RENDERING WORKFLOW SKUs for', option.id, '- total:', availableSkus.length)
-                                      return (
-                                        <div
-                                          key={product.sku}
-                                          className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
-                                            (workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku)
-                                              ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                                              : 'border-border bg-card hover:bg-muted/50'
-                                          }`}
-                                          onClick={() => handleWorkflowSkuChange(option.id, product.sku, !(workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku))}
-                                        >
-                                        <div className="space-y-2">
-                                          <div className="flex items-start justify-between gap-2">
-                                            <h4 className="font-medium text-sm leading-tight truncate">
-                                              {product.name}
-                                            </h4>
-                                            <Checkbox
-                                              checked={(workflowConfigs[option.id]?.selectedSkus || []).includes(product.sku)}
-                                              onChange={() => {}} // Handled by parent click
-                                              className="pointer-events-none"
-                                            />
-                                          </div>
-                                          <p className="text-xs text-muted-foreground font-mono">
-                                            {product.sku}
-                                          </p>
-                                          <div className="flex items-center justify-between text-xs">
-                                            <span className="text-muted-foreground">
-                                              Qty: {product.quantity_available || 0}
-                                            </span>
-                                          </div>
-                                        </div>
-                                        </div>
-                                      )
-                                    })}
+                                {/* Simple Product Selection for Standard Receiving */}
+                                {option.id === 'standard_receiving' ? (
+                                  <StandardReceivingProducts 
+                                    allSkus={allSkus}
+                                    workflowConfig={workflowConfigs[option.id]}
+                                    onSkuQuantityChange={(sku, quantity) => {
+                                      setWorkflowConfigs(prev => ({
+                                        ...prev,
+                                        [option.id]: {
+                                          ...prev[option.id],
+                                          selectedSkus: quantity > 0 
+                                            ? [...(prev[option.id]?.selectedSkus?.filter(s => s !== sku) || []), sku]
+                                            : prev[option.id]?.selectedSkus?.filter(s => s !== sku) || [],
+                                          skuQuantities: {
+                                            ...prev[option.id]?.skuQuantities,
+                                            [sku]: quantity
+                                          }
+                                        }
+                                      }))
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="space-y-2">
+                                    <Label className="text-sm font-medium">🏷️ SKUs for this workflow:</Label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto">
+                                      {workflowSkusMap.get(option.id) || []}
+                                    </div>
+                                    {availableSkus.length === 0 && (
+                                      <p className="text-sm text-muted-foreground text-center py-4">
+                                        Select a warehouse to load available SKUs
+                                      </p>
+                                    )}
                                   </div>
-                                  {availableSkus.length === 0 && (
-                                    <p className="text-sm text-muted-foreground text-center py-4">
-                                      Select a warehouse to load available SKUs
-                                    </p>
-                                  )}
-                                </div>
+                                )}
                               </div>
                             )}
                           </div>
