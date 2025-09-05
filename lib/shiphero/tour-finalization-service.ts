@@ -518,10 +518,10 @@ export class TourFinalizationService {
     // Step 1: Create participant orders first
     const participantOrders = await this.createParticipantOrders(tourData, "BULK")
     
-    // Step 2: Create demo orders with celebrity names using workflow-specific SKUs
-    const demoOrders = await this.createDemoOrders(tourData, "BULK-DEMO", orderCount, workflowSkus)
+    // Step 2: Create orders with contacts using workflow-specific SKUs
+    const additionalOrders = await this.createDemoOrders(tourData, "BULK-DEMO", orderCount, workflowSkus)
     
-    console.log(`✅ Bulk Shipping completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
+    console.log(`✅ Bulk Shipping completed: ${participantOrders.length} participant + ${additionalOrders.length} additional orders`)
   }
 
 
@@ -542,10 +542,10 @@ export class TourFinalizationService {
     // Step 1: Create participant orders first
     const participantOrders = await this.createParticipantOrders(tourData, "SINGLE")
     
-    // Step 2: Create demo orders with celebrity names using workflow-specific SKUs
-    const demoOrders = await this.createDemoOrders(tourData, "SINGLE-DEMO", orderCount, workflowSkus)
+    // Step 2: Create orders with contacts using workflow-specific SKUs
+    const additionalOrders = await this.createDemoOrders(tourData, "SINGLE-DEMO", orderCount, workflowSkus)
     
-    console.log(`✅ Single-Item Batch completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
+    console.log(`✅ Single-Item Batch completed: ${participantOrders.length} participant + ${additionalOrders.length} additional orders`)
   }
 
 
@@ -615,8 +615,8 @@ export class TourFinalizationService {
           method: "Standard"
         },
         shipping_address: {
-          first_name: celebrity.first,
-          last_name: celebrity.last,
+          first_name: contact.first,
+          last_name: contact.last,
           company: "",
           address1: warehouseAddress.address1,
           address2: warehouseAddress.address2,
@@ -627,11 +627,11 @@ export class TourFinalizationService {
           country: warehouseAddress.country,
           country_code: warehouseAddress.country_code,
           phone: warehouseAddress.phone,
-          email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+          email: `${contact.first.toLowerCase()}.${contact.last.toLowerCase().replace(/\s/g, '')}@example.com`
         },
         billing_address: {
-          first_name: celebrity.first,
-          last_name: celebrity.last,
+          first_name: contact.first,
+          last_name: contact.last,
           company: "",
           address1: warehouseAddress.address1,
           address2: warehouseAddress.address2,
@@ -642,11 +642,11 @@ export class TourFinalizationService {
           country: warehouseAddress.country,
           country_code: warehouseAddress.country_code,
           phone: warehouseAddress.phone,
-          email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+          email: `${contact.first.toLowerCase()}.${contact.last.toLowerCase().replace(/\s/g, '')}@example.com`
         },
         line_items: lineItems,
         required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        tags: ["multi-item", "celebrity", "tour"]
+        tags: ["multi-item", "contact", "tour"]
       }
 
       const promise = this.createSalesOrderViaAPI(orderData)
@@ -889,7 +889,7 @@ export class TourFinalizationService {
           country: warehouseAddress.country,
           country_code: warehouseAddress.country,
           phone: warehouseAddress.phone,
-          email: participant.email || `participant${i + 1}@demo.com`
+          email: participant.email || `participant${i + 1}@example.com`
         },
         billing_address: {
           first_name: participant.first_name || "Participant",
@@ -904,7 +904,7 @@ export class TourFinalizationService {
           country: warehouseAddress.country,
           country_code: warehouseAddress.country_code,
           phone: warehouseAddress.phone,
-          email: participant.email || `participant${i + 1}@demo.com`
+          email: participant.email || `participant${i + 1}@example.com`
         },
         line_items: lineItems
       }
@@ -929,24 +929,24 @@ export class TourFinalizationService {
   }
 
   /**
-   * Helper method to create demo orders using celebrity names and selected SKUs
+   * Helper method to create orders using contacts and selected SKUs
    */
   private async createDemoOrders(tourData: TourData, orderPrefix: string, count: number, workflowSkus?: string[]): Promise<any[]> {
-    console.log(`Creating ${count} demo orders with celebrity names...`)
+    console.log(`Creating ${count} orders with contacts...`)
     
     const skusToUse = workflowSkus || tourData.selected_skus
     if (skusToUse.length === 0) {
       throw new Error("No SKUs selected for orders. Please select SKUs when creating the tour.")
     }
 
-    const celebrities = getCelebrityNames(count)
+    const contacts = getCelebrityNames(count)
     const warehouseAddress = this.getWarehouseShippingAddress(tourData)
     const orderPromises = []
 
     for (let i = 0; i < count; i++) {
-      const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
+      const contact = contacts[i] || { first: "Contact", last: `${i + 1}` }
       
-      // Use workflow-specific SKUs for demo orders, rotate through them
+      // Use workflow-specific SKUs for orders, rotate through them
       const selectedSkuIndex = i % skusToUse.length
       const lineItems = [{
         sku: skusToUse[selectedSkuIndex],
@@ -975,8 +975,8 @@ export class TourFinalizationService {
           method: "Standard"
         },
         shipping_address: {
-          first_name: celebrity.first,
-          last_name: celebrity.last,
+          first_name: contact.first,
+          last_name: contact.last,
           company: "",
           address1: warehouseAddress.address1,
           address2: warehouseAddress.address2,
@@ -987,11 +987,11 @@ export class TourFinalizationService {
           country: warehouseAddress.country,
           country_code: warehouseAddress.country_code,
           phone: warehouseAddress.phone,
-          email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+          email: `${contact.first.toLowerCase()}.${contact.last.toLowerCase().replace(/\s/g, '')}@example.com`
         },
         billing_address: {
-          first_name: celebrity.first,
-          last_name: celebrity.last,
+          first_name: contact.first,
+          last_name: contact.last,
           company: "",
           address1: warehouseAddress.address1,
           address2: warehouseAddress.address2,
@@ -1002,11 +1002,11 @@ export class TourFinalizationService {
           country: warehouseAddress.country,
           country_code: warehouseAddress.country_code,
           phone: warehouseAddress.phone,
-          email: `${celebrity.first.toLowerCase()}.${celebrity.last.toLowerCase().replace(/\s/g, '')}@demo.com`
+          email: `${contact.first.toLowerCase()}.${contact.last.toLowerCase().replace(/\s/g, '')}@example.com`
         },
         line_items: lineItems,
         required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        tags: ["demo", "celebrity", "tour"]
+        tags: ["order", "contact", "tour"]
       }
 
       const promise = this.createSalesOrderViaAPI(orderData)
@@ -1023,7 +1023,7 @@ export class TourFinalizationService {
     }
     
     const successful = results.filter(result => result.data?.order_create?.order)
-    console.log(`✅ Created ${successful.length} demo orders with celebrity names`)
+    console.log(`✅ Created ${successful.length} orders with contacts`)
     
     return successful.map(result => result.data.order_create.order)
   }
@@ -1452,7 +1452,7 @@ export class TourFinalizationService {
     const demoOrderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
     const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
     
-    console.log(`Creating ${demoOrderCount} multi-item demo orders with celebrity names...`)
+    console.log(`Creating ${demoOrderCount} multi-item orders with contacts...`)
     console.log(`🎯 Using SKUs for Multi-Item Batch:`, workflowSkus)
     
     if (workflowSkus.length === 0) {
@@ -1464,8 +1464,8 @@ export class TourFinalizationService {
     const orderPromises = []
     
     for (let i = 0; i < demoOrderCount; i++) {
-      // Get celebrity name
-      const celebrity = getCelebrityNames(1)[0]
+      // Get contact name
+      const contact = getCelebrityNames(1)[0]
       
       // Create multi-item line items - MAXIMUM 3 unique SKUs per order
       const maxSkusPerOrder = Math.min(3, workflowSkus.length) // Never exceed 3 SKUs
@@ -1510,8 +1510,8 @@ export class TourFinalizationService {
         subtotal: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
         total_price: (lineItems.reduce((sum, item) => sum + (item.quantity * 15), 0)).toString(),
         shipping_address: {
-          first_name: celebrity.firstName,
-          last_name: celebrity.lastName,
+          first_name: contact.firstName,
+          last_name: contact.lastName,
           company: "",
           address1: warehouseAddress.address1,
           address2: warehouseAddress.address2,
@@ -1522,11 +1522,11 @@ export class TourFinalizationService {
           country: warehouseAddress.country,
           country_code: warehouseAddress.country,
           phone: warehouseAddress.phone,
-          email: `demo.mib${i + 1}@example.com`
+          email: `contact.mib${i + 1}@example.com`
         },
         billing_address: {
-          first_name: celebrity.firstName,
-          last_name: celebrity.lastName,
+          first_name: contact.firstName,
+          last_name: contact.lastName,
           company: "",
           address1: warehouseAddress.address1,
           address2: warehouseAddress.address2,

@@ -85,7 +85,7 @@ const workflowOptions = [
   {
     id: "multi_item_batch" as WorkflowOption,
     name: "Multi-Item Batch",
-    description: "Creates participant orders + random demonstration orders with multiple SKUs for complex batch picking training",
+    description: "Creates participant orders + additional training orders with multiple SKUs for complex batch picking training",
     category: "Fulfillment",
     badge: "Standard"
   },
