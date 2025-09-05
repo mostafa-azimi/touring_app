@@ -18,8 +18,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
 // Products are managed through ShipHero inventory API
 
-// Simple component for product selection with quantities (used by Standard Receiving and Receive to Light)
-function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChange, selectedWarehouse, workflowName }: {
+// Generic component for product selection with quantities (used by all workflows)
+function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange, selectedWarehouse, workflowName }: {
   allSkus: any[]
   workflowConfig: any
   onSkuQuantityChange: (sku: string, quantity: number) => void
@@ -201,7 +201,7 @@ export function ScheduleTourPage() {
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const [isUploadingCSV, setIsUploadingCSV] = useState(false)
   const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([])
-  const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, selectedSkus: string[], skuQuantities: {[sku: string]: number}}}>({})
+  const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, skuQuantities: {[sku: string]: number}}}>({})
   const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([])
   const [allSkus, setAllSkus] = useState<any[]>([]) // Store all SKUs for filtering
   
@@ -1166,42 +1166,25 @@ export function ScheduleTourPage() {
                                   </div>
                                 )}
 
-                                {/* Simple Product Selection for Standard Receiving and Receive to Light */}
-                                {(option.id === 'standard_receiving' || option.id === 'receive_to_light') ? (
-                                  <StandardReceivingProducts 
-                                    allSkus={allSkus}
-                                    workflowConfig={workflowConfigs[option.id]}
-                                    selectedWarehouse={selectedWarehouse}
-                                    workflowName={option.name}
-                                    onSkuQuantityChange={(sku, quantity) => {
-                                      setWorkflowConfigs(prev => ({
-                                        ...prev,
-                                        [option.id]: {
-                                          ...prev[option.id],
-                                          selectedSkus: quantity > 0 
-                                            ? [...(prev[option.id]?.selectedSkus?.filter(s => s !== sku) || []), sku]
-                                            : prev[option.id]?.selectedSkus?.filter(s => s !== sku) || [],
-                                          skuQuantities: {
-                                            ...prev[option.id]?.skuQuantities,
-                                            [sku]: quantity
-                                          }
+                                {/* Simplified Product Selection for All Workflows */}
+                                <WorkflowProductSelection 
+                                  allSkus={allSkus}
+                                  workflowConfig={workflowConfigs[option.id]}
+                                  selectedWarehouse={selectedWarehouse}
+                                  workflowName={option.name}
+                                  onSkuQuantityChange={(sku, quantity) => {
+                                    setWorkflowConfigs(prev => ({
+                                      ...prev,
+                                      [option.id]: {
+                                        orderCount: prev[option.id]?.orderCount || 5,
+                                        skuQuantities: {
+                                          ...prev[option.id]?.skuQuantities,
+                                          [sku]: quantity
                                         }
-                                      }))
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-medium">🏷️ SKUs for this workflow:</Label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto">
-                                      {workflowSkusMap.get(option.id) || []}
-                                    </div>
-                                    {allSkus.length === 0 && (
-                                      <p className="text-sm text-muted-foreground text-center py-4">
-                                        Loading available SKUs...
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
+                                      }
+                                    }))
+                                  }}
+                                />
                               </div>
                             )}
                           </div>

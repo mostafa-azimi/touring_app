@@ -540,7 +540,12 @@ export class TourFinalizationService {
     // Get workflow configuration
     const workflowConfig = tourData.workflow_configs?.['single_item_batch']
     const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
-    const workflowSkus = workflowConfig?.selectedSkus || tourData.selected_skus // Fallback to legacy
+    
+    // Extract SKUs from skuQuantities (new format) or fall back to legacy
+    const skuQuantities = workflowConfig?.skuQuantities || {}
+    const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0).length > 0 
+      ? Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
+      : tourData.selected_skus // Fallback to legacy
     
     console.log(`Creating ${orderCount} single-item batch orders...`)
     console.log(`🎯 Using SKUs for Single-Item Batch:`, workflowSkus)
