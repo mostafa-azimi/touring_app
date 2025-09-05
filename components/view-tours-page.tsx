@@ -890,7 +890,7 @@ function TourDetailsSheet({ tour, onTourUpdated }: { tour: Tour; onTourUpdated?:
     const startDateStr = formatDateForUrl(startDate)
     const endDateStr = formatDateForUrl(endDate)
     
-    return `https://app.shiphero.com/dashboard/orders/v2/manage?tags=${tourTag}&start_date=${startDateStr}&preselectedDate=custom&end_date=${endDateStr}`
+    return `https://app.shiphero.com/dashboard/orders/v2/manage?tags=${tourTag}&start_date=${startDateStr}&preselectedDate=custom&end_date=${endDateStr}&fulfillment_status=unfulfilled`
   }
 
   const handleCancelTour = async () => {
