@@ -628,7 +628,7 @@ export function ScheduleTourPage() {
   const workflowSkusMap = useMemo(() => {
     const skuMap = new Map()
     selectedWorkflows.forEach(workflowId => {
-      skuMap.set(workflowId, availableSkus.map((product, index) => {
+      skuMap.set(workflowId, allSkus.map((product, index) => {
         return (
           <div
             key={product.sku}
