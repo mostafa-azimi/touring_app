@@ -274,15 +274,12 @@ export class TourFinalizationService {
     console.log(`🎯 Selected options:`, selectedOptions)
     
     const errors: string[] = []
-    const salesOrders: Array<{
+    const createdOrders: Array<{
+      type: 'sales_order' | 'purchase_order'
+      workflow: string
+      shiphero_id: string
       order_number: string
-      workflow: string
-      customer_name: string
-      items: Array<{ sku: string; quantity: number }>
-    }> = []
-    const purchaseOrders: Array<{
-      po_number: string
-      workflow: string
+      customer_name?: string
       items: Array<{ sku: string; quantity: number }>
     }> = []
 
@@ -360,8 +357,8 @@ export class TourFinalizationService {
         }
       }
 
-      // Generate instruction guide
-      const instructionGuide = await this.generateInstructionGuide(tourId)
+      // Generate instruction guide with created orders
+      const instructionGuide = await this.generateInstructionGuide(tourId, createdOrders)
       console.log("📋 Generated instruction guide:", instructionGuide.substring(0, 200) + "...")
 
       // Save instruction guide to database
@@ -1220,156 +1217,120 @@ export class TourFinalizationService {
   /**
    * Generate host-friendly tour guide with step-by-step instructions
    */
-  async generateInstructionGuide(tourId: string): Promise<string> {
-    console.log("📋 Generating host-friendly instruction guide...")
+  async generateInstructionGuide(
+    tourId: string, 
+    createdOrders: Array<{
+      type: 'sales_order' | 'purchase_order'
+      workflow: string
+      shiphero_id: string
+      order_number: string
+      customer_name?: string
+      items: Array<{ sku: string; quantity: number }>
+    }> = []
+  ): Promise<string> {
+    console.log("📋 Generating focused tour instruction guide...")
     
     const tourData = await this.getTourDetails(tourId)
-    const selectedWorkflows = tourData.selected_workflows
     
-    let guide = `# 🎯 WAREHOUSE TOUR GUIDE\n\n`
-    guide += `## 📋 Tour Overview\n`
-    guide += `**Date:** ${new Date().toLocaleDateString()}\n`
+    // Calculate date range for ShipHero link (±7 days from tour date)
+    const tourDate = new Date(tourData.date)
+    const startDate = new Date(tourDate)
+    startDate.setDate(startDate.getDate() - 7)
+    const endDate = new Date(tourDate)
+    endDate.setDate(endDate.getDate() + 7)
+    
+    // Format dates for ShipHero URL (MM%2FDD%2FYYYY format)
+    const formatDateForUrl = (date: Date) => {
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const day = date.getDate().toString().padStart(2, '0')
+      const year = date.getFullYear()
+      return `${month}%2F${day}%2F${year}`
+    }
+    
+    const startDateFormatted = formatDateForUrl(startDate)
+    const endDateFormatted = formatDateForUrl(endDate)
+    
+    // Get the tour tag for filtering
+    const tourTag = tourData.tour_numeric_id ? `Tour_${tourData.tour_numeric_id}` : `Tour_${tourData.id.slice(-6)}`
+    
+    // Build ShipHero orders dashboard link
+    const shipheroOrdersLink = `https://app.shiphero.com/dashboard/orders/v2/manage?start_date=${startDateFormatted}&preselectedDate=custom&end_date=${endDateFormatted}&tags=${tourTag}`
+    
+    let guide = `# 🎯 TOUR SUMMARY\n\n`
+    
+    // Tour Overview Section
+    guide += `## 📋 Tour Information\n`
+    guide += `**Date:** ${new Date(tourData.date).toLocaleDateString()}\n`
+    guide += `**Time:** ${tourData.time}\n`
     guide += `**Warehouse:** ${tourData.warehouse.name}\n`
     guide += `**Host:** ${tourData.host.name}\n`
-    guide += `**Participants:** ${tourData.participants.length}\n`
-    guide += `**Duration:** Approximately 45-60 minutes\n\n`
+    guide += `**Tour ID:** ${tourData.tour_numeric_id || tourData.id.slice(-6)}\n`
+    guide += `**Participants:** ${tourData.participants.length}\n\n`
     
-    guide += `## 🚀 WELCOME & INTRODUCTION (5 minutes)\n`
-    guide += `1. **Welcome participants** and introduce yourself\n`
-    guide += `2. **Safety briefing** - warehouse safety rules and procedures\n`
-    guide += `3. **Tour overview** - explain what they'll see and experience\n`
-    guide += `4. **Q&A expectations** - encourage questions throughout\n\n`
+    // ShipHero Dashboard Link
+    guide += `## 🔗 View All Tour Orders in ShipHero\n`
+    guide += `[**Click here to view all tour orders**](${shipheroOrdersLink})\n`
+    guide += `*This link shows all orders created for this tour (${startDateFormatted.replace(/%2F/g, '/')} - ${endDateFormatted.replace(/%2F/g, '/')})*\n\n`
     
-    guide += `## 🏢 WAREHOUSE OVERVIEW (10 minutes)\n`
-    guide += `1. **Facility tour** - show the physical layout\n`
-    guide += `2. **Technology stack** - introduce ShipHero and warehouse systems\n`
-    guide += `3. **Daily operations** - explain typical workflow and volume\n`
-    guide += `4. **Team structure** - roles and responsibilities\n\n`
+    // Group orders by workflow
+    const workflowGroups: { [key: string]: typeof createdOrders } = {}
+    createdOrders.forEach(order => {
+      if (!workflowGroups[order.workflow]) {
+        workflowGroups[order.workflow] = []
+      }
+      workflowGroups[order.workflow].push(order)
+    })
     
-    // Add specific workflow demonstrations
-    let workflowCounter = 1
-    
-    if (selectedWorkflows.includes('receive_to_light')) {
-      guide += `## 📦 DEMONSTRATION ${workflowCounter}: RECEIVE-TO-LIGHT (R2L)\n`
-      guide += `**Time:** 10 minutes | **Location:** Receiving area\n\n`
-      guide += `### What to show:\n`
-      guide += `- **Light-guided receiving** - how lights direct workers to correct locations\n`
-      guide += `- **Accuracy improvements** - reduced errors with visual guidance\n`
-      guide += `- **Speed benefits** - faster putaway with directed workflows\n`
-      guide += `- **Real-time updates** - inventory updates as items are received\n\n`
-      guide += `### Key talking points:\n`
-      guide += `- "This system eliminates guesswork in receiving"\n`
-      guide += `- "Lights guide workers to exact locations, reducing training time"\n`
-      guide += `- "Real-time inventory updates prevent stock discrepancies"\n\n`
-      workflowCounter++
+    // Workflow breakdown
+    if (Object.keys(workflowGroups).length > 0) {
+      guide += `## 📦 Workflow Orders Created\n\n`
+      
+      Object.entries(workflowGroups).forEach(([workflow, orders]) => {
+        // Format workflow name for display
+        const workflowDisplayName = workflow
+          .split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
+        
+        guide += `### ${workflowDisplayName}\n`
+        
+        // Separate sales orders and purchase orders
+        const salesOrders = orders.filter(o => o.type === 'sales_order')
+        const purchaseOrders = orders.filter(o => o.type === 'purchase_order')
+        
+        if (purchaseOrders.length > 0) {
+          guide += `**Purchase Orders:**\n`
+          purchaseOrders.forEach(po => {
+            guide += `- ${po.order_number} - Items: ${po.items.map(item => `${item.sku} (${item.quantity})`).join(', ')}\n`
+          })
+          guide += `\n`
+        }
+        
+        if (salesOrders.length > 0) {
+          guide += `**Sales Orders:**\n`
+          salesOrders.forEach(so => {
+            const customerInfo = so.customer_name ? ` - ${so.customer_name}` : ''
+            const shipheroLink = `https://app.shiphero.com/dashboard/orders/details/${so.shiphero_id}`
+            guide += `- [${so.order_number}](${shipheroLink})${customerInfo} - Items: ${so.items.map(item => `${item.sku} (${item.quantity})`).join(', ')}\n`
+          })
+          guide += `\n`
+        }
+      })
+    } else {
+      guide += `## ⚠️ No Orders Created\n`
+      guide += `No orders were successfully created for this tour. Please check the finalization logs for errors.\n\n`
     }
     
-    if (selectedWorkflows.includes('pack_to_light')) {
-      guide += `## 📋 DEMONSTRATION ${workflowCounter}: PACK-TO-LIGHT (P2L)\n`
-      guide += `**Time:** 12 minutes | **Location:** Packing stations\n\n`
-      guide += `### What to show:\n`
-      guide += `- **Order picking process** - how orders are selected and routed\n`
-      guide += `- **Light-guided packing** - lights indicate items and quantities\n`
-      guide += `- **Quality control** - built-in verification steps\n`
-      guide += `- **Shipping integration** - automatic label generation\n\n`
-      guide += `### Key talking points:\n`
-      guide += `- "Pack-to-Light reduces picking errors by up to 99.9%"\n`
-      guide += `- "Workers can focus on speed while lights ensure accuracy"\n`
-      guide += `- "Orders are automatically verified before shipping"\n\n`
-      workflowCounter++
-    }
+    // Selected SKUs for reference
+    guide += `## 🏷️ Selected Products\n`
+    guide += `**SKUs used in demonstrations:** ${tourData.selected_skus.join(', ')}\n\n`
     
-    if (selectedWorkflows.includes('multi_item_batch')) {
-      guide += `## 🛒 DEMONSTRATION ${workflowCounter}: MULTI-ITEM BATCH PICKING\n`
-      guide += `**Time:** 10 minutes | **Location:** Pick zones\n\n`
-      guide += `### What to show:\n`
-      guide += `- **Batch optimization** - multiple orders picked simultaneously\n`
-      guide += `- **Route efficiency** - optimal path through warehouse\n`
-      guide += `- **Order consolidation** - how items are sorted by destination\n`
-      guide += `- **Productivity metrics** - real-time performance tracking\n`
-      guide += `- **Random demonstration orders** - use system-generated sample orders\n\n`
-      guide += `### Key talking points:\n`
-      guide += `- "Batch picking increases productivity by 3-5x"\n`
-      guide += `- "Smart routing reduces travel time by up to 50%"\n`
-      guide += `- "System optimizes batches based on item locations"\n`
-      guide += `- "Demonstration orders show real-world batch scenarios"\n\n`
-      workflowCounter++
-    }
-    
-    if (selectedWorkflows.includes('single_item_batch')) {
-      guide += `## 📦 DEMONSTRATION ${workflowCounter}: SINGLE-ITEM BATCH PICKING\n`
-      guide += `**Time:** 8 minutes | **Location:** High-volume pick area\n\n`
-      guide += `### What to show:\n`
-      guide += `- **Single line-item orders** - one SKU per order, different products\n`
-      guide += `- **Different SKUs per order** - variety of products being picked\n`
-      guide += `- **Multiple customer addresses** - different shipping destinations\n`
-      guide += `- **Batch picking efficiency** - grouping different single-item orders\n`
-      guide += `- **Route optimization** - efficient path through different product locations\n\n`
-      guide += `### Key talking points:\n`
-      guide += `- "Single-item batch perfect for diverse product orders"\n`
-      guide += `- "Different SKUs, different customers - optimized picking"\n`
-      guide += `- "System batches single-item orders for efficiency"\n`
-      guide += `- "Demonstrates handling variety in single-item scenarios"\n\n`
-      workflowCounter++
-    }
-    
-    if (selectedWorkflows.includes('bulk_shipping')) {
-      guide += `## 🚛 DEMONSTRATION ${workflowCounter}: BULK SHIPPING\n`
-      guide += `**Time:** 10 minutes | **Location:** Shipping dock\n\n`
-      guide += `### What to show:\n`
-      guide += `- **Identical orders processing** - same SKUs going to different customers\n`
-      guide += `- **Bulk processing efficiency** - handling multiple identical orders simultaneously\n`
-      guide += `- **Address differentiation** - same products, different shipping destinations\n`
-      guide += `- **Batch consolidation** - grouping identical SKUs for efficient picking\n`
-      guide += `- **Shipping optimization** - best methods for bulk identical orders\n\n`
-      guide += `### Key talking points:\n`
-      guide += `- "Bulk shipping perfect for identical products to multiple customers"\n`
-      guide += `- "System groups identical SKUs for maximum efficiency"\n`
-      guide += `- "Same products, different addresses - optimized routing"\n`
-      guide += `- "Demonstrates bulk processing for high-volume scenarios"\n\n`
-      workflowCounter++
-    }
-    
-    guide += `## 💻 SHIPHERO DASHBOARD DEMO (8 minutes)\n`
-    guide += `**Location:** Office area or mobile device\n\n`
-    guide += `### What to show:\n`
-    guide += `- **Real-time inventory** - live stock levels and locations\n`
-    guide += `- **Order management** - from receipt to fulfillment\n`
-    guide += `- **Analytics dashboard** - performance metrics and insights\n`
-    guide += `- **Mobile integration** - warehouse operations on mobile devices\n\n`
-    guide += `### Key talking points:\n`
-    guide += `- "Complete visibility into all warehouse operations"\n`
-    guide += `- "Data-driven decisions with real-time analytics"\n`
-    guide += `- "Mobile-first design for modern workforce"\n\n`
-    
-    guide += `## 🤝 Q&A AND WRAP-UP (5-10 minutes)\n`
-    guide += `1. **Open discussion** - answer specific questions\n`
-    guide += `2. **Next steps** - how to get started with ShipHero\n`
-    guide += `3. **Contact information** - provide follow-up resources\n`
-    guide += `4. **Thank participants** - appreciate their time\n\n`
-    
-    guide += `## 📞 FOLLOW-UP ACTIONS\n`
-    guide += `- [ ] Send thank you email with tour summary\n`
-    guide += `- [ ] Provide pricing and implementation timeline\n`
-    guide += `- [ ] Schedule follow-up demo if requested\n`
-    guide += `- [ ] Connect with technical team for detailed questions\n\n`
-    
-    guide += `## 🎯 KEY SUCCESS METRICS TO HIGHLIGHT\n`
-    guide += `- **99.9% accuracy** with light-guided systems\n`
-    guide += `- **50% reduction** in training time for new workers\n`
-    guide += `- **3-5x productivity** increase with batch picking\n`
-    guide += `- **Real-time visibility** into all operations\n`
-    guide += `- **Seamless integration** with existing systems\n\n`
-    
-    guide += `## 📦 PRODUCTS FOR DEMONSTRATION\n`
-    guide += `**Selected SKUs:** ${tourData.selected_skus.join(', ')}\n`
-    guide += `*Use these products throughout all demonstrations for consistency*\n\n`
-    
+    // Footer
     guide += `---\n`
-    guide += `*Generated on: ${new Date().toLocaleString()}*\n`
+    guide += `*Generated: ${new Date().toLocaleString()}*\n`
     guide += `*Tour ID: ${tourData.id}*\n`
     
-    console.log("📋 Host-friendly instruction guide generated successfully")
+    console.log("📋 Focused instruction guide generated successfully")
     return guide
   }
 
