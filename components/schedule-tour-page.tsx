@@ -18,12 +18,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
 // Products are managed through ShipHero inventory API
 
-// Simple component for Standard Receiving product selection
-function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChange, selectedWarehouse }: {
+// Simple component for product selection with quantities (used by Standard Receiving and Receive to Light)
+function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChange, selectedWarehouse, workflowName }: {
   allSkus: any[]
   workflowConfig: any
   onSkuQuantityChange: (sku: string, quantity: number) => void
   selectedWarehouse: any
+  workflowName: string
 }) {
   if (allSkus.length === 0) {
     return (
@@ -47,8 +48,8 @@ function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChang
     return acc
   }, [])
 
-  console.log('🏭 StandardReceiving - Selected warehouse:', selectedWarehouse?.code)
-  console.log('🏭 StandardReceiving - Filtered products:', uniqueProducts.length, 'from', allSkus.length, 'total')
+  console.log(`🏭 ${workflowName} - Selected warehouse:`, selectedWarehouse?.code)
+  console.log(`🏭 ${workflowName} - Filtered products:`, uniqueProducts.length, 'from', allSkus.length, 'total')
 
   if (uniqueProducts.length === 0) {
     return (
@@ -61,7 +62,7 @@ function StandardReceivingProducts({ allSkus, workflowConfig, onSkuQuantityChang
 
   return (
     <div className="space-y-3">
-      <Label className="text-sm font-medium">📦 Select products and quantities for {selectedWarehouse?.name}:</Label>
+      <Label className="text-sm font-medium">📦 Select products and quantities for {workflowName} at {selectedWarehouse?.name}:</Label>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto p-4 border rounded-lg bg-muted/20">
         {uniqueProducts.map(product => {
           const currentQuantity = workflowConfig?.skuQuantities?.[product.sku] || 0
@@ -1315,12 +1316,13 @@ export function ScheduleTourPage() {
                                   </div>
                                 )}
 
-                                {/* Simple Product Selection for Standard Receiving */}
-                                {option.id === 'standard_receiving' ? (
+                                {/* Simple Product Selection for Standard Receiving and Receive to Light */}
+                                {(option.id === 'standard_receiving' || option.id === 'receive_to_light') ? (
                                   <StandardReceivingProducts 
                                     allSkus={allSkus}
                                     workflowConfig={workflowConfigs[option.id]}
                                     selectedWarehouse={selectedWarehouse}
+                                    workflowName={option.name}
                                     onSkuQuantityChange={(sku, quantity) => {
                                       setWorkflowConfigs(prev => ({
                                         ...prev,
