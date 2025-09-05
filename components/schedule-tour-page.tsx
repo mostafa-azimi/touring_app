@@ -624,20 +624,27 @@ export function ScheduleTourPage() {
     return categoryMap
   }, []) // workflowOptions and categories are static constants
 
+  // Stable callback for workflow SKU changes to prevent infinite re-renders
+  const handleWorkflowSkuChangeCallback = useCallback((workflowId: string, sku: string, checked: boolean) => {
+    handleWorkflowSkuChange(workflowId, sku, checked)
+  }, [])
+
   // Memoize workflow SKUs to prevent infinite re-renders
   const workflowSkusMap = useMemo(() => {
     const skuMap = new Map()
     selectedWorkflows.forEach(workflowId => {
+      const workflowSelectedSkus = workflowConfigs[workflowId]?.selectedSkus || []
       skuMap.set(workflowId, allSkus.map((product, index) => {
+        const isSelected = workflowSelectedSkus.includes(product.sku)
         return (
           <div
             key={product.sku}
             className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
-              (workflowConfigs[workflowId]?.selectedSkus || []).includes(product.sku)
+              isSelected
                 ? 'border-primary bg-primary/5 ring-1 ring-primary'
                 : 'border-border bg-card hover:bg-muted/50'
             }`}
-            onClick={() => handleWorkflowSkuChange(workflowId, product.sku, !(workflowConfigs[workflowId]?.selectedSkus || []).includes(product.sku))}
+            onClick={() => handleWorkflowSkuChangeCallback(workflowId, product.sku, !isSelected)}
           >
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-2">
@@ -645,7 +652,7 @@ export function ScheduleTourPage() {
                   {product.name}
                 </h4>
                 <Checkbox
-                  checked={(workflowConfigs[workflowId]?.selectedSkus || []).includes(product.sku)}
+                  checked={isSelected}
                   onChange={() => {}} // Handled by parent click
                   className="pointer-events-none"
                 />
@@ -664,7 +671,7 @@ export function ScheduleTourPage() {
       }))
     })
     return skuMap
-  }, [allSkus, selectedWorkflows, workflowConfigs])
+  }, [allSkus, selectedWorkflows, workflowConfigs, handleWorkflowSkuChangeCallback])
 
   // CSV Upload functionality
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
