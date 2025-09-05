@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -127,7 +127,7 @@ export function ScheduleTourPage() {
   const { toast } = useToast()
   const supabase = createClient()
 
-  const handleWorkflowChange = (optionId: string, checked: boolean) => {
+  const handleWorkflowChange = useCallback((optionId: string, checked: boolean) => {
     if (checked) {
       setSelectedWorkflows(prev => [...prev, optionId])
       // Initialize workflow config with defaults
@@ -151,7 +151,7 @@ export function ScheduleTourPage() {
       // Collapse the workflow section
       setExpandedWorkflows(prev => prev.filter(id => id !== optionId))
     }
-  }
+  }, [])
 
   const toggleWorkflowExpansion = (workflowId: string) => {
     setExpandedWorkflows(prev => 
@@ -1018,7 +1018,10 @@ export function ScheduleTourPage() {
 
               <div className="space-y-6">
                 {categories.map(category => {
-                  const categoryOptions = workflowOptions.filter(option => option.category === category)
+                  const categoryOptions = useMemo(() => 
+                    workflowOptions.filter(option => option.category === category),
+                    [category]
+                  )
                   
                   return (
                     <div key={category} className="space-y-3">
