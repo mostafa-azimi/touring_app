@@ -703,9 +703,14 @@ export class TourFinalizationService {
     console.log('  - decoded warehouse number:', warehouseNumber)
     
     // Generate tags using 6-digit numeric tour ID, warehouse code, and warehouse number
+    // Fallback to UUID-based ID if tour_numeric_id is missing
+    const tourIdForTag = tourData.tour_numeric_id 
+      ? `tour_${tourData.tour_numeric_id}` 
+      : `tour_${tourData.id.slice(-6)}` // Use last 6 chars of UUID as fallback
+    
     const tags = [
       'tour_orders',
-      `tour_${tourData.tour_numeric_id || 'UNKNOWN'}`, // Use 6-digit numeric ID with fallback
+      tourIdForTag,
       tourData.warehouse.code || 'WH001', // Use warehouse code from settings
       warehouseNumber // Use decoded warehouse number
     ]
