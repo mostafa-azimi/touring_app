@@ -580,7 +580,14 @@ export class TourFinalizationService {
     const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
     const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
     
+    // Extract SKUs from skuQuantities (new format) or fall back to legacy
+    const skuQuantities = workflowConfig?.skuQuantities || {}
+    const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0).length > 0 
+      ? Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
+      : tourData.selected_skus // Fallback to legacy
+    
     console.log(`Creating ${orderCount} multi-item batch orders...`)
+    console.log(`🎯 Using SKUs for Multi-Item Batch:`, workflowSkus)
     
     // Step 1: Create participant orders first (they already get multiple SKUs from helper method)
     const participantOrders = await this.createParticipantOrders(tourData, "MULTI")
@@ -591,7 +598,7 @@ export class TourFinalizationService {
     
     if (remainingOrdersNeeded > 0) {
       console.log(`Creating ${remainingOrdersNeeded} additional multi-item demo orders`)
-      demoOrders = await this.createMultiItemDemoOrders(tourData, "MULTI-DEMO", remainingOrdersNeeded)
+      demoOrders = await this.createMultiItemDemoOrders(tourData, "MULTI-DEMO", remainingOrdersNeeded, workflowSkus)
     }
     
     console.log(`✅ Multi-Item Batch completed: ${participantOrders.length} participant + ${demoOrders.length} demo orders`)
@@ -600,10 +607,10 @@ export class TourFinalizationService {
   /**
    * Helper method specifically for multi-item demo orders
    */
-  private async createMultiItemDemoOrders(tourData: TourData, orderPrefix: string, count: number): Promise<any[]> {
+  private async createMultiItemDemoOrders(tourData: TourData, orderPrefix: string, count: number, workflowSkus: string[]): Promise<any[]> {
     console.log(`Creating ${count} multi-item demo orders with celebrity names...`)
     
-    if (tourData.selected_skus.length === 0) {
+    if (workflowSkus.length === 0) {
       throw new Error("No SKUs selected for Multi-Item Demo Orders. Please select SKUs when creating the tour.")
     }
 
@@ -614,17 +621,17 @@ export class TourFinalizationService {
     for (let i = 0; i < count; i++) {
       const celebrity = celebrities[i] || { first: "Demo", last: `Customer ${i + 1}` }
       
-      // Create multi-item orders using selected SKUs
-      const numItems = Math.min(Math.floor(Math.random() * 3) + 2, tourData.selected_skus.length) // 2-4 items
+      // Create multi-item orders using workflow SKUs
+      const numItems = Math.min(Math.floor(Math.random() * 3) + 2, workflowSkus.length) // 2-4 items
       const lineItems = []
       
       for (let j = 0; j < numItems; j++) {
-        const skuIndex = (i + j) % tourData.selected_skus.length
+        const skuIndex = (i + j) % workflowSkus.length
         lineItems.push({
-          sku: tourData.selected_skus[skuIndex],
+          sku: workflowSkus[skuIndex],
           quantity: Math.floor(Math.random() * 3) + 1, // 1-3 quantity
           price: "12.00",
-          product_name: `Product ${tourData.selected_skus[skuIndex]}`,
+          product_name: `Product ${workflowSkus[skuIndex]}`,
           partner_line_item_id: `multi-${Date.now()}-${i + 1}-${j + 1}`,
           fulfillment_status: "pending",
           quantity_pending_fulfillment: Math.floor(Math.random() * 3) + 1,
