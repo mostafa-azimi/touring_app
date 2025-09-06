@@ -703,13 +703,26 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                         </div>
                         <Button
                           size="sm"
-                          variant="secondary"
-                          disabled={true}
-                          className="opacity-50"
-                          title="Purchase order cancellation temporarily disabled"
+                          variant={canceledWorkflows.has(`purchase-${workflow}`) ? "secondary" : "destructive"}
+                          onClick={() => cancelOrdersByWorkflow(workflow, 'purchase')}
+                          disabled={isCanceling || canceledWorkflows.has(`purchase-${workflow}`)}
                         >
-                          <AlertTriangle className="h-4 w-4" />
-                          Unavailable
+                          {canceledWorkflows.has(`purchase-${workflow}`) ? (
+                            <>
+                              <CheckCircle className="h-4 w-4" />
+                              Canceled
+                            </>
+                          ) : isCanceling && currentWorkflow === `purchase-${workflow}` ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              Canceling...
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="h-4 w-4" />
+                              Cancel
+                            </>
+                          )}
                         </Button>
                       </div>
                       
@@ -737,13 +750,27 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                   {(data.orders?.purchase_orders?.length || 0) > 0 && (
                     <div className="pt-4 border-t">
                       <Button
-                        variant="secondary"
-                        disabled={true}
-                        className="w-full opacity-50"
-                        title="Purchase order cancellation temporarily disabled"
+                        variant={canceledAllPurchase ? "secondary" : "destructive"}
+                        onClick={() => cancelAllOrders('purchase')}
+                        disabled={isCanceling || canceledAllPurchase}
+                        className="w-full"
                       >
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        Unavailable
+                        {canceledAllPurchase ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            All Purchase Orders Canceled
+                          </>
+                        ) : isCanceling ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                            Canceling All Purchase Orders...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Cancel All Purchase Orders
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}
