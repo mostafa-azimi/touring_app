@@ -89,28 +89,27 @@ export async function POST(request: NextRequest) {
               po_number: order.po_number || 'N/A'
             })
             
-            const poId = String(order.legacy_id)
-            
-            // Let's try to find what fields are actually available
-            // First attempt: try with just po_id to see what happens
+            // Use correct format based on ShipHero documentation:
+            // purchase_order_update(id: $id, data: { status: $status })
             query = `
               mutation {
-                purchase_order_update(data: {
-                  po_id: "${poId}"
-                }) {
+                purchase_order_update(
+                  id: "${order.id}"
+                  data: { status: "canceled" }
+                ) {
                   request_id
                   complexity
                   purchase_order {
                     id
                     legacy_id
                     po_number
-                    fulfillment_status
+                    status
                   }
                 }
               }
             `
             
-            console.log(`🔍 DEBUG: Using official purchase_order_update mutation:`, query)
+            console.log(`🔍 DEBUG: Using correct purchase_order_update mutation structure:`, query)
           } else if (type === 'sales') {
             // Update sales order fulfillment status
             query = `
