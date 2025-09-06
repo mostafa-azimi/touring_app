@@ -270,14 +270,20 @@ export function ViewToursPage() {
         // Refresh tours to get updated order information
         await fetchTours()
         
+        // Show success popup
+        const hasErrors = result.workflow_errors && result.workflow_errors.length > 0
+        toast({
+          title: hasErrors ? "⚠️ Tour Finalized with Warnings" : "🎉 Tour Finalized Successfully!",
+          description: hasErrors 
+            ? `Tour finalized with ${result.workflow_errors.length} workflow error(s). Created ${result.sales_orders?.length || 0} sales orders and ${result.purchase_orders?.length || 0} purchase orders.`
+            : `Tour finalized successfully! Created ${result.sales_orders?.length || 0} sales orders and ${result.purchase_orders?.length || 0} purchase orders.`,
+          variant: hasErrors ? "destructive" : "default",
+          duration: hasErrors ? 8000 : 6000, // Show errors longer
+        })
+        
         // selectedTour update logic removed - no longer using view details functionality
 
         // Finalization results popup removed - using tour summary instead
-      
-      toast({
-          title: "🎉 Tour Finalized Successfully!",
-          description: result.message,
-        })
       } else {
         throw new Error(result.message)
       }
@@ -286,9 +292,10 @@ export function ViewToursPage() {
       console.error('❌ ERROR finalizing tour:', error)
       console.error('❌ Error details:', JSON.stringify(error, null, 2))
       toast({
-        title: "Tour Finalization Failed",
+        title: "❌ Tour Finalization Failed",
         description: error.message || "Failed to finalize tour. Please try again.",
         variant: "destructive",
+        duration: 8000,
       })
     } finally {
       console.log('🏁 Finalization process complete, cleaning up state')

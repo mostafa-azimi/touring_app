@@ -631,6 +631,7 @@ export function ScheduleTourPage() {
           const period = parseInt(hour24) >= 12 ? 'PM' : 'AM'
           return `${hour12}:${minute} ${period}`
         })()} with ${participants.length} participant${participants.length > 1 ? "s" : ""}!`,
+        duration: 5000, // Show for 5 seconds
       })
 
             // Reset form
