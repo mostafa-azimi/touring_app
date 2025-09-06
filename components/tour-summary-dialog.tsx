@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -99,6 +99,79 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
   const [canceledAllPurchase, setCanceledAllPurchase] = useState(false)
   const [successfullyCanceledButtons, setSuccessfullyCanceledButtons] = useState<Set<string>>(new Set())
   const [entireTourCanceled, setEntireTourCanceled] = useState(false)
+
+  // Initialize button states based on actual order statuses when dialog opens
+  useEffect(() => {
+    if (!isOpen || !data?.orders) return
+
+    const canceledButtons = new Set<string>()
+    const salesOrders = data.orders.sales_orders || []
+    const purchaseOrders = data.orders.purchase_orders || []
+
+    // Check if all sales orders are canceled
+    const allSalesCanceled = salesOrders.length > 0 && salesOrders.every(order => 
+      order.fulfillment_status === 'on_hold' || order.fulfillment_status === 'canceled'
+    )
+    
+    // Check if all purchase orders are canceled  
+    const allPurchaseCanceled = purchaseOrders.length > 0 && purchaseOrders.every(order => 
+      order.fulfillment_status === 'canceled'
+    )
+
+    if (allSalesCanceled) {
+      setCanceledAllSales(true)
+      canceledButtons.add('all-sales')
+    }
+
+    if (allPurchaseCanceled) {
+      setCanceledAllPurchase(true)
+      canceledButtons.add('all-purchase')
+    }
+
+    // Check individual workflows
+    const salesByWorkflow = salesOrders.reduce((acc, order) => {
+      if (!acc[order.workflow]) acc[order.workflow] = []
+      acc[order.workflow].push(order)
+      return acc
+    }, {} as Record<string, typeof salesOrders>)
+
+    const purchaseByWorkflow = purchaseOrders.reduce((acc, order) => {
+      if (!acc[order.workflow]) acc[order.workflow] = []
+      acc[order.workflow].push(order)
+      return acc
+    }, {} as Record<string, typeof purchaseOrders>)
+
+    // Check each sales workflow
+    Object.entries(salesByWorkflow).forEach(([workflow, orders]) => {
+      const allWorkflowCanceled = orders.every(order => 
+        order.fulfillment_status === 'on_hold' || order.fulfillment_status === 'canceled'
+      )
+      if (allWorkflowCanceled) {
+        canceledButtons.add(`sales-${workflow}`)
+      }
+    })
+
+    // Check each purchase workflow
+    Object.entries(purchaseByWorkflow).forEach(([workflow, orders]) => {
+      const allWorkflowCanceled = orders.every(order => 
+        order.fulfillment_status === 'canceled'
+      )
+      if (allWorkflowCanceled) {
+        canceledButtons.add(`purchase-${workflow}`)
+      }
+    })
+
+    // Check if entire tour is canceled
+    const allOrdersCanceled = (salesOrders.length === 0 || allSalesCanceled) && 
+                             (purchaseOrders.length === 0 || allPurchaseCanceled)
+    
+    if (allOrdersCanceled && (salesOrders.length > 0 || purchaseOrders.length > 0)) {
+      setEntireTourCanceled(true)
+      canceledButtons.add('entire-tour')
+    }
+
+    setSuccessfullyCanceledButtons(canceledButtons)
+  }, [isOpen, data?.orders])
   const [progressStatus, setProgressStatus] = useState<{
     current: number
     total: number
