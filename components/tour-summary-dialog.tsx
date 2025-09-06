@@ -271,7 +271,10 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               successCount++
             } else {
               console.error(`❌ CLIENT DEBUG: Purchase order cancellation failed:`, result)
-              throw new Error(result.errors?.[0]?.error || 'Failed to cancel purchase order')
+              console.error(`❌ CLIENT DEBUG: Specific error details:`, result.errors)
+              const errorMessage = result.errors?.[0]?.error || 'Failed to cancel purchase order'
+              console.error(`❌ CLIENT DEBUG: Error message:`, errorMessage)
+              throw new Error(errorMessage)
             }
           }
         } catch (orderError: any) {
@@ -411,7 +414,10 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               successCount++
             } else {
               console.error(`❌ CLIENT DEBUG (cancelAll): Purchase order cancellation failed:`, result)
-              throw new Error(result.errors?.[0]?.error || 'Failed to cancel purchase order')
+              console.error(`❌ CLIENT DEBUG (cancelAll): Specific error details:`, result.errors)
+              const errorMessage = result.errors?.[0]?.error || 'Failed to cancel purchase order'
+              console.error(`❌ CLIENT DEBUG (cancelAll): Error message:`, errorMessage)
+              throw new Error(errorMessage)
             }
           }
         } catch (orderError: any) {
