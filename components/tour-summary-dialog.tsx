@@ -114,10 +114,10 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
   }
 
   // Helper functions for progress tracking
-  const updateProgress = (message: string, logs: string[] = [], errors: string[] = []) => {
+  const updateProgress = (message: string, logs: string[] = [], errors: string[] = [], incrementCounter: boolean = false) => {
     setProgressStatus(prev => ({
       ...prev,
-      current: prev.current + 1,
+      current: incrementCounter ? prev.current + 1 : prev.current,
       message,
       logs: [...prev.logs, ...logs],
       errors: [...prev.errors, ...errors]
@@ -227,7 +227,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             
             const cancelResult = await cancelResponse.json()
             if (cancelResult.success) {
-              updateProgress(`✅ ${order.order_number}: Canceled`, [`✅ ${order.order_number}: Canceled`])
+              updateProgress(`✅ ${order.order_number}: Canceled`, [`✅ ${order.order_number}: Canceled`], [], true)
               successCount++
             } else {
               throw new Error(cancelResult.errors?.[0]?.error || 'Failed to cancel sales order')
@@ -250,7 +250,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
 
             const result = await response.json()
             if (result.success) {
-              updateProgress(`✅ ${order.po_number}: Canceled`, [`✅ ${order.po_number}: Canceled`])
+              updateProgress(`✅ ${order.po_number}: Canceled`, [`✅ ${order.po_number}: Canceled`], [], true)
               successCount++
             } else {
               throw new Error(result.errors?.[0]?.error || 'Failed to cancel purchase order')
@@ -258,7 +258,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
           }
         } catch (orderError: any) {
           const errorMessage = `❌ Error processing ${orderType} order ${order.order_number || order.po_number}: ${orderError.message}`
-          updateProgress(`❌ Failed to process ${order.order_number || order.po_number}`, [], [errorMessage])
+          updateProgress(`❌ Failed to process ${order.order_number || order.po_number}`, [], [errorMessage], true)
           console.error(errorMessage)
           errorCount++
         }
@@ -436,7 +436,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
@@ -556,7 +556,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                           Cancel {workflowLabels[workflow]?.label || workflow}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                         {orders.map((order) => (
                           <div key={order.order_number} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                             <div>
@@ -628,7 +628,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                           Cancel {workflowLabels[workflow]?.label || workflow}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                         {orders.map((order) => (
                           <div key={order.po_number} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                             <div>
@@ -670,7 +670,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
       {/* Progress Dialog */}
       {showProgressDialog && (
         <Dialog open={showProgressDialog} onOpenChange={() => setShowProgressDialog(false)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl w-[90vw] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <RefreshCw className="h-5 w-5 animate-spin" />
