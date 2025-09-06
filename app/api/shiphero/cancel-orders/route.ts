@@ -58,10 +58,18 @@ export async function POST(request: NextRequest) {
             })
             
             // Use purchase_order_update to set status to "canceled" (official approach)
+            // Ensure po_id is a string representation of the numeric legacy_id
+            const poId = String(order.legacy_id)
+            console.log(`🔍 DEBUG: Converting legacy_id to string for po_id:`, {
+              original: order.legacy_id,
+              converted: poId,
+              type: typeof poId
+            })
+            
             query = `
               mutation {
                 purchase_order_update(data: {
-                  po_id: "${order.legacy_id}"
+                  po_id: "${poId}"
                   fulfillment_status: "canceled"
                 }) {
                   request_id
