@@ -861,7 +861,7 @@ export class TourFinalizationService {
         product_name: sku, // Use SKU as product name
         fulfillment_status: "Tour_Orders",
         quantity_pending_fulfillment: skuQuantities[sku] || 1,
-        warehouse_id: tourData.warehouse.shiphero_id || tourData.warehouse.id
+        warehouse_id: tourData.warehouse.shiphero_warehouse_id
       }))
       
       // Create order data - EXACTLY like adhoc sales order
