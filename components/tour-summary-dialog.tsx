@@ -17,7 +17,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react"
 
 interface TourSummaryData {
@@ -62,9 +63,76 @@ interface TourSummaryDialogProps {
 
 export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogProps) {
   const [isCanceling, setIsCanceling] = useState(false)
+  const [showProgressDialog, setShowProgressDialog] = useState(false)
+  const [progressStatus, setProgressStatus] = useState<{
+    currentStep: string
+    completedSteps: string[]
+    totalSteps: number
+    currentStepIndex: number
+    errors: string[]
+  }>({
+    currentStep: '',
+    completedSteps: [],
+    totalSteps: 0,
+    currentStepIndex: 0,
+    errors: []
+  })
   const { toast } = useToast()
 
   if (!data) return null
+
+  // Helper functions for progress tracking
+  const updateProgress = (currentStep: string, completedSteps: string[] = [], errors: string[] = []) => {
+    setProgressStatus(prev => ({
+      ...prev,
+      currentStep,
+      completedSteps: [...prev.completedSteps, ...completedSteps],
+      currentStepIndex: prev.completedSteps.length + completedSteps.length,
+      errors: [...prev.errors, ...errors]
+    }))
+    
+    // Enhanced console logging
+    console.log(`🔄 PROGRESS: ${currentStep}`)
+    if (completedSteps.length > 0) {
+      completedSteps.forEach(step => console.log(`✅ COMPLETED: ${step}`))
+    }
+    if (errors.length > 0) {
+      errors.forEach(error => console.error(`❌ ERROR: ${error}`))
+    }
+  }
+
+  const initializeProgress = (totalSteps: number, initialStep: string) => {
+    setProgressStatus({
+      currentStep: initialStep,
+      completedSteps: [],
+      totalSteps,
+      currentStepIndex: 0,
+      errors: []
+    })
+    setShowProgressDialog(true)
+    console.log(`🚀 STARTING CANCELLATION PROCESS: ${totalSteps} orders to process`)
+    console.log(`📋 STEP 1/${totalSteps}: ${initialStep}`)
+  }
+
+  const completeProgress = (successCount: number, errorCount: number, orderType: 'sales' | 'purchase') => {
+    const finalMessage = errorCount === 0 
+      ? `All ${successCount} ${orderType} orders processed successfully!`
+      : `${successCount} successful, ${errorCount} failed`
+    
+    updateProgress(`✅ COMPLETE: ${finalMessage}`)
+    console.log(`🏁 CANCELLATION COMPLETE: ${finalMessage}`)
+    
+    setTimeout(() => {
+      setShowProgressDialog(false)
+      setProgressStatus({
+        currentStep: '',
+        completedSteps: [],
+        totalSteps: 0,
+        currentStepIndex: 0,
+        errors: []
+      })
+    }, 2000) // Show completion for 2 seconds
+  }
 
   // Helper function to get ShipHero access token from database (with localStorage fallback)
   const getAccessToken = async () => {
@@ -125,6 +193,10 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
         })
         return
       }
+
+      // Initialize progress tracking
+      const workflowLabel = workflowLabels[workflow]?.label || workflow
+      initializeProgress(ordersToProcess.length, `Processing ${workflowLabel} ${orderType} orders...`)
 
       let successCount = 0
       let errorCount = 0
@@ -197,6 +269,9 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
           errorCount++
         }
       }
+
+      // Complete progress tracking
+      completeProgress(successCount, errorCount, orderType)
 
       if (successCount === ordersToProcess.length) {
         toast({
@@ -707,6 +782,74 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               Close
             </Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Progress Dialog */}
+    <Dialog open={showProgressDialog} onOpenChange={() => {}}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <RefreshCw className={`h-5 w-5 ${progressStatus.currentStep.includes('COMPLETE') ? 'text-green-600' : 'animate-spin text-blue-600'}`} />
+            Processing Orders
+          </DialogTitle>
+          <DialogDescription>
+            {progressStatus.currentStep.includes('COMPLETE') 
+              ? 'Cancellation process completed!'
+              : 'Please wait while we process your request...'}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          {/* Progress Bar */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Progress</span>
+              <span>{progressStatus.currentStepIndex}/{progressStatus.totalSteps}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ 
+                  width: `${progressStatus.totalSteps > 0 ? (progressStatus.currentStepIndex / progressStatus.totalSteps) * 100 : 0}%` 
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Current Step */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-gray-900">
+              {progressStatus.currentStep}
+            </div>
+          </div>
+
+          {/* Completed Steps */}
+          {progressStatus.completedSteps.length > 0 && (
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              <div className="text-xs font-medium text-gray-700 mb-1">Completed:</div>
+              {progressStatus.completedSteps.slice(-5).map((step, index) => (
+                <div key={index} className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  {step}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Errors */}
+          {progressStatus.errors.length > 0 && (
+            <div className="space-y-1 max-h-24 overflow-y-auto">
+              <div className="text-xs font-medium text-red-700 mb-1">Errors:</div>
+              {progressStatus.errors.slice(-3).map((error, index) => (
+                <div key={index} className="text-xs text-red-600 flex items-center gap-1">
+                  <XCircle className="h-3 w-3" />
+                  {error}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
