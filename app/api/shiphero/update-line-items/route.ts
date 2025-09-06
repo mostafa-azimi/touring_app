@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
             line_items: [
               ${line_items.map((item: any) => `{
                 id: "${item.id}"
-                quantity: ${item.quantity}
+                quantity_pending_fulfillment: ${item.quantity}
               }`).join(',')}
             ]
           }

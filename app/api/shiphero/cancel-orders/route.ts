@@ -8,61 +8,88 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access token required' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { orders, type } = body // orders: array of {id, legacy_id}, type: 'sales' or 'purchase'
+  const body = await request.json()
+  const { orders, type, new_status, use_cancel_mutation } = body // orders: array of {id, legacy_id}, type: 'sales' or 'purchase', new_status: optional, use_cancel_mutation: boolean
 
-    console.log(`🚫 Canceling ${type} orders:`, orders.map((o: any) => o.legacy_id || o.id))
+  const targetStatus = new_status || (type === 'sales' ? 'on_hold' : 'Canceled')
+  
+  if (use_cancel_mutation && type === 'sales') {
+    console.log(`🚫 Canceling ${type} orders using order_cancel mutation:`, orders.map((o: any) => o.legacy_id || o.id))
+  } else {
+    console.log(`🚫 Setting ${type} orders to ${targetStatus}:`, orders.map((o: any) => o.legacy_id || o.id))
+  }
 
     const results = []
     const errors = []
 
     for (const order of orders) {
-      try {
-        let query: string
-        
-        if (type === 'sales') {
-          // Update sales order fulfillment status to 'Canceled'
-          query = `
-            mutation {
-              order_update(
-                data: {
-                  order_id: "${order.id}"
-                  fulfillment_status: "Canceled"
-                }
-              ) {
-                request_id
-                complexity
-                order {
-                  id
-                  legacy_id
-                  order_number
-                  fulfillment_status
-                }
-              }
-            }
-          `
-        } else {
-          // Update purchase order fulfillment status to 'Canceled'
-          query = `
-            mutation {
-              purchase_order_update(
-                data: {
-                  purchase_order_id: "${order.id}"
-                  fulfillment_status: "Canceled"
-                }
-              ) {
-                request_id
-                complexity
-                purchase_order {
-                  id
-                  legacy_id
-                  po_number
-                  fulfillment_status
+        try {
+          let query: string
+          
+          if (use_cancel_mutation && type === 'sales') {
+            // Use order_cancel mutation for sales orders
+            query = `
+              mutation {
+                order_cancel(
+                  data: {
+                    order_id: "${order.id}"
+                    reason: "Tour canceled"
+                  }
+                ) {
+                  request_id
+                  complexity
+                  order {
+                    id
+                    legacy_id
+                    order_number
+                    fulfillment_status
+                  }
                 }
               }
-            }
-          `
-        }
+            `
+          } else if (type === 'sales') {
+            // Update sales order fulfillment status
+            query = `
+              mutation {
+                order_update(
+                  data: {
+                    order_id: "${order.id}"
+                    fulfillment_status: "${targetStatus}"
+                  }
+                ) {
+                  request_id
+                  complexity
+                  order {
+                    id
+                    legacy_id
+                    order_number
+                    fulfillment_status
+                  }
+                }
+              }
+            `
+          } else {
+            // Update purchase order fulfillment status
+            query = `
+              mutation {
+                purchase_order_update(
+                  data: {
+                    purchase_order_id: "${order.id}"
+                    fulfillment_status: "${targetStatus}"
+                  }
+                ) {
+                  request_id
+                  complexity
+                  purchase_order {
+                    id
+                    legacy_id
+                    po_number
+                    fulfillment_status
+                  }
+                }
+              }
+            `
+          }
 
         console.log(`🔄 Canceling ${type} order ${order.legacy_id || order.id}...`)
 
