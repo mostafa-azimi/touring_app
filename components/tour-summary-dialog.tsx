@@ -106,18 +106,18 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
       setIsCanceling(true)
       const accessToken = await getAccessToken()
 
-      let ordersToCancel
+      let ordersToProcess
       if (orderType === 'sales') {
-        ordersToCancel = data.orders.sales_orders
+        ordersToProcess = data.orders.sales_orders
           .filter(order => order.workflow === workflow)
-          .map(order => ({ id: order.shiphero_id, legacy_id: order.legacy_id }))
+          .map(order => ({ id: order.shiphero_id, legacy_id: order.legacy_id, order_number: order.order_number }))
       } else {
-        ordersToCancel = data.orders.purchase_orders
+        ordersToProcess = data.orders.purchase_orders
           .filter(order => order.workflow === workflow)
-          .map(order => ({ id: order.shiphero_id, legacy_id: order.legacy_id }))
+          .map(order => ({ id: order.shiphero_id, legacy_id: order.legacy_id, po_number: order.po_number }))
       }
 
-      if (ordersToCancel.length === 0) {
+      if (ordersToProcess.length === 0) {
         toast({
           title: "No Orders Found",
           description: `No ${orderType} orders found for ${workflow} workflow.`,
@@ -126,38 +126,104 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
         return
       }
 
-      const response = await fetch('/api/shiphero/cancel-orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-          orders: ordersToCancel,
-          type: orderType
-        })
-      })
+      let successCount = 0
+      let errorCount = 0
 
-      const result = await response.json()
+      for (const order of ordersToProcess) {
+        try {
+          if (orderType === 'sales') {
+            // For sales orders: Set pending fulfillment quantities to 0
+            console.log(`🔄 Setting pending fulfillment to 0 for sales order: ${order.order_number}`)
+            
+            // First get order details to get line item IDs
+            const detailsResponse = await fetch(`/api/shiphero/order-details?order_id=${order.id}`, {
+              headers: { 'Authorization': `Bearer ${accessToken}` }
+            })
+            
+            if (!detailsResponse.ok) {
+              throw new Error('Failed to get order details')
+            }
+            
+            const detailsResult = await detailsResponse.json()
+            const lineItems = detailsResult.order.line_items.edges.map((edge: any) => ({
+              id: edge.node.id,
+              quantity: 0 // Set pending fulfillment to 0
+            }))
+            
+            // Update line items to set pending fulfillment to 0
+            const updateResponse = await fetch('/api/shiphero/update-line-items', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({
+                order_id: order.id,
+                line_items: lineItems
+              })
+            })
+            
+            const updateResult = await updateResponse.json()
+            if (updateResult.success) {
+              console.log(`✅ Successfully set pending fulfillment to 0 for order: ${order.order_number}`)
+              successCount++
+            } else {
+              throw new Error(updateResult.message || 'Failed to update line items')
+            }
+            
+          } else {
+            // For purchase orders: Keep the old method (change status to Canceled)
+            const response = await fetch('/api/shiphero/cancel-orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({
+                orders: [order],
+                type: orderType
+              })
+            })
 
-      if (result.success) {
+            const result = await response.json()
+            if (result.success) {
+              successCount++
+            } else {
+              throw new Error(result.errors?.[0]?.error || 'Failed to cancel purchase order')
+            }
+          }
+        } catch (orderError) {
+          console.error(`❌ Error processing ${orderType} order ${order.order_number || order.po_number}:`, orderError)
+          errorCount++
+        }
+      }
+
+      if (successCount === ordersToProcess.length) {
         toast({
-          title: "Orders Canceled",
-          description: `Successfully canceled ${result.canceled_count} ${orderType} orders for ${workflow} workflow.`,
+          title: orderType === 'sales' ? "Orders Prevented from Fulfillment" : "Orders Canceled",
+          description: orderType === 'sales' 
+            ? `Successfully set pending fulfillment to 0 for ${successCount} sales orders in ${workflow} workflow.`
+            : `Successfully canceled ${successCount} purchase orders for ${workflow} workflow.`,
+        })
+      } else if (successCount > 0) {
+        toast({
+          title: "Partial Success",
+          description: `Processed ${successCount}/${ordersToProcess.length} ${orderType} orders. ${errorCount} failed.`,
+          variant: "destructive"
         })
       } else {
         toast({
-          title: "Partial Cancellation",
-          description: `Canceled ${result.canceled_count}/${result.total_count} ${orderType} orders. ${result.errors.length} failed.`,
+          title: "Processing Failed",
+          description: `Failed to process any ${orderType} orders. Please try again.`,
           variant: "destructive"
         })
       }
 
     } catch (error) {
-      console.error('Error canceling orders:', error)
+      console.error('Error processing orders:', error)
       toast({
-        title: "Cancellation Failed",
-        description: "Failed to cancel orders. Please try again.",
+        title: "Processing Failed",
+        description: "Failed to process orders. Please try again.",
         variant: "destructive"
       })
     } finally {
@@ -171,60 +237,128 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
       setIsCanceling(true)
       const accessToken = await getAccessToken()
 
-      let ordersToCancel
+      let ordersToProcess
       if (orderType === 'sales') {
-        ordersToCancel = data.orders.sales_orders.map(order => ({ 
+        ordersToProcess = data.orders.sales_orders.map(order => ({ 
           id: order.shiphero_id, 
-          legacy_id: order.legacy_id 
+          legacy_id: order.legacy_id,
+          order_number: order.order_number
         }))
       } else {
-        ordersToCancel = data.orders.purchase_orders.map(order => ({ 
+        ordersToProcess = data.orders.purchase_orders.map(order => ({ 
           id: order.shiphero_id, 
-          legacy_id: order.legacy_id 
+          legacy_id: order.legacy_id,
+          po_number: order.po_number
         }))
       }
 
-      if (ordersToCancel.length === 0) {
+      if (ordersToProcess.length === 0) {
         toast({
           title: "No Orders Found",
-          description: `No ${orderType} orders found to cancel.`,
+          description: `No ${orderType} orders found to process.`,
           variant: "destructive"
         })
         return
       }
 
-      const response = await fetch('/api/shiphero/cancel-orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-          orders: ordersToCancel,
-          type: orderType
-        })
-      })
+      let successCount = 0
+      let errorCount = 0
 
-      const result = await response.json()
+      for (const order of ordersToProcess) {
+        try {
+          if (orderType === 'sales') {
+            // For sales orders: Set pending fulfillment quantities to 0
+            console.log(`🔄 Setting pending fulfillment to 0 for sales order: ${order.order_number}`)
+            
+            // First get order details to get line item IDs
+            const detailsResponse = await fetch(`/api/shiphero/order-details?order_id=${order.id}`, {
+              headers: { 'Authorization': `Bearer ${accessToken}` }
+            })
+            
+            if (!detailsResponse.ok) {
+              throw new Error('Failed to get order details')
+            }
+            
+            const detailsResult = await detailsResponse.json()
+            const lineItems = detailsResult.order.line_items.edges.map((edge: any) => ({
+              id: edge.node.id,
+              quantity: 0 // Set pending fulfillment to 0
+            }))
+            
+            // Update line items to set pending fulfillment to 0
+            const updateResponse = await fetch('/api/shiphero/update-line-items', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({
+                order_id: order.id,
+                line_items: lineItems
+              })
+            })
+            
+            const updateResult = await updateResponse.json()
+            if (updateResult.success) {
+              console.log(`✅ Successfully set pending fulfillment to 0 for order: ${order.order_number}`)
+              successCount++
+            } else {
+              throw new Error(updateResult.message || 'Failed to update line items')
+            }
+            
+          } else {
+            // For purchase orders: Keep the old method (change status to Canceled)
+            const response = await fetch('/api/shiphero/cancel-orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({
+                orders: [order],
+                type: orderType
+              })
+            })
 
-      if (result.success) {
+            const result = await response.json()
+            if (result.success) {
+              successCount++
+            } else {
+              throw new Error(result.errors?.[0]?.error || 'Failed to cancel purchase order')
+            }
+          }
+        } catch (orderError) {
+          console.error(`❌ Error processing ${orderType} order ${order.order_number || order.po_number}:`, orderError)
+          errorCount++
+        }
+      }
+
+      if (successCount === ordersToProcess.length) {
         toast({
-          title: "All Orders Canceled",
-          description: `Successfully canceled all ${result.canceled_count} ${orderType} orders.`,
+          title: orderType === 'sales' ? "All Orders Prevented from Fulfillment" : "All Orders Canceled",
+          description: orderType === 'sales' 
+            ? `Successfully set pending fulfillment to 0 for all ${successCount} sales orders.`
+            : `Successfully canceled all ${successCount} purchase orders.`,
+        })
+      } else if (successCount > 0) {
+        toast({
+          title: "Partial Success",
+          description: `Processed ${successCount}/${ordersToProcess.length} ${orderType} orders. ${errorCount} failed.`,
+          variant: "destructive"
         })
       } else {
         toast({
-          title: "Partial Cancellation",
-          description: `Canceled ${result.canceled_count}/${result.total_count} ${orderType} orders. ${result.errors.length} failed.`,
+          title: "Processing Failed",
+          description: `Failed to process any ${orderType} orders. Please try again.`,
           variant: "destructive"
         })
       }
 
     } catch (error) {
-      console.error('Error canceling all orders:', error)
+      console.error('Error processing all orders:', error)
       toast({
-        title: "Cancellation Failed",
-        description: "Failed to cancel orders. Please try again.",
+        title: "Processing Failed",
+        description: "Failed to process orders. Please try again.",
         variant: "destructive"
       })
     } finally {
@@ -465,7 +599,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                   Order Cancellation
                 </CardTitle>
                 <CardDescription className="text-red-700">
-                  Cancel orders by workflow or cancel all orders at once. This will update the fulfillment status to "Canceled" in ShipHero.
+                  Prevent fulfillment by workflow or for all orders at once. Sales orders will have pending fulfillment quantities set to 0. Purchase orders will be canceled.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -511,7 +645,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                         onClick={() => cancelAllOrders('sales')}
                       >
                         <XCircle className="h-4 w-4 mr-2" />
-                        Cancel All Sales Orders ({data.orders.sales_orders.length})
+                        Prevent All Sales Order Fulfillment ({data.orders.sales_orders.length})
                       </Button>
                     </div>
                   </div>
