@@ -108,6 +108,11 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
     errors: []
   })
 
+  // Early return if data is null or undefined
+  if (!data) {
+    return null
+  }
+
   // Helper functions for progress tracking
   const updateProgress = (message: string, logs: string[] = [], errors: string[] = []) => {
     setProgressStatus(prev => ({
@@ -176,11 +181,11 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
 
       let ordersToProcess
       if (orderType === 'sales') {
-        ordersToProcess = data.orders.sales_orders
+        ordersToProcess = (data.orders?.sales_orders || [])
           .filter(order => order.workflow === workflow)
           .map(order => ({ id: order.shiphero_id, legacy_id: order.legacy_id, order_number: order.order_number }))
       } else {
-        ordersToProcess = data.orders.purchase_orders
+        ordersToProcess = (data.orders?.purchase_orders || [])
           .filter(order => order.workflow === workflow)
           .map(order => ({ id: order.shiphero_id, legacy_id: order.legacy_id, po_number: order.po_number }))
       }
@@ -301,13 +306,13 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
 
       let ordersToProcess
       if (orderType === 'sales') {
-        ordersToProcess = data.orders.sales_orders.map(order => ({ 
+        ordersToProcess = (data.orders?.sales_orders || []).map(order => ({ 
           id: order.shiphero_id, 
           legacy_id: order.legacy_id,
           order_number: order.order_number
         }))
       } else {
-        ordersToProcess = data.orders.purchase_orders.map(order => ({ 
+        ordersToProcess = (data.orders?.purchase_orders || []).map(order => ({ 
           id: order.shiphero_id, 
           legacy_id: order.legacy_id,
           po_number: order.po_number
@@ -412,14 +417,14 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
     }
   }
 
-  // Group orders by workflow
-  const salesOrdersByWorkflow = data.orders.sales_orders.reduce((acc, order) => {
+  // Group orders by workflow (with null checks)
+  const salesOrdersByWorkflow = (data.orders?.sales_orders || []).reduce((acc, order) => {
     if (!acc[order.workflow]) acc[order.workflow] = []
     acc[order.workflow].push(order)
     return acc
   }, {} as Record<string, typeof data.orders.sales_orders>)
 
-  const purchaseOrdersByWorkflow = data.orders.purchase_orders.reduce((acc, order) => {
+  const purchaseOrdersByWorkflow = (data.orders?.purchase_orders || []).reduce((acc, order) => {
     if (!acc[order.workflow]) acc[order.workflow] = []
     acc[order.workflow].push(order)
     return acc
@@ -519,12 +524,12 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             </Card>
 
             {/* Sales Orders */}
-            {data.orders.sales_orders.length > 0 && (
+            {(data.orders?.sales_orders?.length || 0) > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <ShoppingCart className="h-5 w-5" />
-                    Sales Orders ({data.orders.sales_orders.length})
+                    Sales Orders ({data.orders?.sales_orders?.length || 0})
                   </CardTitle>
                   <CardDescription>
                     Fulfillment workflow orders for tour participants
@@ -573,7 +578,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                     </div>
                   ))}
                   
-                  {data.orders.sales_orders.length > 0 && (
+                  {(data.orders?.sales_orders?.length || 0) > 0 && (
                     <div className="pt-4 border-t">
                       <Button
                         variant="destructive"
@@ -591,12 +596,12 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             )}
 
             {/* Purchase Orders */}
-            {data.orders.purchase_orders.length > 0 && (
+            {(data.orders?.purchase_orders?.length || 0) > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Package className="h-5 w-5" />
-                    Purchase Orders ({data.orders.purchase_orders.length})
+                    Purchase Orders ({data.orders?.purchase_orders?.length || 0})
                   </CardTitle>
                   <CardDescription>
                     Inbound workflow orders for inventory receiving
@@ -642,7 +647,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                     </div>
                   ))}
                   
-                  {data.orders.purchase_orders.length > 0 && (
+                  {(data.orders?.purchase_orders?.length || 0) > 0 && (
                     <div className="pt-4 border-t">
                       <Button
                         variant="destructive"
