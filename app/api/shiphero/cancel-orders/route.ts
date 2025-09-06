@@ -51,6 +51,12 @@ export async function POST(request: NextRequest) {
             `
           } else if (use_cancel_mutation && type === 'purchase') {
             // Use purchase_order_cancel mutation for purchase orders
+            console.log(`🔍 DEBUG: Purchase order data for cancellation:`, {
+              id: order.id,
+              legacy_id: order.legacy_id,
+              po_number: order.po_number || 'N/A'
+            })
+            
             query = `
               mutation {
                 purchase_order_cancel(
@@ -63,6 +69,8 @@ export async function POST(request: NextRequest) {
                 }
               }
             `
+            
+            console.log(`🔍 DEBUG: Purchase order cancel GraphQL query:`, query)
           } else if (type === 'sales') {
             // Update sales order fulfillment status
             query = `
@@ -123,6 +131,8 @@ export async function POST(request: NextRequest) {
         }
 
         const result = await response.json()
+        
+        console.log(`🔍 DEBUG: ShipHero API response for ${type} order ${order.legacy_id || order.id}:`, JSON.stringify(result, null, 2))
         
         if (result.errors && result.errors.length > 0) {
           console.error(`❌ GraphQL errors for ${type} order ${order.legacy_id}:`, result.errors)
