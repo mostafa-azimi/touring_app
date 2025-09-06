@@ -257,7 +257,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                 'Authorization': `Bearer ${accessToken}`
               },
               body: JSON.stringify({
-                orders: [{ id: order.id, legacy_id: order.legacy_id }],
+                orders: [{ id: order.shiphero_id, legacy_id: order.legacy_id }],
                 type: orderType,
                 use_cancel_mutation: true // Use purchase_order_cancel mutation
               })
@@ -340,7 +340,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
         ordersToProcess = (data.orders?.purchase_orders || []).map(order => ({ 
           id: order.shiphero_id, 
           legacy_id: order.legacy_id,
-          po_number: order.po_number
+          po_number: order.po_number,
+          shiphero_id: order.shiphero_id
         }))
       }
 
