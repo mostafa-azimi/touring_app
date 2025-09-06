@@ -428,56 +428,76 @@ export class TourFinalizationService {
       
       // Track recipient index across all workflows
       let recipientIndex = 0
+      const workflowErrors: string[] = []
 
-      // Execute each selected workflow
+      // Execute each selected workflow with individual error handling
       for (const option of selectedOptions) {
         console.log(`\n🔄 Executing workflow: ${option}`)
         
-        switch (option) {
-          case "standard_receiving":
-            console.log("Executing: Standard Receiving Workflow")
-            await this.createStandardReceivingWorkflow(tourData)
-            break
-            
-          case "receive_to_light":
-            console.log("Executing: Receive to Light Workflow") 
-            await this.createReceiveToLightWorkflowOrders(tourData)
-            break
-            
-          case "pack_to_light":
-            console.log("Executing: Pack to Light Workflow")
-            const p2lOrderCount = workflowOrderCounts[option] || 5
-            const p2lRecipients = masterRecipients.slice(recipientIndex, recipientIndex + p2lOrderCount)
-            await this.createPackToLightWorkflowOrders(tourData, p2lRecipients)
-            recipientIndex += p2lOrderCount
-            break
-            
-          case "bulk_shipping":
-            console.log("Executing: Bulk Shipping Workflow")
-            const bshipOrderCount = workflowOrderCounts[option] || 5
-            const bshipRecipients = masterRecipients.slice(recipientIndex, recipientIndex + bshipOrderCount)
-            await this.createBulkShippingSOs(tourData, bshipRecipients)
-            recipientIndex += bshipOrderCount
-            break
-            
-          case "single_item_batch":
-            console.log("Executing: Single-Item Batch Workflow")
-            const sibOrderCount = workflowOrderCounts[option] || 5
-            const sibRecipients = masterRecipients.slice(recipientIndex, recipientIndex + sibOrderCount)
-            await this.createSingleItemBatchSOs(tourData, sibRecipients)
-            recipientIndex += sibOrderCount
-            break
-            
-          case "multi_item_batch":
-            console.log("Executing: Multi-Item Batch Workflow")
-            const mibOrderCount = workflowOrderCounts[option] || 5
-            const mibRecipients = masterRecipients.slice(recipientIndex, recipientIndex + mibOrderCount)
-            await this.createMultiItemBatchSOs(tourData, mibRecipients)
-            recipientIndex += mibOrderCount
-            break
-            
-          default:
-            console.warn(`⚠️ Unknown workflow option: ${option}`)
+        try {
+          switch (option) {
+            case "standard_receiving":
+              console.log("Executing: Standard Receiving Workflow")
+              await this.createStandardReceivingWorkflow(tourData)
+              console.log("✅ Standard Receiving Workflow completed successfully")
+              break
+              
+            case "receive_to_light":
+              console.log("Executing: Receive to Light Workflow") 
+              await this.createReceiveToLightWorkflowOrders(tourData)
+              console.log("✅ Receive to Light Workflow completed successfully")
+              break
+              
+            case "pack_to_light":
+              console.log("Executing: Pack to Light Workflow")
+              const p2lOrderCount = workflowOrderCounts[option] || 5
+              const p2lRecipients = masterRecipients.slice(recipientIndex, recipientIndex + p2lOrderCount)
+              await this.createPackToLightWorkflowOrders(tourData, p2lRecipients)
+              recipientIndex += p2lOrderCount
+              console.log("✅ Pack to Light Workflow completed successfully")
+              break
+              
+            case "bulk_shipping":
+              console.log("Executing: Bulk Shipping Workflow")
+              const bshipOrderCount = workflowOrderCounts[option] || 5
+              const bshipRecipients = masterRecipients.slice(recipientIndex, recipientIndex + bshipOrderCount)
+              await this.createBulkShippingSOs(tourData, bshipRecipients)
+              recipientIndex += bshipOrderCount
+              console.log("✅ Bulk Shipping Workflow completed successfully")
+              break
+              
+            case "single_item_batch":
+              console.log("Executing: Single-Item Batch Workflow")
+              const sibOrderCount = workflowOrderCounts[option] || 5
+              const sibRecipients = masterRecipients.slice(recipientIndex, recipientIndex + sibOrderCount)
+              await this.createSingleItemBatchSOs(tourData, sibRecipients)
+              recipientIndex += sibOrderCount
+              console.log("✅ Single-Item Batch Workflow completed successfully")
+              break
+              
+            case "multi_item_batch":
+              console.log("Executing: Multi-Item Batch Workflow")
+              const mibOrderCount = workflowOrderCounts[option] || 5
+              const mibRecipients = masterRecipients.slice(recipientIndex, recipientIndex + mibOrderCount)
+              await this.createMultiItemBatchSOs(tourData, mibRecipients)
+              recipientIndex += mibOrderCount
+              console.log("✅ Multi-Item Batch Workflow completed successfully")
+              break
+              
+            default:
+              console.warn(`⚠️ Unknown workflow option: ${option}`)
+          }
+        } catch (workflowError: any) {
+          const errorMessage = `${option} workflow failed: ${workflowError.message}`
+          console.error(`❌ ${errorMessage}`)
+          workflowErrors.push(errorMessage)
+          
+          // For fulfillment workflows, still increment recipient index to keep distribution consistent
+          if (['pack_to_light', 'bulk_shipping', 'single_item_batch', 'multi_item_batch'].includes(option)) {
+            const orderCount = workflowOrderCounts[option] || 5
+            recipientIndex += orderCount
+            console.log(`⚠️ Skipping ${orderCount} recipients due to ${option} failure`)
+          }
         }
       }
 
@@ -486,7 +506,18 @@ export class TourFinalizationService {
       // await this.saveInstructionGuide(tourId, instructionGuide)
       const instructionGuide = "Instruction guide generation temporarily disabled."
 
-      console.log('✅ Tour finalization completed successfully!')
+      // Determine overall success status
+      const hasErrors = workflowErrors.length > 0
+      const successfulWorkflows = selectedOptions.length - workflowErrors.length
+      
+      if (hasErrors) {
+        console.log(`⚠️ Tour finalization completed with ${workflowErrors.length} workflow error(s)`)
+        console.log(`✅ ${successfulWorkflows}/${selectedOptions.length} workflows completed successfully`)
+        workflowErrors.forEach(error => console.error(`  - ${error}`))
+      } else {
+        console.log('✅ Tour finalization completed successfully!')
+      }
+      
       console.log(`📊 Total participants: ${tourData.participants?.length || 0}`)
 
       // Return separate arrays for sales and purchase orders
@@ -512,7 +543,8 @@ export class TourFinalizationService {
           total_orders: this.createdOrders.length + this.createdPurchaseOrders.length,
           total_sales_orders: this.createdOrders.length,
           total_purchase_orders: this.createdPurchaseOrders.length,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          workflow_errors: workflowErrors
         }
       }
 
@@ -539,9 +571,13 @@ export class TourFinalizationService {
       // Generate instruction guide (disabled as requested)
       const instruction_guide = "Instruction guide generation disabled."
       
+      const message = hasErrors 
+        ? `Tour finalized with ${workflowErrors.length} workflow error(s). ${successfulWorkflows} workflows completed successfully. Created ${sales_orders.length} sales orders and ${purchase_orders.length} purchase orders.`
+        : `Tour finalized successfully! Created ${sales_orders.length} sales orders and ${purchase_orders.length} purchase orders.`
+
       return {
-        success: true,
-        message: `Tour finalized successfully! Created ${sales_orders.length} sales orders and ${purchase_orders.length} purchase orders.`,
+        success: !hasErrors || (sales_orders.length > 0 || purchase_orders.length > 0), // Success if no errors OR if some orders were created
+        message,
         sales_orders,
         purchase_orders,
         instruction_guide
