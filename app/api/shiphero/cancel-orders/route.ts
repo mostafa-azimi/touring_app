@@ -57,15 +57,13 @@ export async function POST(request: NextRequest) {
               po_number: order.po_number || 'N/A'
             })
             
-            // Use purchase_order_update to set status to "Canceled"
+            // Use purchase_order_update to set status to "canceled" (official approach)
             query = `
               mutation {
-                purchase_order_update(
-                  data: {
-                    purchase_order_id: "${order.id}"
-                    fulfillment_status: "Canceled"
-                  }
-                ) {
+                purchase_order_update(data: {
+                  po_id: "${order.legacy_id}"
+                  fulfillment_status: "canceled"
+                }) {
                   request_id
                   complexity
                   purchase_order {
@@ -79,7 +77,7 @@ export async function POST(request: NextRequest) {
             `
             
             console.log(`🔍 DEBUG: Purchase order update GraphQL query:`, query)
-            console.log(`🔍 DEBUG: Using purchase_order_id:`, order.id)
+            console.log(`🔍 DEBUG: Using po_id (legacy_id):`, order.legacy_id)
           } else if (type === 'sales') {
             // Update sales order fulfillment status
             query = `
