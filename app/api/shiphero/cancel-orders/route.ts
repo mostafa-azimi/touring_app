@@ -160,7 +160,8 @@ export async function POST(request: NextRequest) {
           errors.push({
             order: order.legacy_id || order.id,
             error: result.errors[0].message,
-            graphql_error: result.errors[0]
+            graphql_error: result.errors[0],
+            server_details: `GraphQL Error: ${result.errors[0].message}${result.errors[0].extensions ? ` | Extensions: ${JSON.stringify(result.errors[0].extensions)}` : ''}`
           })
         } else {
           console.log(`✅ Successfully canceled ${type} order ${order.legacy_id || order.id}`)
