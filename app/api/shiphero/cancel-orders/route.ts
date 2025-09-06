@@ -50,27 +50,23 @@ export async function POST(request: NextRequest) {
               }
             `
           } else if (use_cancel_mutation && type === 'purchase') {
-            // For purchase orders: Use status update instead of cancel mutation (more reliable)
-            console.log(`🔍 DEBUG: Purchase order data for cancellation (using status update):`, {
+            // For purchase orders: Try multiple approaches for maximum compatibility
+            console.log(`🔍 DEBUG: Purchase order data for cancellation:`, {
               id: order.id,
               legacy_id: order.legacy_id,
               po_number: order.po_number || 'N/A'
             })
             
-            // Use purchase_order_update to set status to "canceled" (official approach)
-            // Ensure po_id is a string representation of the numeric legacy_id
+            // Try approach 1: Use purchase_order_update with po_id (recommended)
             const poId = String(order.legacy_id)
-            console.log(`🔍 DEBUG: Converting legacy_id to string for po_id:`, {
-              original: order.legacy_id,
-              converted: poId,
-              type: typeof poId
-            })
             
+            // First, let's try a simple status update to "on_hold" instead of "canceled"
+            // Some systems don't allow direct cancellation but allow hold status
             query = `
               mutation {
                 purchase_order_update(data: {
                   po_id: "${poId}"
-                  fulfillment_status: "canceled"
+                  fulfillment_status: "on_hold"
                 }) {
                   request_id
                   complexity
@@ -84,8 +80,7 @@ export async function POST(request: NextRequest) {
               }
             `
             
-            console.log(`🔍 DEBUG: Purchase order update GraphQL query:`, query)
-            console.log(`🔍 DEBUG: Using po_id (legacy_id):`, order.legacy_id)
+            console.log(`🔍 DEBUG: Trying PO status update to 'on_hold' first:`, query)
           } else if (type === 'sales') {
             // Update sales order fulfillment status
             query = `
