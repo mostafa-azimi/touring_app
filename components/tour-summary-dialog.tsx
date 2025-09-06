@@ -462,6 +462,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
   }
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -787,71 +788,74 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
     </Dialog>
 
     {/* Progress Dialog */}
-    <Dialog open={showProgressDialog} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <RefreshCw className={`h-5 w-5 ${progressStatus.currentStep.includes('COMPLETE') ? 'text-green-600' : 'animate-spin text-blue-600'}`} />
-            Processing Orders
-          </DialogTitle>
-          <DialogDescription>
-            {progressStatus.currentStep.includes('COMPLETE') 
-              ? 'Cancellation process completed!'
-              : 'Please wait while we process your request...'}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Progress</span>
-              <span>{progressStatus.currentStepIndex}/{progressStatus.totalSteps}</span>
+    {showProgressDialog && (
+      <Dialog open={showProgressDialog} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className={`h-5 w-5 ${progressStatus.currentStep.includes('COMPLETE') ? 'text-green-600' : 'animate-spin text-blue-600'}`} />
+              Processing Orders
+            </DialogTitle>
+            <DialogDescription>
+              {progressStatus.currentStep.includes('COMPLETE') 
+                ? 'Cancellation process completed!'
+                : 'Please wait while we process your request...'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Progress Bar */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Progress</span>
+                <span>{progressStatus.currentStepIndex}/{progressStatus.totalSteps}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ 
+                    width: `${progressStatus.totalSteps > 0 ? (progressStatus.currentStepIndex / progressStatus.totalSteps) * 100 : 0}%` 
+                  }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ 
-                  width: `${progressStatus.totalSteps > 0 ? (progressStatus.currentStepIndex / progressStatus.totalSteps) * 100 : 0}%` 
-                }}
-              />
+
+            {/* Current Step */}
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-900">
+                {progressStatus.currentStep}
+              </div>
             </div>
+
+            {/* Completed Steps */}
+            {progressStatus.completedSteps.length > 0 && (
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                <div className="text-xs font-medium text-gray-700 mb-1">Completed:</div>
+                {progressStatus.completedSteps.slice(-5).map((step, index) => (
+                  <div key={index} className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    {step}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Errors */}
+            {progressStatus.errors.length > 0 && (
+              <div className="space-y-1 max-h-24 overflow-y-auto">
+                <div className="text-xs font-medium text-red-700 mb-1">Errors:</div>
+                {progressStatus.errors.slice(-3).map((error, index) => (
+                  <div key={index} className="text-xs text-red-600 flex items-center gap-1">
+                    <XCircle className="h-3 w-3" />
+                    {error}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-
-          {/* Current Step */}
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-900">
-              {progressStatus.currentStep}
-            </div>
-          </div>
-
-          {/* Completed Steps */}
-          {progressStatus.completedSteps.length > 0 && (
-            <div className="space-y-1 max-h-32 overflow-y-auto">
-              <div className="text-xs font-medium text-gray-700 mb-1">Completed:</div>
-              {progressStatus.completedSteps.slice(-5).map((step, index) => (
-                <div key={index} className="text-xs text-green-600 flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3" />
-                  {step}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Errors */}
-          {progressStatus.errors.length > 0 && (
-            <div className="space-y-1 max-h-24 overflow-y-auto">
-              <div className="text-xs font-medium text-red-700 mb-1">Errors:</div>
-              {progressStatus.errors.slice(-3).map((error, index) => (
-                <div key={index} className="text-xs text-red-600 flex items-center gap-1">
-                  <XCircle className="h-3 w-3" />
-                  {error}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   )
 }
