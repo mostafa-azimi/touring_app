@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
                 purchase_order_set_fulfillment_status(
                   data: { 
                     po_id: "${poId}"
-                    fulfillment_status: "canceled"
+                    status: "canceled"
                   }
                 ) {
                   request_id
