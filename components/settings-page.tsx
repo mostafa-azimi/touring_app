@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { WarehousesTab } from "@/components/settings/warehouses-tab"
 import { HostsTab } from "@/components/settings/hosts-tab"
 import { ShipHeroTab } from "@/components/settings/shiphero-tab"
+import { TenantConfigTab } from "@/components/settings/tenant-config-tab"
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState("warehouses")
@@ -18,10 +19,11 @@ export function SettingsPage() {
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="warehouses" className="cursor-pointer">Warehouses</TabsTrigger>
           <TabsTrigger value="hosts" className="cursor-pointer">Hosts</TabsTrigger>
           <TabsTrigger value="shiphero" className="cursor-pointer">ShipHero</TabsTrigger>
+          <TabsTrigger value="config" className="cursor-pointer">Configuration</TabsTrigger>
         </TabsList>
 
         <TabsContent value="warehouses">
@@ -34,6 +36,10 @@ export function SettingsPage() {
 
         <TabsContent value="shiphero">
           <ShipHeroTab />
+        </TabsContent>
+
+        <TabsContent value="config">
+          <TenantConfigTab />
         </TabsContent>
       </Tabs>
     </div>

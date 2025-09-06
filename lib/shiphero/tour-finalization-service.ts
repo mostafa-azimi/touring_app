@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { tenantConfigService } from '@/lib/tenant-config-service'
 
 export interface TourData {
   id: string
@@ -608,6 +609,9 @@ export class TourFinalizationService {
   private async createStandardReceivingWorkflow(tourData: TourData): Promise<void> {
     console.log("🎯 Creating Standard Receiving Purchase Order...")
     
+    // Get tenant configuration
+    const config = await tenantConfigService.getConfig()
+    
     const workflowConfig = tourData.workflow_configs?.['standard_receiving']
     const skuQuantities = workflowConfig?.skuQuantities || {}
     
@@ -625,25 +629,25 @@ export class TourFinalizationService {
       sku: sku,
       quantity: quantity,
       expected_weight_in_lbs: "1.00",
-      vendor_id: "1076735",
+      vendor_id: config.shiphero_vendor_id,
       quantity_received: 0,
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      fulfillment_status: "pending",
+      fulfillment_status: config.default_fulfillment_status,
       sell_ahead: 0
     }))
 
     const poData = {
       po_number: `STD_REC-${tourData.tour_numeric_id}-${Date.now()}`,
       po_date: this.getOrderDate(tourData.date),
-      vendor_id: "1076735",
+      vendor_id: config.shiphero_vendor_id,
       warehouse_id: tourData.warehouse.shiphero_warehouse_id,
       subtotal: "0.00",
       tax: "0.00",
       shipping_price: "0.00", 
       total_price: "0.00",
-      fulfillment_status: "pending",
+      fulfillment_status: config.default_fulfillment_status,
       discount: "0.00",
       line_items: poLineItems
     }
@@ -677,6 +681,9 @@ export class TourFinalizationService {
   private async createReceiveToLightWorkflowOrders(tourData: TourData): Promise<void> {
     console.log("🎯 Creating Receive to Light Purchase Order...")
     
+    // Get tenant configuration
+    const config = await tenantConfigService.getConfig()
+    
     const workflowConfig = tourData.workflow_configs?.['receive_to_light']
     const skuQuantities = workflowConfig?.skuQuantities || {}
     
@@ -694,25 +701,25 @@ export class TourFinalizationService {
       sku: sku,
       quantity: quantity,
       expected_weight_in_lbs: "1.00",
-      vendor_id: "1076735",
+      vendor_id: config.shiphero_vendor_id,
       quantity_received: 0,
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      fulfillment_status: "pending",
+      fulfillment_status: config.default_fulfillment_status,
       sell_ahead: 0
     }))
 
     const poData = {
       po_number: `R2L-${tourData.tour_numeric_id}-${Date.now()}`,
       po_date: this.getOrderDate(tourData.date),
-      vendor_id: "1076735",
+      vendor_id: config.shiphero_vendor_id,
       warehouse_id: tourData.warehouse.shiphero_warehouse_id,
       subtotal: "0.00",
       tax: "0.00",
       shipping_price: "0.00",
       total_price: "0.00",
-      fulfillment_status: "pending",
+      fulfillment_status: config.default_fulfillment_status,
       discount: "0.00",
       line_items: poLineItems
     }
@@ -874,10 +881,13 @@ export class TourFinalizationService {
       }))
       
       // Create order data - EXACTLY like adhoc sales order
+      // Get tenant configuration
+      const config = await tenantConfigService.getConfig()
+      
       const orderData = {
         order_number: orderNumber,
-        shop_name: "ShipHero Tour Demo",
-        fulfillment_status: "Tour_Orders",
+        shop_name: config.shop_name,
+        fulfillment_status: config.default_fulfillment_status,
         order_date: this.getOrderDate(tourData.date), // One business day before tour date
         total_tax: "0.00",
         subtotal: "0.00",
@@ -894,15 +904,15 @@ export class TourFinalizationService {
         shipping_address: {
           first_name: recipient.first_name,
           last_name: recipient.last_name,
-          company: recipient.company || "ShipHero",
+          company: recipient.company || config.company_name,
           address1: tourData.warehouse.address,
           address2: "",
           city: tourData.warehouse.city,
           state: tourData.warehouse.state,
           state_code: tourData.warehouse.state,
           zip: tourData.warehouse.zip,
-          country: "US",
-          country_code: "US",
+          country: tourData.warehouse.country || "US",
+          country_code: tourData.warehouse.country || "US",
           email: recipient.email,
           phone: ""
         },
@@ -910,15 +920,15 @@ export class TourFinalizationService {
         billing_address: {
           first_name: recipient.first_name,
           last_name: recipient.last_name,
-          company: recipient.company || "ShipHero",
+          company: recipient.company || config.company_name,
           address1: tourData.warehouse.address,
           address2: "",
           city: tourData.warehouse.city,
           state: tourData.warehouse.state,
           state_code: tourData.warehouse.state,
           zip: tourData.warehouse.zip,
-          country: "US",
-          country_code: "US",
+          country: tourData.warehouse.country || "US",
+          country_code: tourData.warehouse.country || "US",
           email: recipient.email,
           phone: ""
         },
