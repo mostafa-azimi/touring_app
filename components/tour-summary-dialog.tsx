@@ -250,6 +250,13 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               fullOrderObject: order
             })
             
+            console.log(`🔍 CLIENT DEBUG: Token being sent to API:`, {
+              tokenLength: accessToken?.length,
+              tokenStart: accessToken?.substring(0, 20) + '...',
+              tokenEnd: '...' + accessToken?.substring(accessToken.length - 20),
+              fullToken: accessToken // TEMPORARY: Log full token for comparison
+            })
+            
             const response = await fetch('/api/shiphero/cancel-orders', {
               method: 'POST',
               headers: {
