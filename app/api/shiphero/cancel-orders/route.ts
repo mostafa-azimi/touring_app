@@ -82,20 +82,22 @@ export async function POST(request: NextRequest) {
               }
             `
           } else if (use_cancel_mutation && type === 'purchase') {
-            // For purchase orders: Use official purchase_order_update mutation
+            // For purchase orders: Use purchase_order_set_fulfillment_status mutation
             console.log(`🔍 DEBUG: Purchase order data for cancellation:`, {
               id: order.id,
               legacy_id: order.legacy_id,
               po_number: order.po_number || 'N/A'
             })
             
-            // Use correct format based on ShipHero documentation:
-            // purchase_order_update(id: $id, data: { status: $status })
+            // Use the correct mutation for PO fulfillment status
+            const poId = String(order.legacy_id)
             query = `
               mutation {
-                purchase_order_update(
-                  id: "${order.id}"
-                  data: { status: "canceled" }
+                purchase_order_set_fulfillment_status(
+                  data: { 
+                    po_id: "${poId}"
+                    fulfillment_status: "canceled"
+                  }
                 ) {
                   request_id
                   complexity
@@ -103,13 +105,13 @@ export async function POST(request: NextRequest) {
                     id
                     legacy_id
                     po_number
-                    status
+                    fulfillment_status
                   }
                 }
               }
             `
             
-            console.log(`🔍 DEBUG: Using correct purchase_order_update mutation structure:`, query)
+            console.log(`🔍 DEBUG: Using purchase_order_set_fulfillment_status mutation:`, query)
           } else if (type === 'sales') {
             // Update sales order fulfillment status
             query = `
@@ -205,12 +207,12 @@ export async function POST(request: NextRequest) {
                     } else {
                       // Log the actual purchase order data returned to verify status change
                       if (type === 'purchase') {
-                        const poData = result.data?.purchase_order_update?.purchase_order
-                        console.log(`✅ Purchase order update result:`, {
+                        const poData = result.data?.purchase_order_set_fulfillment_status?.purchase_order
+                        console.log(`✅ Purchase order fulfillment status update result:`, {
                           id: poData?.id,
                           legacy_id: poData?.legacy_id,
                           po_number: poData?.po_number,
-                          status: poData?.status,
+                          fulfillment_status: poData?.fulfillment_status,
                           fullData: poData
                         })
                       }
