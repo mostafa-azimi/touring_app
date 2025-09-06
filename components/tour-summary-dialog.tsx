@@ -66,22 +66,34 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
 
   if (!data) return null
 
-  // Helper function to get ShipHero access token from localStorage (like the rest of the app)
+  // Helper function to get ShipHero access token from database (with localStorage fallback)
   const getAccessToken = async () => {
     try {
-      if (typeof window === 'undefined') {
-        throw new Error('Must be called from browser environment')
-      }
-
-      // Get current access token from localStorage
-      const accessToken = localStorage.getItem('shiphero_access_token')
+      console.log('🔑 Getting access token from database...')
       
-      if (!accessToken) {
-        throw new Error('ShipHero access token not found. Please configure it in Settings → ShipHero tab.')
+      // Try database first
+      const response = await fetch('/api/shiphero/access-token', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Using access token from database')
+        return result.access_token
       }
 
-      console.log('✅ Using access token from localStorage')
-      return accessToken
+      // Fallback to localStorage if database fails
+      console.log('⚠️ Database failed, falling back to localStorage...')
+      if (typeof window !== 'undefined') {
+        const accessToken = localStorage.getItem('shiphero_access_token')
+        if (accessToken) {
+          console.log('✅ Using access token from localStorage fallback')
+          return accessToken
+        }
+      }
+
+      throw new Error('No valid access token available. Please refresh your tokens in Settings → ShipHero tab.')
     } catch (error) {
       console.error('Failed to get access token:', error)
       throw error

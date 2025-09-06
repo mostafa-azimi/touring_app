@@ -333,6 +333,28 @@ export function ShipHeroTab() {
           localStorage.setItem('shiphero_token_expires_at', expirationDate.toISOString())
           setTokenExpiresAt(expirationDate.toISOString())
           
+          // ALSO store in database for centralized access
+          try {
+            console.log('💾 Storing tokens in database...')
+            const dbResponse = await fetch('/api/shiphero/access-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                access_token: newAccessToken,
+                refresh_token: refreshToken,
+                expires_in: expiresIn
+              })
+            })
+            
+            if (dbResponse.ok) {
+              console.log('✅ Tokens stored in database successfully')
+            } else {
+              console.warn('⚠️ Failed to store tokens in database, but localStorage still works')
+            }
+          } catch (dbError) {
+            console.warn('⚠️ Database token storage failed:', dbError)
+          }
+          
           // Calculate and set countdown (should be 28 days)
           calculateCountdown(expirationDate.toISOString())
           
