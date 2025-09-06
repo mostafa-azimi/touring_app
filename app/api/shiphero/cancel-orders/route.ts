@@ -91,13 +91,12 @@ export async function POST(request: NextRequest) {
             
             const poId = String(order.legacy_id)
             
-            // Use official purchase_order_update mutation to cancel
-            // Try 'status' field instead of 'fulfillment_status'
+            // Let's try to find what fields are actually available
+            // First attempt: try with just po_id to see what happens
             query = `
               mutation {
                 purchase_order_update(data: {
                   po_id: "${poId}"
-                  status: "canceled"
                 }) {
                   request_id
                   complexity
@@ -105,7 +104,7 @@ export async function POST(request: NextRequest) {
                     id
                     legacy_id
                     po_number
-                    status
+                    fulfillment_status
                   }
                 }
               }
