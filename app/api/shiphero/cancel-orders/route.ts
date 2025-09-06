@@ -8,16 +8,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access token required' }, { status: 401 })
     }
 
-  const body = await request.json()
-  const { orders, type, new_status, use_cancel_mutation } = body // orders: array of {id, legacy_id}, type: 'sales' or 'purchase', new_status: optional, use_cancel_mutation: boolean
+    const body = await request.json()
+    const { orders, type, new_status, use_cancel_mutation } = body // orders: array of {id, legacy_id}, type: 'sales' or 'purchase', new_status: optional, use_cancel_mutation: boolean
 
-  const targetStatus = new_status || (type === 'sales' ? 'on_hold' : 'Canceled')
-  
-  if (use_cancel_mutation && type === 'sales') {
-    console.log(`🚫 Canceling ${type} orders using order_cancel mutation:`, orders.map((o: any) => o.legacy_id || o.id))
-  } else {
-    console.log(`🚫 Setting ${type} orders to ${targetStatus}:`, orders.map((o: any) => o.legacy_id || o.id))
-  }
+    const targetStatus = new_status || (type === 'sales' ? 'on_hold' : 'Canceled')
+    
+    if (use_cancel_mutation && type === 'sales') {
+      console.log(`🚫 Canceling ${type} orders using order_cancel mutation:`, orders.map((o: any) => o.legacy_id || o.id))
+    } else if (use_cancel_mutation && type === 'purchase') {
+      console.log(`🚫 Canceling ${type} orders using purchase_order_cancel mutation:`, orders.map((o: any) => o.legacy_id || o.id))
+    } else {
+      console.log(`🚫 Setting ${type} orders to ${targetStatus}:`, orders.map((o: any) => o.legacy_id || o.id))
+    }
 
     const results = []
     const errors = []
@@ -44,6 +46,20 @@ export async function POST(request: NextRequest) {
                     order_number
                     fulfillment_status
                   }
+                }
+              }
+            `
+          } else if (use_cancel_mutation && type === 'purchase') {
+            // Use purchase_order_cancel mutation for purchase orders
+            query = `
+              mutation {
+                purchase_order_cancel(
+                  data: {
+                    purchase_order_id: "${order.id}"
+                  }
+                ) {
+                  request_id
+                  complexity
                 }
               }
             `

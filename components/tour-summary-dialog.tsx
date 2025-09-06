@@ -237,7 +237,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             }
             
           } else {
-            // For purchase orders: Keep the old method (change status to Canceled)
+            // For purchase orders: Use purchase_order_cancel mutation
             updateProgress(`🔄 Canceling purchase order ${order.po_number}...`)
             const response = await fetch('/api/shiphero/cancel-orders', {
               method: 'POST',
@@ -247,7 +247,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               },
               body: JSON.stringify({
                 orders: [{ id: order.id, legacy_id: order.legacy_id }],
-                type: orderType
+                type: orderType,
+                use_cancel_mutation: true // Use purchase_order_cancel mutation
               })
             })
 
@@ -364,7 +365,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             }
             
           } else {
-            // For purchase orders: Keep the old method (change status to Canceled)
+            // For purchase orders: Use purchase_order_cancel mutation
             const response = await fetch('/api/shiphero/cancel-orders', {
               method: 'POST',
               headers: {
@@ -373,7 +374,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               },
               body: JSON.stringify({
                 orders: [order],
-                type: orderType
+                type: orderType,
+                use_cancel_mutation: true // Use purchase_order_cancel mutation
               })
             })
 
