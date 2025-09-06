@@ -270,16 +270,18 @@ export function ViewToursPage() {
         // Refresh tours to get updated order information
         await fetchTours()
         
-        // Show success popup
+        // Show success popup with a brief delay to ensure it's visible
         const hasErrors = result.workflow_errors && result.workflow_errors.length > 0
-        toast({
-          title: hasErrors ? "⚠️ Tour Finalized with Warnings" : "🎉 Tour Finalized Successfully!",
-          description: hasErrors 
-            ? `Tour finalized with ${result.workflow_errors.length} workflow error(s). Created ${result.sales_orders?.length || 0} sales orders and ${result.purchase_orders?.length || 0} purchase orders.`
-            : `Tour finalized successfully! Created ${result.sales_orders?.length || 0} sales orders and ${result.purchase_orders?.length || 0} purchase orders.`,
-          variant: hasErrors ? "destructive" : "default",
-          duration: hasErrors ? 8000 : 6000, // Show errors longer
-        })
+        setTimeout(() => {
+          toast({
+            title: hasErrors ? "⚠️ Tour Finalized with Warnings" : "🎉 Tour Finalized Successfully!",
+            description: hasErrors 
+              ? `Tour finalized with ${result.workflow_errors.length} workflow error(s). Created ${result.sales_orders?.length || 0} sales orders and ${result.purchase_orders?.length || 0} purchase orders.`
+              : `Tour finalized successfully! Created ${result.sales_orders?.length || 0} sales orders and ${result.purchase_orders?.length || 0} purchase orders.`,
+            variant: hasErrors ? "destructive" : "default",
+            duration: hasErrors ? 8000 : 7000, // Show errors longer
+          })
+        }, 200)
         
         // selectedTour update logic removed - no longer using view details functionality
 

@@ -623,16 +623,19 @@ export function ScheduleTourPage() {
         insertedParticipants = participantData
       }
 
-      toast({
-        title: "🎉 Tour Created Successfully!",
-        description: `Tour scheduled for ${new Date(formData.date).toLocaleDateString()} at ${(() => {
-          const [hour24, minute] = formData.time.split(':')
-          const hour12 = parseInt(hour24) % 12 || 12
-          const period = parseInt(hour24) >= 12 ? 'PM' : 'AM'
-          return `${hour12}:${minute} ${period}`
-        })()} with ${participants.length} participant${participants.length > 1 ? "s" : ""}!`,
-        duration: 5000, // Show for 5 seconds
-      })
+      // Show success toast after a brief delay to ensure it's visible
+      setTimeout(() => {
+        toast({
+          title: "🎉 Tour Created Successfully!",
+          description: `Tour scheduled for ${new Date(formData.date).toLocaleDateString()} at ${(() => {
+            const [hour24, minute] = formData.time.split(':')
+            const hour12 = parseInt(hour24) % 12 || 12
+            const period = parseInt(hour24) >= 12 ? 'PM' : 'AM'
+            return `${hour12}:${minute} ${period}`
+          })()} with ${participants.length} participant${participants.length > 1 ? "s" : ""}!`,
+          duration: 6000, // Show for 6 seconds
+        })
+      }, 100)
 
             // Reset form
       setFormData({ warehouse_id: "", host_id: "", date: "2025-11-15", time: "09:00" })
