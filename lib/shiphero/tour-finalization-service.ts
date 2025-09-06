@@ -849,15 +849,20 @@ export class TourFinalizationService {
     for (let i = 0; i < recipients.length; i++) {
       const recipient = recipients[i]
       
-      // Create line items - all selected SKUs with their quantities
-      const lineItems = workflowSkus.map(sku => ({
-        sku: sku,
-        quantity: skuQuantities[sku] || 1,
-        price: "0.00"
-      }))
-      
-      // Generate order number with prefix
+      // Generate order number with prefix first
       const orderNumber = `${prefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
+      
+      // Create line items - all selected SKUs with their quantities
+      const lineItems = workflowSkus.map((sku, index) => ({
+        sku: sku,
+        partner_line_item_id: `${orderNumber}-item-${index + 1}`,
+        quantity: skuQuantities[sku] || 1,
+        price: "0.00",
+        product_name: sku, // Use SKU as product name
+        fulfillment_status: "Tour_Orders",
+        quantity_pending_fulfillment: skuQuantities[sku] || 1,
+        warehouse_id: tourData.warehouse.shiphero_id || tourData.warehouse.id
+      }))
       
       // Create order data - EXACTLY like adhoc sales order
       const orderData = {
@@ -882,11 +887,15 @@ export class TourFinalizationService {
           last_name: recipient.last_name,
           company: recipient.company || "ShipHero",
           address1: tourData.warehouse.address,
+          address2: "",
           city: tourData.warehouse.city,
           state: tourData.warehouse.state,
+          state_code: tourData.warehouse.state,
           zip: tourData.warehouse.zip,
           country: "US",
-          email: recipient.email
+          country_code: "US",
+          email: recipient.email,
+          phone: ""
         },
         
         billing_address: {
@@ -894,11 +903,15 @@ export class TourFinalizationService {
           last_name: recipient.last_name,
           company: recipient.company || "ShipHero",
           address1: tourData.warehouse.address,
+          address2: "",
           city: tourData.warehouse.city,
           state: tourData.warehouse.state,
+          state_code: tourData.warehouse.state,
           zip: tourData.warehouse.zip,
           country: "US",
-          email: recipient.email
+          country_code: "US",
+          email: recipient.email,
+          phone: ""
         },
         
         required_ship_date: new Date().toISOString().split('T')[0],
@@ -912,8 +925,11 @@ export class TourFinalizationService {
       try {
         const result = await this.createSalesOrderViaAPI(orderData)
         
-        // Debug: Log the full response structure
-        console.log(`🔍 DEBUG: Full API response for ${orderNumber}:`, JSON.stringify(result, null, 2))
+        // Check for GraphQL errors first
+        if (result?.errors && result.errors.length > 0) {
+          console.error(`❌ ShipHero GraphQL errors for ${orderNumber}:`, result.errors)
+          throw new Error(`ShipHero API error: ${result.errors[0].message}`)
+        }
         
         if (result?.data?.order_create?.order) {
           const createdOrder = result.data.order_create.order
@@ -928,10 +944,8 @@ export class TourFinalizationService {
             recipient: recipient.type === 'extra' ? `${recipient.first_name} ${recipient.last_name} (extra)` : `${recipient.first_name} ${recipient.last_name}`
           })
         } else {
-          console.error(`❌ DEBUG: Expected result.data.order_create.order but got:`)
+          console.error(`❌ Unexpected API response structure for ${orderNumber}`)
           console.error(`   result.data:`, result?.data)
-          console.error(`   result.data.order_create:`, result?.data?.order_create)
-          console.error(`   Full result keys:`, Object.keys(result || {}))
           throw new Error('Invalid response structure from ShipHero API')
         }
       } catch (error) {
