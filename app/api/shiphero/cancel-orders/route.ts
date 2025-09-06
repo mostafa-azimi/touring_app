@@ -50,32 +50,36 @@ export async function POST(request: NextRequest) {
               }
             `
           } else if (use_cancel_mutation && type === 'purchase') {
-            // Use purchase_order_cancel mutation for purchase orders
-            console.log(`🔍 DEBUG: Purchase order data for cancellation:`, {
+            // For purchase orders: Use status update instead of cancel mutation (more reliable)
+            console.log(`🔍 DEBUG: Purchase order data for cancellation (using status update):`, {
               id: order.id,
               legacy_id: order.legacy_id,
               po_number: order.po_number || 'N/A'
             })
             
-            // Try using the ShipHero ID first, fallback to legacy_id if needed
-            const purchaseOrderId = order.id || order.legacy_id
-            
-            // Try with legacy_id first as ShipHero might expect the numeric ID
+            // Use purchase_order_update to set status to "Canceled"
             query = `
               mutation {
-                purchase_order_cancel(
+                purchase_order_update(
                   data: {
-                    purchase_order_id: "${order.legacy_id}"
+                    purchase_order_id: "${order.id}"
+                    fulfillment_status: "Canceled"
                   }
                 ) {
                   request_id
                   complexity
+                  purchase_order {
+                    id
+                    legacy_id
+                    po_number
+                    fulfillment_status
+                  }
                 }
               }
             `
             
-            console.log(`🔍 DEBUG: Purchase order cancel GraphQL query:`, query)
-            console.log(`🔍 DEBUG: Using purchase_order_id (legacy_id):`, order.legacy_id)
+            console.log(`🔍 DEBUG: Purchase order update GraphQL query:`, query)
+            console.log(`🔍 DEBUG: Using purchase_order_id:`, order.id)
           } else if (type === 'sales') {
             // Update sales order fulfillment status
             query = `
