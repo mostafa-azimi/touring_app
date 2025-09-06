@@ -239,6 +239,15 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
           } else {
             // For purchase orders: Use purchase_order_cancel mutation
             updateProgress(`🔄 Canceling purchase order ${order.po_number}...`)
+            
+            console.log(`🔍 CLIENT DEBUG: Canceling purchase order:`, {
+              po_number: order.po_number,
+              id: order.id,
+              legacy_id: order.legacy_id,
+              orderType,
+              use_cancel_mutation: true
+            })
+            
             const response = await fetch('/api/shiphero/cancel-orders', {
               method: 'POST',
               headers: {
@@ -251,12 +260,17 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                 use_cancel_mutation: true // Use purchase_order_cancel mutation
               })
             })
+            
+            console.log(`🔍 CLIENT DEBUG: API response status:`, response.status, response.statusText)
 
             const result = await response.json()
+            console.log(`🔍 CLIENT DEBUG: API response result:`, result)
+            
             if (result.success) {
               updateProgress(`✅ ${order.po_number}: Canceled`, [`✅ ${order.po_number}: Canceled`], [], true)
               successCount++
             } else {
+              console.error(`❌ CLIENT DEBUG: Purchase order cancellation failed:`, result)
               throw new Error(result.errors?.[0]?.error || 'Failed to cancel purchase order')
             }
           }
@@ -366,6 +380,14 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             
           } else {
             // For purchase orders: Use purchase_order_cancel mutation
+            console.log(`🔍 CLIENT DEBUG (cancelAll): Canceling purchase order:`, {
+              po_number: order.po_number,
+              id: order.id,
+              legacy_id: order.legacy_id,
+              orderType,
+              use_cancel_mutation: true
+            })
+            
             const response = await fetch('/api/shiphero/cancel-orders', {
               method: 'POST',
               headers: {
@@ -378,12 +400,17 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                 use_cancel_mutation: true // Use purchase_order_cancel mutation
               })
             })
+            
+            console.log(`🔍 CLIENT DEBUG (cancelAll): API response status:`, response.status, response.statusText)
 
             const result = await response.json()
+            console.log(`🔍 CLIENT DEBUG (cancelAll): API response result:`, result)
+            
             if (result.success) {
               console.log(`✅ Successfully canceled purchase order: ${order.po_number}`)
               successCount++
             } else {
+              console.error(`❌ CLIENT DEBUG (cancelAll): Purchase order cancellation failed:`, result)
               throw new Error(result.errors?.[0]?.error || 'Failed to cancel purchase order')
             }
           }
