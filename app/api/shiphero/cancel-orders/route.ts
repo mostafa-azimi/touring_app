@@ -36,50 +36,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access token required' }, { status: 401 })
     }
     
-    // Test token validity with a simple query first
-    console.log(`🔍 DEBUG: Testing token validity with simple query...`)
-    const testQuery = `
-      query {
-        user {
-          id
-          username
-        }
-      }
-    `
-    
-    const testResponse = await fetch('https://public-api.shiphero.com/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({ query: testQuery })
-    })
-    
-    console.log(`🔍 DEBUG: Token test response status:`, testResponse.status)
-    
-    if (!testResponse.ok) {
-      const testErrorText = await testResponse.text()
-      console.error(`❌ Token validation failed:`, {
-        status: testResponse.status,
-        error: testErrorText
-      })
-      return NextResponse.json({ 
-        error: 'Invalid or expired access token', 
-        details: `Token test failed: HTTP ${testResponse.status}` 
-      }, { status: 401 })
-    }
-    
-    const testResult = await testResponse.json()
-    console.log(`✅ Token validation successful:`, testResult.data?.user ? 'User found' : 'No user data')
-    
-    if (testResult.errors) {
-      console.error(`❌ Token validation GraphQL errors:`, testResult.errors)
-      return NextResponse.json({ 
-        error: 'Token validation failed', 
-        details: testResult.errors[0].message 
-      }, { status: 401 })
-    }
+    // TEMPORARILY SKIP TOKEN VALIDATION TO TEST PO MUTATION DIRECTLY
+    console.log(`🔍 DEBUG: SKIPPING token validation temporarily to test PO mutation...`)
+    console.log(`🔍 DEBUG: Will proceed directly to purchase order cancellation`)
 
     const body = await request.json()
     const { orders, type, new_status, use_cancel_mutation } = body // orders: array of {id, legacy_id}, type: 'sales' or 'purchase', new_status: optional, use_cancel_mutation: boolean
