@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
               }
             `
           } else if (use_cancel_mutation && type === 'purchase') {
-            // For purchase orders: First check status, then cancel if possible
+            // For purchase orders: Use official purchase_order_update mutation
             console.log(`🔍 DEBUG: Purchase order data for cancellation:`, {
               id: order.id,
               legacy_id: order.legacy_id,
@@ -59,63 +59,7 @@ export async function POST(request: NextRequest) {
             
             const poId = String(order.legacy_id)
             
-            // Step 1: Query current PO status first
-            const statusQuery = `
-              query {
-                purchase_order(id: "${order.id}") {
-                  id
-                  legacy_id
-                  po_number
-                  fulfillment_status
-                  subtotal
-                  created_date
-                }
-              }
-            `
-            
-            console.log(`🔍 DEBUG: Checking PO status first:`, statusQuery)
-            
-            // Execute status check
-            const statusResponse = await fetch('https://public-api.shiphero.com/graphql', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`
-              },
-              body: JSON.stringify({ query: statusQuery })
-            })
-            
-            if (!statusResponse.ok) {
-              const errorText = await statusResponse.text()
-              console.error(`❌ Failed to check PO status:`, {
-                status: statusResponse.status,
-                error: errorText
-              })
-              throw new Error(`Failed to check PO status: HTTP ${statusResponse.status}`)
-            }
-            
-            const statusResult = await statusResponse.json()
-            console.log(`🔍 DEBUG: PO status check result:`, JSON.stringify(statusResult, null, 2))
-            
-            if (statusResult.errors) {
-              console.error(`❌ GraphQL errors checking PO status:`, statusResult.errors)
-              throw new Error(`Failed to check PO status: ${statusResult.errors[0].message}`)
-            }
-            
-            const currentPO = statusResult.data?.purchase_order
-            if (!currentPO) {
-              throw new Error(`Purchase order not found: ${order.po_number}`)
-            }
-            
-            console.log(`📋 Current PO status: ${currentPO.fulfillment_status}`)
-            
-            // Check if PO can be canceled
-            const cancelableStatuses = ['pending', 'processing', 'on_hold']
-            if (!cancelableStatuses.includes(currentPO.fulfillment_status)) {
-              throw new Error(`Cannot cancel PO in status '${currentPO.fulfillment_status}'. Only POs with status: ${cancelableStatuses.join(', ')} can be canceled.`)
-            }
-            
-            // Step 2: Now proceed with cancellation using official mutation
+            // Use official purchase_order_update mutation to cancel
             query = `
               mutation {
                 purchase_order_update(data: {
@@ -134,7 +78,7 @@ export async function POST(request: NextRequest) {
               }
             `
             
-            console.log(`✅ PO can be canceled. Using official purchase_order_update mutation:`, query)
+            console.log(`🔍 DEBUG: Using official purchase_order_update mutation:`, query)
           } else if (type === 'sales') {
             // Update sales order fulfillment status
             query = `

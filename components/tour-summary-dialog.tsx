@@ -712,7 +712,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                               <CheckCircle className="h-4 w-4" />
                               Canceled
                             </>
-                          ) : isCanceling && currentWorkflow === `purchase-${workflow}` ? (
+                          ) : isCanceling ? (
                             <>
                               <RefreshCw className="h-4 w-4 animate-spin" />
                               Canceling...
