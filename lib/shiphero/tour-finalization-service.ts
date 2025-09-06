@@ -399,6 +399,36 @@ export class TourFinalizationService {
         items: Array<{ sku: string; quantity: number }>
       }> = []
 
+      // Calculate total fulfillment orders needed across ALL workflows
+      const fulfillmentWorkflows = selectedOptions.filter(option => 
+        ['pack_to_light', 'bulk_shipping', 'single_item_batch', 'multi_item_batch'].includes(option)
+      )
+      
+      let totalFulfillmentOrders = 0
+      const workflowOrderCounts: {[key: string]: number} = {}
+      
+      for (const workflow of fulfillmentWorkflows) {
+        const workflowConfig = tourData.workflow_configs?.[workflow]
+        const orderCount = workflowConfig?.orderCount || 5
+        workflowOrderCounts[workflow] = orderCount
+        totalFulfillmentOrders += orderCount
+      }
+      
+      console.log(`\n📊 FULFILLMENT ORDER DISTRIBUTION:`)
+      console.log(`Total fulfillment orders needed: ${totalFulfillmentOrders}`)
+      console.log(`Workflow breakdown:`, workflowOrderCounts)
+      
+      // Create ONE master recipient list for ALL fulfillment workflows
+      let masterRecipients: any[] = []
+      if (totalFulfillmentOrders > 0) {
+        console.log(`\n👥 Creating master recipient list for ${totalFulfillmentOrders} total fulfillment orders...`)
+        masterRecipients = await this.getFulfillmentRecipients(tourData, totalFulfillmentOrders)
+        console.log(`✅ Master recipients: ${masterRecipients.length} (${masterRecipients.filter(r => r.type === 'participant').length} participants, ${masterRecipients.filter(r => r.type === 'host').length} host, ${masterRecipients.filter(r => r.type === 'extra').length} extras)`)
+      }
+      
+      // Track recipient index across all workflows
+      let recipientIndex = 0
+
       // Execute each selected workflow
       for (const option of selectedOptions) {
         console.log(`\n🔄 Executing workflow: ${option}`)
@@ -416,22 +446,34 @@ export class TourFinalizationService {
             
           case "pack_to_light":
             console.log("Executing: Pack to Light Workflow")
-            await this.createPackToLightWorkflowOrders(tourData)
+            const p2lOrderCount = workflowOrderCounts[option] || 5
+            const p2lRecipients = masterRecipients.slice(recipientIndex, recipientIndex + p2lOrderCount)
+            await this.createPackToLightWorkflowOrders(tourData, p2lRecipients)
+            recipientIndex += p2lOrderCount
             break
             
           case "bulk_shipping":
             console.log("Executing: Bulk Shipping Workflow")
-            await this.createBulkShippingSOs(tourData)
+            const bshipOrderCount = workflowOrderCounts[option] || 5
+            const bshipRecipients = masterRecipients.slice(recipientIndex, recipientIndex + bshipOrderCount)
+            await this.createBulkShippingSOs(tourData, bshipRecipients)
+            recipientIndex += bshipOrderCount
             break
             
           case "single_item_batch":
             console.log("Executing: Single-Item Batch Workflow")
-            await this.createSingleItemBatchSOs(tourData)
+            const sibOrderCount = workflowOrderCounts[option] || 5
+            const sibRecipients = masterRecipients.slice(recipientIndex, recipientIndex + sibOrderCount)
+            await this.createSingleItemBatchSOs(tourData, sibRecipients)
+            recipientIndex += sibOrderCount
             break
             
           case "multi_item_batch":
             console.log("Executing: Multi-Item Batch Workflow")
-            await this.createMultiItemBatchSOs(tourData)
+            const mibOrderCount = workflowOrderCounts[option] || 5
+            const mibRecipients = masterRecipients.slice(recipientIndex, recipientIndex + mibOrderCount)
+            await this.createMultiItemBatchSOs(tourData, mibRecipients)
+            recipientIndex += mibOrderCount
             break
             
           default:
@@ -658,9 +700,9 @@ export class TourFinalizationService {
    * MODULE 3: Creates Sales Orders for "Pack-to-Light" workflow
    * Uses exact same format as adhoc sales orders with p2l prefix
    */
-  private async createPackToLightWorkflowOrders(tourData: TourData): Promise<void> {
+  private async createPackToLightWorkflowOrders(tourData: TourData, recipients: any[]): Promise<void> {
     const workflowConfig = tourData.workflow_configs?.['pack_to_light']
-    const orderCount = workflowConfig?.orderCount || 3
+    const orderCount = recipients.length
     const skuQuantities = workflowConfig?.skuQuantities || {}
     const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
     
@@ -670,9 +712,10 @@ export class TourFinalizationService {
     }
     
     console.log(`Creating ${orderCount} pack-to-light orders with SKUs:`, workflowSkus)
+    console.log(`Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     
-    // Create orders using adhoc format with p2l prefix
-    await this.createFulfillmentOrders(tourData, "p2l", orderCount, workflowSkus, skuQuantities)
+    // Create orders using adhoc format with p2l prefix and provided recipients
+    await this.createFulfillmentOrdersWithRecipients(tourData, "p2l", recipients, workflowSkus, skuQuantities)
     
     console.log(`✅ Pack-to-Light completed: ${orderCount} orders created`)
   }
@@ -681,9 +724,9 @@ export class TourFinalizationService {
    * MODULE 4: Creates Sales Orders for "Bulk Shipping"
    * Uses exact same format as adhoc sales orders with bship prefix
    */
-  private async createBulkShippingSOs(tourData: TourData): Promise<void> {
+  private async createBulkShippingSOs(tourData: TourData, recipients: any[]): Promise<void> {
     const workflowConfig = tourData.workflow_configs?.['bulk_shipping']
-    const orderCount = workflowConfig?.orderCount || 5
+    const orderCount = recipients.length
     const skuQuantities = workflowConfig?.skuQuantities || {}
     const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
     
@@ -693,9 +736,10 @@ export class TourFinalizationService {
     }
     
     console.log(`Creating ${orderCount} bulk shipping orders with SKUs:`, workflowSkus)
+    console.log(`Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     
-    // Create orders using adhoc format with bship prefix
-    await this.createFulfillmentOrders(tourData, "bship", orderCount, workflowSkus, skuQuantities)
+    // Create orders using adhoc format with bship prefix and provided recipients
+    await this.createFulfillmentOrdersWithRecipients(tourData, "bship", recipients, workflowSkus, skuQuantities)
     
     console.log(`✅ Bulk Shipping completed: ${orderCount} orders created`)
   }
@@ -704,9 +748,9 @@ export class TourFinalizationService {
    * MODULE 5: Creates Sales Orders for "Single-Item Batch Picking"  
    * Uses exact same format as adhoc sales orders with sib prefix
    */
-  private async createSingleItemBatchSOs(tourData: TourData): Promise<void> {
+  private async createSingleItemBatchSOs(tourData: TourData, recipients: any[]): Promise<void> {
     const workflowConfig = tourData.workflow_configs?.['single_item_batch']
-    const orderCount = workflowConfig?.orderCount || 5
+    const orderCount = recipients.length
     const skuQuantities = workflowConfig?.skuQuantities || {}
     const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
     
@@ -716,9 +760,10 @@ export class TourFinalizationService {
     }
     
     console.log(`Creating ${orderCount} single-item batch orders with SKUs:`, workflowSkus)
+    console.log(`Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     
-    // Create orders using adhoc format with sib prefix
-    await this.createFulfillmentOrders(tourData, "sib", orderCount, workflowSkus, skuQuantities)
+    // Create orders using adhoc format with sib prefix and provided recipients
+    await this.createFulfillmentOrdersWithRecipients(tourData, "sib", recipients, workflowSkus, skuQuantities)
     
     console.log(`✅ Single-Item Batch completed: ${orderCount} orders created`)
   }
@@ -727,9 +772,9 @@ export class TourFinalizationService {
    * MODULE 6: Creates Sales Orders for "Multi-Item Batch Picking"
    * Uses exact same format as adhoc sales orders with mib prefix
    */
-  private async createMultiItemBatchSOs(tourData: TourData): Promise<void> {
+  private async createMultiItemBatchSOs(tourData: TourData, recipients: any[]): Promise<void> {
     const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
-    const orderCount = workflowConfig?.orderCount || 5
+    const orderCount = recipients.length
     const skuQuantities = workflowConfig?.skuQuantities || {}
     const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
     
@@ -739,16 +784,124 @@ export class TourFinalizationService {
     }
     
     console.log(`Creating ${orderCount} multi-item batch orders with SKUs:`, workflowSkus)
+    console.log(`Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     
-    // Create orders using adhoc format with mib prefix
-    await this.createFulfillmentOrders(tourData, "mib", orderCount, workflowSkus, skuQuantities)
+    // Create orders using adhoc format with mib prefix and provided recipients
+    await this.createFulfillmentOrdersWithRecipients(tourData, "mib", recipients, workflowSkus, skuQuantities)
     
     console.log(`✅ Multi-Item Batch completed: ${orderCount} orders created`)
   }
 
   /**
+   * Create fulfillment orders using exact adhoc sales order format with pre-calculated recipients
+   */
+  private async createFulfillmentOrdersWithRecipients(
+    tourData: TourData, 
+    prefix: string, 
+    recipients: any[],
+    workflowSkus: string[], 
+    skuQuantities: {[sku: string]: number}
+  ): Promise<void> {
+    console.log(`🚀 STARTING ${prefix.toUpperCase()} WORKFLOW - Creating ${recipients.length} orders`)
+    console.log(`📋 Tour ID: ${tourData.id}, Tour Numeric ID: ${tourData.tour_numeric_id}`)
+    console.log(`🏢 Warehouse: ${tourData.warehouse.name} (${tourData.warehouse.code})`)
+    console.log(`📦 Selected SKUs:`, workflowSkus)
+    console.log(`🔢 SKU Quantities:`, skuQuantities)
+    console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
+    
+    // Create each order using exact adhoc format
+    for (let i = 0; i < recipients.length; i++) {
+      const recipient = recipients[i]
+      
+      // Create line items - all selected SKUs with their quantities
+      const lineItems = workflowSkus.map(sku => ({
+        sku: sku,
+        quantity: skuQuantities[sku] || 1,
+        price: "0.00"
+      }))
+      
+      // Generate order number with prefix
+      const orderNumber = `${prefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
+      
+      // Create order data - EXACTLY like adhoc sales order
+      const orderData = {
+        order_number: orderNumber,
+        shop_name: "ShipHero Tour Demo",
+        fulfillment_status: "Tour_Orders",
+        order_date: this.getOrderDate(tourData.date), // One business day before tour date
+        total_tax: "0.00",
+        subtotal: "0.00",
+        total_discounts: "0.00", 
+        total_price: "0.00",
+        
+        shipping_lines: {
+          title: "Generic Shipping",
+          price: "0.00",
+          carrier: "Generic Carrier",
+          method: "Standard"
+        },
+        
+        shipping_address: {
+          first_name: recipient.first_name,
+          last_name: recipient.last_name,
+          company: recipient.company || "ShipHero",
+          address1: tourData.warehouse.address,
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: "US",
+          email: recipient.email
+        },
+        
+        billing_address: {
+          first_name: recipient.first_name,
+          last_name: recipient.last_name,
+          company: recipient.company || "ShipHero",
+          address1: tourData.warehouse.address,
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: "US",
+          email: recipient.email
+        },
+        
+        required_ship_date: new Date().toISOString().split('T')[0],
+        hold_until_date: this.getHoldUntilDate(tourData.date, tourData.time),
+        tags: [`tour-${tourData.tour_numeric_id}`, tourData.warehouse.code].filter(Boolean),
+        line_items: lineItems
+      }
+      
+      console.log(`📦 Creating order ${i + 1}/${recipients.length} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)
+      
+      try {
+        const result = await this.createSalesOrderViaAPI(orderData)
+        
+        if (result?.data?.order_create?.order) {
+          const createdOrder = result.data.order_create.order
+          console.log(`✅ Order created: ${orderNumber} (ShipHero ID: ${createdOrder.legacy_id})`)
+          
+          // Store created order for summary
+          this.createdOrders.push({
+            workflow: prefix,
+            order_number: orderNumber,
+            shiphero_id: createdOrder.id,
+            legacy_id: createdOrder.legacy_id,
+            recipient: recipient.type === 'extra' ? `${recipient.first_name} ${recipient.last_name} (extra)` : `${recipient.first_name} ${recipient.last_name}`
+          })
+        } else {
+          throw new Error('Invalid response structure from ShipHero API')
+        }
+      } catch (error) {
+        console.error(`❌ Failed to create order ${orderNumber}:`, error)
+        throw error
+      }
+    }
+  }
+
+  /**
    * Create fulfillment orders using exact adhoc sales order format
    * Priority: Host -> Participants -> Extras from database
+   * @deprecated Use createFulfillmentOrdersWithRecipients instead
    */
   private async createFulfillmentOrders(
     tourData: TourData, 
