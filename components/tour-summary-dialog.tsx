@@ -519,10 +519,16 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
         // Mark all orders of this type as canceled
         if (orderType === 'sales') {
           setCanceledAllSales(true)
-          setSuccessfullyCanceledButtons(prev => new Set([...prev, 'all-sales']))
+          
+          // Mark all individual sales workflow buttons as canceled too
+          const salesWorkflowButtons = Object.keys(salesOrdersByWorkflow).map(workflow => `sales-${workflow}`)
+          setSuccessfullyCanceledButtons(prev => new Set([...prev, 'all-sales', ...salesWorkflowButtons]))
         } else {
           setCanceledAllPurchase(true)
-          setSuccessfullyCanceledButtons(prev => new Set([...prev, 'all-purchase']))
+          
+          // Mark all individual purchase workflow buttons as canceled too  
+          const purchaseWorkflowButtons = Object.keys(purchaseOrdersByWorkflow).map(workflow => `purchase-${workflow}`)
+          setSuccessfullyCanceledButtons(prev => new Set([...prev, 'all-purchase', ...purchaseWorkflowButtons]))
         }
         toast({
           title: "All Orders Canceled",
