@@ -188,28 +188,40 @@ export async function POST(request: NextRequest) {
         
         console.log(`🔍 DEBUG: ShipHero API response for ${type} order ${order.legacy_id || order.id}:`, JSON.stringify(result, null, 2))
         
-        if (result.errors && result.errors.length > 0) {
-          console.error(`❌ GraphQL errors for ${type} order ${order.legacy_id}:`, result.errors)
-          console.error(`🔍 DEBUG: First GraphQL error details:`, {
-            message: result.errors[0].message,
-            path: result.errors[0].path,
-            extensions: result.errors[0].extensions,
-            fullError: result.errors[0]
-          })
-          errors.push({
-            order: order.legacy_id || order.id,
-            error: result.errors[0].message,
-            graphql_error: result.errors[0],
-            server_details: `GraphQL Error: ${result.errors[0].message}${result.errors[0].extensions ? ` | Extensions: ${JSON.stringify(result.errors[0].extensions)}` : ''}`
-          })
-        } else {
-          console.log(`✅ Successfully canceled ${type} order ${order.legacy_id || order.id}`)
-          results.push({
-            order: order.legacy_id || order.id,
-            success: true,
-            data: result.data
-          })
-        }
+                    if (result.errors && result.errors.length > 0) {
+                      console.error(`❌ GraphQL errors for ${type} order ${order.legacy_id}:`, result.errors)
+                      console.error(`🔍 DEBUG: First GraphQL error details:`, {
+                        message: result.errors[0].message,
+                        path: result.errors[0].path,
+                        extensions: result.errors[0].extensions,
+                        fullError: result.errors[0]
+                      })
+                      errors.push({
+                        order: order.legacy_id || order.id,
+                        error: result.errors[0].message,
+                        graphql_error: result.errors[0],
+                        server_details: `GraphQL Error: ${result.errors[0].message}${result.errors[0].extensions ? ` | Extensions: ${JSON.stringify(result.errors[0].extensions)}` : ''}`
+                      })
+                    } else {
+                      // Log the actual purchase order data returned to verify status change
+                      if (type === 'purchase') {
+                        const poData = result.data?.purchase_order_update?.purchase_order
+                        console.log(`✅ Purchase order update result:`, {
+                          id: poData?.id,
+                          legacy_id: poData?.legacy_id,
+                          po_number: poData?.po_number,
+                          status: poData?.status,
+                          fullData: poData
+                        })
+                      }
+                      
+                      console.log(`✅ Successfully canceled ${type} order ${order.legacy_id || order.id}`)
+                      results.push({
+                        order: order.legacy_id || order.id,
+                        success: true,
+                        data: result.data
+                      })
+                    }
 
       } catch (error: any) {
         console.error(`❌ Error canceling ${type} order ${order.legacy_id || order.id}:`, error.message)
