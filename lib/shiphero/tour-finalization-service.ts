@@ -622,7 +622,7 @@ export class TourFinalizationService {
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      fulfillment_status: "Tour PO",
+      fulfillment_status: "pending",
       sell_ahead: 0
     }))
 
@@ -635,7 +635,7 @@ export class TourFinalizationService {
       tax: "0.00",
       shipping_price: "0.00", 
       total_price: "0.00",
-      fulfillment_status: "Tour PO",
+      fulfillment_status: "pending",
       discount: "0.00",
       line_items: poLineItems
     }
@@ -691,7 +691,7 @@ export class TourFinalizationService {
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      fulfillment_status: "Tour PO",
+      fulfillment_status: "pending",
       sell_ahead: 0
     }))
 
@@ -704,7 +704,7 @@ export class TourFinalizationService {
       tax: "0.00",
       shipping_price: "0.00",
       total_price: "0.00",
-      fulfillment_status: "Tour PO",
+      fulfillment_status: "pending",
       discount: "0.00",
       line_items: poLineItems
     }
@@ -1274,7 +1274,7 @@ export class TourFinalizationService {
       const orderData = {
         order_number: orderNumber,
         shop_name: "ShipHero Tour Demo",
-        fulfillment_status: "Tour PO",
+        fulfillment_status: "pending",
         order_date: new Date().toISOString().split('T')[0], // Date only format like adhoc
         total_tax: "0.00",
         subtotal: "0.00", 
@@ -1326,7 +1326,7 @@ export class TourFinalizationService {
           quantity: item.quantity,
           price: item.price,
           product_name: item.sku,
-          fulfillment_status: "Tour PO",
+          fulfillment_status: "pending",
           quantity_pending_fulfillment: item.quantity,
           warehouse_id: item.warehouse_id
         })),
