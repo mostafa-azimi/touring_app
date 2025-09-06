@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`🔍 Fetching order details for: ${orderId}`)
+    console.log(`🔑 Using access token: ${accessToken.substring(0, 20)}...`)
 
     // Query to get order details including line item IDs
     const query = `
@@ -40,6 +41,8 @@ export async function GET(request: NextRequest) {
       }
     `
 
+    console.log('📝 GraphQL Query:', query)
+
     const response = await fetch('https://public-api.shiphero.com/graphql', {
       method: 'POST',
       headers: {
@@ -49,11 +52,16 @@ export async function GET(request: NextRequest) {
       body: JSON.stringify({ query })
     })
 
+    console.log(`📡 ShipHero response status: ${response.status} ${response.statusText}`)
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('❌ ShipHero HTTP error:', errorText)
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
     }
 
     const result = await response.json()
+    console.log('📦 ShipHero response data:', JSON.stringify(result, null, 2))
     
     if (result.errors && result.errors.length > 0) {
       console.error('❌ GraphQL errors:', result.errors)
