@@ -244,8 +244,10 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               po_number: order.po_number,
               id: order.id,
               legacy_id: order.legacy_id,
+              shiphero_id: order.shiphero_id,
               orderType,
-              use_cancel_mutation: true
+              use_cancel_mutation: true,
+              fullOrderObject: order
             })
             
             const response = await fetch('/api/shiphero/cancel-orders', {

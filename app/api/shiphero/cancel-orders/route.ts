@@ -57,11 +57,14 @@ export async function POST(request: NextRequest) {
               po_number: order.po_number || 'N/A'
             })
             
+            // Try using the ShipHero ID first, fallback to legacy_id if needed
+            const purchaseOrderId = order.id || order.legacy_id
+            
             query = `
               mutation {
                 purchase_order_cancel(
                   data: {
-                    purchase_order_id: "${order.id}"
+                    purchase_order_id: "${purchaseOrderId}"
                   }
                 ) {
                   request_id
@@ -71,6 +74,7 @@ export async function POST(request: NextRequest) {
             `
             
             console.log(`🔍 DEBUG: Purchase order cancel GraphQL query:`, query)
+            console.log(`🔍 DEBUG: Using purchase_order_id:`, purchaseOrderId)
           } else if (type === 'sales') {
             // Update sales order fulfillment status
             query = `
@@ -127,6 +131,13 @@ export async function POST(request: NextRequest) {
         })
 
         if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`❌ ShipHero API HTTP Error:`, {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText,
+            query: query
+          })
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
 
