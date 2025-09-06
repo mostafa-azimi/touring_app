@@ -8,8 +8,28 @@ export async function POST(request: NextRequest) {
       hasToken: !!accessToken,
       tokenLength: accessToken?.length,
       tokenStart: accessToken?.substring(0, 20) + '...',
-      tokenEnd: '...' + accessToken?.substring(accessToken.length - 20)
+      tokenEnd: '...' + accessToken?.substring(accessToken.length - 20),
+      fullToken: accessToken // TEMPORARY: Log full token for debugging
     })
+    
+    // Also test the same token retrieval method the client uses
+    console.log(`🔍 DEBUG: Testing database token retrieval directly...`)
+    try {
+      const dbResponse = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/shiphero/access-token`)
+      if (dbResponse.ok) {
+        const dbResult = await dbResponse.json()
+        console.log(`🔍 DEBUG: Database token retrieval result:`, {
+          success: dbResult.success,
+          tokenStart: dbResult.access_token?.substring(0, 20) + '...',
+          tokenEnd: '...' + dbResult.access_token?.substring(dbResult.access_token.length - 20),
+          tokensMatch: dbResult.access_token === accessToken
+        })
+      } else {
+        console.log(`🔍 DEBUG: Database token retrieval failed:`, dbResponse.status)
+      }
+    } catch (dbError) {
+      console.log(`🔍 DEBUG: Database token retrieval error:`, dbError)
+    }
     
     if (!accessToken) {
       console.error(`❌ No access token provided to cancel-orders API`)
