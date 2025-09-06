@@ -749,11 +749,18 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
           <DialogContent className="max-w-2xl w-[90vw] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5 animate-spin" />
-                Processing Orders
+                {progressStatus.current === progressStatus.total ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                )}
+                {progressStatus.current === progressStatus.total ? "Processing Complete" : "Processing Orders"}
               </DialogTitle>
               <DialogDescription>
-                Please wait while we process the order cancellations...
+                {progressStatus.current === progressStatus.total 
+                  ? "All order cancellations have been processed."
+                  : "Please wait while we process the order cancellations..."
+                }
               </DialogDescription>
             </DialogHeader>
 
@@ -767,7 +774,11 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    progressStatus.current === progressStatus.total 
+                      ? 'bg-green-600' 
+                      : 'bg-blue-600'
+                  }`}
                   style={{ width: `${(progressStatus.current / progressStatus.total) * 100}%` }}
                 />
               </div>
@@ -788,9 +799,16 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               )}
 
               {progressStatus.current === progressStatus.total && (
-                <Button onClick={() => setShowProgressDialog(false)} className="w-full">
-                  Close
-                </Button>
+                <div className="pt-2">
+                  <Button 
+                    onClick={() => setShowProgressDialog(false)} 
+                    className="w-full"
+                    variant="default"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Done
+                  </Button>
+                </div>
               )}
             </div>
           </DialogContent>
