@@ -4,8 +4,61 @@ export async function POST(request: NextRequest) {
   try {
     const accessToken = request.headers.get('authorization')?.replace('Bearer ', '')
     
+    console.log(`🔍 DEBUG: Token received in cancel-orders API:`, {
+      hasToken: !!accessToken,
+      tokenLength: accessToken?.length,
+      tokenStart: accessToken?.substring(0, 20) + '...',
+      tokenEnd: '...' + accessToken?.substring(accessToken.length - 20)
+    })
+    
     if (!accessToken) {
+      console.error(`❌ No access token provided to cancel-orders API`)
       return NextResponse.json({ error: 'Access token required' }, { status: 401 })
+    }
+    
+    // Test token validity with a simple query first
+    console.log(`🔍 DEBUG: Testing token validity with simple query...`)
+    const testQuery = `
+      query {
+        user {
+          id
+          username
+        }
+      }
+    `
+    
+    const testResponse = await fetch('https://public-api.shiphero.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ query: testQuery })
+    })
+    
+    console.log(`🔍 DEBUG: Token test response status:`, testResponse.status)
+    
+    if (!testResponse.ok) {
+      const testErrorText = await testResponse.text()
+      console.error(`❌ Token validation failed:`, {
+        status: testResponse.status,
+        error: testErrorText
+      })
+      return NextResponse.json({ 
+        error: 'Invalid or expired access token', 
+        details: `Token test failed: HTTP ${testResponse.status}` 
+      }, { status: 401 })
+    }
+    
+    const testResult = await testResponse.json()
+    console.log(`✅ Token validation successful:`, testResult.data?.user ? 'User found' : 'No user data')
+    
+    if (testResult.errors) {
+      console.error(`❌ Token validation GraphQL errors:`, testResult.errors)
+      return NextResponse.json({ 
+        error: 'Token validation failed', 
+        details: testResult.errors[0].message 
+      }, { status: 401 })
     }
 
     const body = await request.json()
