@@ -592,7 +592,22 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
       // Final results
       if (totalSuccessful === totalOrders) {
         setEntireTourCanceled(true)
-        setSuccessfullyCanceledButtons(prev => new Set([...prev, 'entire-tour']))
+        
+        // Mark all individual buttons as canceled
+        const allButtonIds = ['entire-tour', 'all-sales', 'all-purchase']
+        
+        // Add individual workflow buttons
+        Object.keys(salesOrdersByWorkflow).forEach(workflow => {
+          allButtonIds.push(`sales-${workflow}`)
+        })
+        Object.keys(purchaseOrdersByWorkflow).forEach(workflow => {
+          allButtonIds.push(`purchase-${workflow}`)
+        })
+        
+        setSuccessfullyCanceledButtons(new Set(allButtonIds))
+        setCanceledAllSales(true)
+        setCanceledAllPurchase(true)
+        
         updateProgress(`🎉 TOUR CANCELED: All ${totalSuccessful} orders canceled successfully!`)
         toast({
           title: "Entire Tour Canceled",
