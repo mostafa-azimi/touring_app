@@ -663,8 +663,8 @@ export class TourFinalizationService {
           price: "0.00"
         }],
         
-        required_ship_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`]
+        required_ship_date: tourData.date,
+        tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`, tourData.warehouse.code].filter(Boolean)
       }
 
       console.log(`📦 Creating order ${i + 1}/${orderCount} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)

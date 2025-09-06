@@ -108,21 +108,29 @@ export class TourFinalizationService {
   }
 
   /**
-   * Calculate the hold until date/time (tour date at 6:00 AM Eastern)
+   * Calculate the hold until date/time (tour date at 1:00 AM Eastern - 5 hours earlier than before)
    */
   private getHoldUntilDate(tourDate: string, tourTime: string): string {
     console.log(`⏳ Calculating hold until date for tour: ${tourDate} at ${tourTime}`)
     
-    // Create 6:00 AM Eastern time on the tour date
-    // We'll create a date string for 6:00 AM and let JavaScript handle the timezone conversion
-    const easternTime6AM = new Date(`${tourDate}T06:00:00-05:00`) // EST (Eastern Standard Time)
+    // Create 1:00 AM Eastern time on the tour date (5 hours earlier than 6:00 AM)
+    // We'll create a date string for 1:00 AM and let JavaScript handle the timezone conversion
+    const easternTime1AM = new Date(`${tourDate}T01:00:00-05:00`) // EST (Eastern Standard Time)
     
     // Convert to UTC for ShipHero API
-    const holdUntilDateTime = easternTime6AM.toISOString()
+    const holdUntilDateTime = easternTime1AM.toISOString()
     
-    console.log(`⏳ Hold until date/time: ${holdUntilDateTime} (release orders at 6:00 AM Eastern on tour date)`)
+    console.log(`⏳ Hold until date/time: ${holdUntilDateTime} (release orders at 1:00 AM Eastern on tour date)`)
     
     return holdUntilDateTime
+  }
+
+  /**
+   * Get the required ship date (tour date)
+   */
+  private getRequiredShipDate(tourDate: string): string {
+    console.log(`📅 Setting required ship date to tour date: ${tourDate}`)
+    return tourDate
   }
 
   /**
@@ -841,6 +849,7 @@ export class TourFinalizationService {
     console.log(`🚀 STARTING ${prefix.toUpperCase()} WORKFLOW - Creating ${recipients.length} orders`)
     console.log(`📋 Tour ID: ${tourData.id}, Tour Numeric ID: ${tourData.tour_numeric_id}`)
     console.log(`🏢 Warehouse: ${tourData.warehouse.name} (${tourData.warehouse.code})`)
+    console.log(`🏷️ Warehouse code for tagging:`, tourData.warehouse.code)
     console.log(`📦 Selected SKUs:`, workflowSkus)
     console.log(`🔢 SKU Quantities:`, skuQuantities)
     console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
@@ -914,7 +923,7 @@ export class TourFinalizationService {
           phone: ""
         },
         
-        required_ship_date: new Date().toISOString().split('T')[0],
+        required_ship_date: this.getRequiredShipDate(tourData.date),
         hold_until_date: this.getHoldUntilDate(tourData.date, tourData.time),
         tags: [`tour-${tourData.tour_numeric_id}`, tourData.warehouse.code].filter(Boolean),
         line_items: lineItems
@@ -970,6 +979,7 @@ export class TourFinalizationService {
     console.log(`🚀 STARTING ${prefix.toUpperCase()} WORKFLOW - Creating ${orderCount} orders`)
     console.log(`📋 Tour ID: ${tourData.id}, Tour Numeric ID: ${tourData.tour_numeric_id}`)
     console.log(`🏢 Warehouse: ${tourData.warehouse.name} (${tourData.warehouse.code})`)
+    console.log(`🏷️ Warehouse code for tagging:`, tourData.warehouse.code)
     console.log(`📦 Selected SKUs:`, workflowSkus)
     console.log(`🔢 SKU Quantities:`, skuQuantities)
     
@@ -1053,7 +1063,7 @@ export class TourFinalizationService {
           warehouse_id: tourData.warehouse.shiphero_warehouse_id
         })),
         
-        required_ship_date: new Date().toISOString().split('T')[0],
+        required_ship_date: this.getRequiredShipDate(tourData.date),
         hold_until_date: this.getHoldUntilDate(tourData.date, tourData.time),
         tags: [`tour-${tourData.tour_numeric_id}`, tourData.warehouse.code].filter(Boolean)
       }
@@ -1062,6 +1072,7 @@ export class TourFinalizationService {
       console.log(`🔗 Order Number: ${orderNumber}`)
       console.log(`📧 Recipient Email: ${recipient.email}`)
       console.log(`🏷️ Order Tags:`, orderData.tags)
+      console.log(`🏷️ Warehouse code in tags:`, tourData.warehouse.code)
       console.log(`📋 Line Items:`, orderData.line_items.map(item => `${item.sku} x${item.quantity}`).join(', '))
       
       try {
@@ -1331,11 +1342,13 @@ export class TourFinalizationService {
           warehouse_id: item.warehouse_id
         })),
         
-        required_ship_date: new Date().toISOString().split('T')[0],
+        required_ship_date: this.getRequiredShipDate(tourData.date),
         tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`, tourData.warehouse.code].filter(Boolean)
       }
 
       console.log(`📦 Creating order ${i + 1}/${orderCount} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)
+      console.log(`🏷️ Order Tags:`, orderData.tags)
+      console.log(`🏷️ Warehouse code in tags:`, tourData.warehouse.code)
       orderPromises.push(this.createSalesOrderViaAPI(orderData))
     }
 

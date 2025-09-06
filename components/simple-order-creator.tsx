@@ -281,6 +281,7 @@ export function SimpleOrderCreator() {
         total_discounts: "0.00",
         total_price: "0.00",
         warehouse_id: warehouse?.code,
+        required_ship_date: new Date().toISOString().split('T')[0], // Default to today for manual orders
         shipping_address: {
           first_name: host?.first_name,
           last_name: host?.last_name,
