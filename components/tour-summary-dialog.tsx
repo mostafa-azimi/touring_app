@@ -97,6 +97,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
   const [canceledWorkflows, setCanceledWorkflows] = useState<Set<string>>(new Set())
   const [canceledAllSales, setCanceledAllSales] = useState(false)
   const [canceledAllPurchase, setCanceledAllPurchase] = useState(false)
+  const [successfullyCanceledButtons, setSuccessfullyCanceledButtons] = useState<Set<string>>(new Set())
+  const [entireTourCanceled, setEntireTourCanceled] = useState(false)
   const [progressStatus, setProgressStatus] = useState<{
     current: number
     total: number
@@ -301,6 +303,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
       if (successCount === ordersToProcess.length) {
         // Mark this workflow as canceled
         setCanceledWorkflows(prev => new Set([...prev, `${orderType}-${workflow}`]))
+        // Mark this specific button as permanently disabled
+        setSuccessfullyCanceledButtons(prev => new Set([...prev, `${orderType}-${workflow}`]))
         toast({
           title: "Orders Canceled",
           description: `Successfully canceled ${successCount} ${orderType} orders in ${workflow} workflow.`,
@@ -442,8 +446,10 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
         // Mark all orders of this type as canceled
         if (orderType === 'sales') {
           setCanceledAllSales(true)
+          setSuccessfullyCanceledButtons(prev => new Set([...prev, 'all-sales']))
         } else {
           setCanceledAllPurchase(true)
+          setSuccessfullyCanceledButtons(prev => new Set([...prev, 'all-purchase']))
         }
         toast({
           title: "All Orders Canceled",
@@ -468,6 +474,151 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
       toast({
         title: "Processing Failed",
         description: "Failed to process orders. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsCanceling(false)
+    }
+  }
+
+  // Cancel entire tour - all sales and purchase orders
+  const cancelEntireTour = async () => {
+    if (!data?.orders || entireTourCanceled) return
+    
+    const allSalesOrders = data.orders.sales_orders || []
+    const allPurchaseOrders = data.orders.purchase_orders || []
+    const totalOrders = allSalesOrders.length + allPurchaseOrders.length
+    
+    if (totalOrders === 0) {
+      toast({
+        title: "No Orders to Cancel",
+        description: "This tour has no orders to cancel.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsCanceling(true)
+    initializeProgress(totalOrders, `🚨 Canceling entire tour: ${totalOrders} orders`)
+    
+    let totalSuccessful = 0
+    let totalFailed = 0
+
+    try {
+      // Cancel all sales orders first
+      if (allSalesOrders.length > 0) {
+        updateProgress(`🔄 Canceling ${allSalesOrders.length} sales orders...`)
+        
+        for (const order of allSalesOrders) {
+          try {
+            const { tokenManager } = await import('@/lib/shiphero/token-manager')
+            const accessToken = await tokenManager.getValidAccessToken()
+            
+            if (!accessToken) {
+              throw new Error('No access token available')
+            }
+            
+            const cancelResponse = await fetch('/api/shiphero/cancel-orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({
+                orders: [{ id: order.id, legacy_id: order.legacy_id }],
+                type: 'sales',
+                use_cancel_mutation: true
+              })
+            })
+            
+            const cancelResult = await cancelResponse.json()
+            if (cancelResult.success) {
+              totalSuccessful++
+              updateProgress(`✅ Canceled sales order: ${order.order_number}`, [], [], true)
+            } else {
+              throw new Error(cancelResult.errors?.[0]?.error || 'Failed to cancel sales order')
+            }
+            
+          } catch (orderError: any) {
+            const errorMessage = `❌ Failed to cancel sales order ${order.order_number}: ${orderError.message}`
+            updateProgress(`❌ Failed: ${order.order_number}`, [], [errorMessage], true)
+            totalFailed++
+          }
+        }
+      }
+
+      // Cancel all purchase orders
+      if (allPurchaseOrders.length > 0) {
+        updateProgress(`🔄 Canceling ${allPurchaseOrders.length} purchase orders...`)
+        
+        for (const order of allPurchaseOrders) {
+          try {
+            const { tokenManager } = await import('@/lib/shiphero/token-manager')
+            const accessToken = await tokenManager.getValidAccessToken()
+            
+            if (!accessToken) {
+              throw new Error('No access token available')
+            }
+            
+            const response = await fetch('/api/shiphero/cancel-orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({
+                orders: [{ id: order.id, legacy_id: order.legacy_id }],
+                type: 'purchase',
+                use_cancel_mutation: true
+              })
+            })
+            
+            const result = await response.json()
+            if (result.success) {
+              totalSuccessful++
+              updateProgress(`✅ Canceled purchase order: ${order.po_number}`, [], [], true)
+            } else {
+              const errorMessage = result.errors?.[0]?.error || result.errors?.[0]?.server_details || 'Failed to cancel purchase order'
+              throw new Error(errorMessage)
+            }
+          } catch (orderError: any) {
+            const errorMessage = `❌ Failed to cancel purchase order ${order.po_number}: ${orderError.message}`
+            updateProgress(`❌ Failed: ${order.po_number}`, [], [errorMessage], true)
+            totalFailed++
+          }
+        }
+      }
+
+      // Final results
+      if (totalSuccessful === totalOrders) {
+        setEntireTourCanceled(true)
+        setSuccessfullyCanceledButtons(prev => new Set([...prev, 'entire-tour']))
+        updateProgress(`🎉 TOUR CANCELED: All ${totalSuccessful} orders canceled successfully!`)
+        toast({
+          title: "Entire Tour Canceled",
+          description: `Successfully canceled all ${totalSuccessful} orders in this tour.`,
+        })
+      } else if (totalSuccessful > 0) {
+        updateProgress(`⚠️ PARTIAL CANCELLATION: ${totalSuccessful}/${totalOrders} orders canceled`)
+        toast({
+          title: "Partial Tour Cancellation",
+          description: `Canceled ${totalSuccessful}/${totalOrders} orders. ${totalFailed} failed.`,
+          variant: "destructive"
+        })
+      } else {
+        updateProgress(`❌ CANCELLATION FAILED: No orders were canceled`)
+        toast({
+          title: "Tour Cancellation Failed", 
+          description: "Failed to cancel any orders. Please try again.",
+          variant: "destructive"
+        })
+      }
+
+    } catch (error: any) {
+      console.error('Error canceling entire tour:', error)
+      toast({
+        title: "Tour Cancellation Failed",
+        description: "Failed to cancel tour. Please try again.",
         variant: "destructive"
       })
     } finally {
@@ -606,11 +757,12 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                         </div>
                         <Button
                           size="sm"
-                          variant={canceledWorkflows.has(`sales-${workflow}`) ? "secondary" : "destructive"}
+                          variant={successfullyCanceledButtons.has(`sales-${workflow}`) ? "secondary" : "destructive"}
                           onClick={() => cancelOrdersByWorkflow(workflow, 'sales')}
-                          disabled={isCanceling || canceledWorkflows.has(`sales-${workflow}`)}
+                          disabled={isCanceling || successfullyCanceledButtons.has(`sales-${workflow}`)}
+                          className={successfullyCanceledButtons.has(`sales-${workflow}`) ? "opacity-50 cursor-not-allowed" : ""}
                         >
-                          {canceledWorkflows.has(`sales-${workflow}`) ? (
+                          {successfullyCanceledButtons.has(`sales-${workflow}`) ? (
                             <>
                               <CheckCircle className="h-4 w-4" />
                               Canceled
@@ -659,12 +811,12 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                   {(data.orders?.sales_orders?.length || 0) > 0 && (
                     <div className="pt-4 border-t">
                       <Button
-                        variant={canceledAllSales ? "secondary" : "destructive"}
+                        variant={successfullyCanceledButtons.has('all-sales') ? "secondary" : "destructive"}
                         onClick={() => cancelAllOrders('sales')}
-                        disabled={isCanceling || canceledAllSales}
-                        className="w-full"
+                        disabled={isCanceling || successfullyCanceledButtons.has('all-sales')}
+                        className={`w-full ${successfullyCanceledButtons.has('all-sales') ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
-                        {canceledAllSales ? (
+                        {successfullyCanceledButtons.has('all-sales') ? (
                           <>
                             <CheckCircle className="h-4 w-4 mr-2" />
                             All Sales Orders Canceled
@@ -712,11 +864,12 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                         </div>
                         <Button
                           size="sm"
-                          variant={canceledWorkflows.has(`purchase-${workflow}`) ? "secondary" : "destructive"}
+                          variant={successfullyCanceledButtons.has(`purchase-${workflow}`) ? "secondary" : "destructive"}
                           onClick={() => cancelOrdersByWorkflow(workflow, 'purchase')}
-                          disabled={isCanceling || canceledWorkflows.has(`purchase-${workflow}`)}
+                          disabled={isCanceling || successfullyCanceledButtons.has(`purchase-${workflow}`)}
+                          className={successfullyCanceledButtons.has(`purchase-${workflow}`) ? "opacity-50 cursor-not-allowed" : ""}
                         >
-                          {canceledWorkflows.has(`purchase-${workflow}`) ? (
+                          {successfullyCanceledButtons.has(`purchase-${workflow}`) ? (
                             <>
                               <CheckCircle className="h-4 w-4" />
                               Canceled
@@ -759,12 +912,12 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                   {(data.orders?.purchase_orders?.length || 0) > 0 && (
                     <div className="pt-4 border-t">
                       <Button
-                        variant={canceledAllPurchase ? "secondary" : "destructive"}
+                        variant={successfullyCanceledButtons.has('all-purchase') ? "secondary" : "destructive"}
                         onClick={() => cancelAllOrders('purchase')}
-                        disabled={isCanceling || canceledAllPurchase}
-                        className="w-full"
+                        disabled={isCanceling || successfullyCanceledButtons.has('all-purchase')}
+                        className={`w-full ${successfullyCanceledButtons.has('all-purchase') ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
-                        {canceledAllPurchase ? (
+                        {successfullyCanceledButtons.has('all-purchase') ? (
                           <>
                             <CheckCircle className="h-4 w-4 mr-2" />
                             All Purchase Orders Canceled
@@ -785,6 +938,45 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {/* Cancel Entire Tour Button */}
+            {((data.orders?.sales_orders?.length || 0) > 0 || (data.orders?.purchase_orders?.length || 0) > 0) && (
+              <div className="mt-8 pt-6 border-t border-red-200 bg-red-50/50 rounded-lg p-4">
+                <div className="text-center space-y-3">
+                  <h3 className="text-lg font-semibold text-red-800 flex items-center justify-center gap-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    Danger Zone
+                  </h3>
+                  <p className="text-sm text-red-700">
+                    Cancel the entire tour and all associated orders. This action cannot be undone.
+                  </p>
+                  <Button
+                    variant={successfullyCanceledButtons.has('entire-tour') ? "secondary" : "destructive"}
+                    onClick={cancelEntireTour}
+                    disabled={isCanceling || successfullyCanceledButtons.has('entire-tour')}
+                    className={`w-full ${successfullyCanceledButtons.has('entire-tour') ? "opacity-50 cursor-not-allowed" : ""}`}
+                    size="lg"
+                  >
+                    {successfullyCanceledButtons.has('entire-tour') ? (
+                      <>
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                        Entire Tour Canceled
+                      </>
+                    ) : isCanceling ? (
+                      <>
+                        <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                        Canceling Entire Tour...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-5 w-5 mr-2" />
+                        Cancel Entire Tour ({(data.orders?.sales_orders?.length || 0) + (data.orders?.purchase_orders?.length || 0)} orders)
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         </DialogContent>

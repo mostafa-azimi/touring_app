@@ -624,8 +624,13 @@ export function ScheduleTourPage() {
       }
 
       toast({
-        title: "Success",
-        description: `Tour scheduled successfully with ${participants.length} participant${participants.length > 1 ? "s" : ""}!`,
+        title: "🎉 Tour Created Successfully!",
+        description: `Tour scheduled for ${new Date(formData.date).toLocaleDateString()} at ${(() => {
+          const [hour24, minute] = formData.time.split(':')
+          const hour12 = parseInt(hour24) % 12 || 12
+          const period = parseInt(hour24) >= 12 ? 'PM' : 'AM'
+          return `${hour12}:${minute} ${period}`
+        })()} with ${participants.length} participant${participants.length > 1 ? "s" : ""}!`,
       })
 
             // Reset form

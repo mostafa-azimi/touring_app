@@ -707,11 +707,16 @@ export function ViewToursPage() {
                           <div className="xl:hidden text-xs text-muted-foreground mt-1">
                             <Badge 
                               variant={
-                                    tour.status === 'finalized' ? 'default' : 'secondary'
+                                tour.status === 'finalized' 
+                                  ? (tour.order_summary?.workflow_errors?.length > 0 ? 'destructive' : 'default')
+                                  : 'secondary'
                               } 
                               className="text-xs"
                             >
-                              {tour.status || 'scheduled'}
+                              {tour.status === 'finalized' && tour.order_summary?.workflow_errors?.length > 0
+                                ? `finalized (${tour.order_summary.workflow_errors.length} errors)`
+                                : tour.status || 'scheduled'
+                              }
                             </Badge>
                           </div>
                         </div>
@@ -764,11 +769,16 @@ export function ViewToursPage() {
                       <TableCell className="hidden xl:table-cell">
                         <Badge 
                           variant={
-                            tour.status === 'finalized' ? 'default' : 'secondary'
+                            tour.status === 'finalized' 
+                              ? (tour.order_summary?.workflow_errors?.length > 0 ? 'destructive' : 'default')
+                              : 'secondary'
                           }
                           className="capitalize"
                         >
-                          {tour.status || 'scheduled'}
+                          {tour.status === 'finalized' && tour.order_summary?.workflow_errors?.length > 0
+                            ? `finalized (${tour.order_summary.workflow_errors.length} errors)`
+                            : tour.status || 'scheduled'
+                          }
                         </Badge>
                       </TableCell>
                       <TableCell>
