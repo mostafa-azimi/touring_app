@@ -124,6 +124,10 @@ export async function POST(request: NextRequest) {
           }
 
         console.log(`🔄 Canceling ${type} order ${order.legacy_id || order.id}...`)
+        
+        const requestBody = { query }
+        console.log(`🔍 DEBUG: Request body being sent to ShipHero:`, JSON.stringify(requestBody, null, 2))
+        console.log(`🔍 DEBUG: Authorization header present:`, accessToken ? `Yes (starts with: ${accessToken.substring(0, 10)}...)` : 'No')
 
         const response = await fetch('https://public-api.shiphero.com/graphql', {
           method: 'POST',
@@ -131,8 +135,11 @@ export async function POST(request: NextRequest) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`
           },
-          body: JSON.stringify({ query })
+          body: JSON.stringify(requestBody)
         })
+
+        console.log(`🔍 DEBUG: ShipHero response status:`, response.status)
+        console.log(`🔍 DEBUG: ShipHero response headers:`, Object.fromEntries(response.headers.entries()))
 
         if (!response.ok) {
           const errorText = await response.text()
@@ -140,9 +147,10 @@ export async function POST(request: NextRequest) {
             status: response.status,
             statusText: response.statusText,
             errorText: errorText,
-            query: query
+            query: query,
+            requestBody: requestBody
           })
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
         }
 
         const result = await response.json()
