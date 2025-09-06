@@ -912,6 +912,9 @@ export class TourFinalizationService {
       try {
         const result = await this.createSalesOrderViaAPI(orderData)
         
+        // Debug: Log the full response structure
+        console.log(`🔍 DEBUG: Full API response for ${orderNumber}:`, JSON.stringify(result, null, 2))
+        
         if (result?.data?.order_create?.order) {
           const createdOrder = result.data.order_create.order
           console.log(`✅ Order created: ${orderNumber} (ShipHero ID: ${createdOrder.legacy_id})`)
@@ -925,6 +928,10 @@ export class TourFinalizationService {
             recipient: recipient.type === 'extra' ? `${recipient.first_name} ${recipient.last_name} (extra)` : `${recipient.first_name} ${recipient.last_name}`
           })
         } else {
+          console.error(`❌ DEBUG: Expected result.data.order_create.order but got:`)
+          console.error(`   result.data:`, result?.data)
+          console.error(`   result.data.order_create:`, result?.data?.order_create)
+          console.error(`   Full result keys:`, Object.keys(result || {}))
           throw new Error('Invalid response structure from ShipHero API')
         }
       } catch (error) {
