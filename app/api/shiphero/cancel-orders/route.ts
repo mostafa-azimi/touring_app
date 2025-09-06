@@ -60,11 +60,12 @@ export async function POST(request: NextRequest) {
             // Try using the ShipHero ID first, fallback to legacy_id if needed
             const purchaseOrderId = order.id || order.legacy_id
             
+            // Try with legacy_id first as ShipHero might expect the numeric ID
             query = `
               mutation {
                 purchase_order_cancel(
                   data: {
-                    purchase_order_id: "${purchaseOrderId}"
+                    purchase_order_id: "${order.legacy_id}"
                   }
                 ) {
                   request_id
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
             `
             
             console.log(`🔍 DEBUG: Purchase order cancel GraphQL query:`, query)
-            console.log(`🔍 DEBUG: Using purchase_order_id:`, purchaseOrderId)
+            console.log(`🔍 DEBUG: Using purchase_order_id (legacy_id):`, order.legacy_id)
           } else if (type === 'sales') {
             // Update sales order fulfillment status
             query = `
