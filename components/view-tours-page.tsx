@@ -272,7 +272,9 @@ export function ViewToursPage() {
         
         // Show success popup with a brief delay to ensure it's visible
         const hasErrors = result.workflow_errors && result.workflow_errors.length > 0
+        console.log('🎉 TOUR FINALIZATION SUCCESS - About to show toast, hasErrors:', hasErrors)
         setTimeout(() => {
+          console.log('🎉 SHOWING TOUR FINALIZATION TOAST NOW')
           toast({
             title: hasErrors ? "⚠️ Tour Finalized with Warnings" : "🎉 Tour Finalized Successfully!",
             description: hasErrors 
@@ -281,6 +283,7 @@ export function ViewToursPage() {
             variant: hasErrors ? "destructive" : "default",
             duration: hasErrors ? 8000 : 7000, // Show errors longer
           })
+          console.log('🎉 TOUR FINALIZATION TOAST CALLED')
         }, 200)
         
         // selectedTour update logic removed - no longer using view details functionality

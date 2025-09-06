@@ -624,7 +624,9 @@ export function ScheduleTourPage() {
       }
 
       // Show success toast after a brief delay to ensure it's visible
+      console.log('🎉 TOUR CREATION SUCCESS - About to show toast')
       setTimeout(() => {
+        console.log('🎉 SHOWING TOUR CREATION TOAST NOW')
         toast({
           title: "🎉 Tour Created Successfully!",
           description: `Tour scheduled for ${new Date(formData.date).toLocaleDateString()} at ${(() => {
@@ -635,6 +637,7 @@ export function ScheduleTourPage() {
           })()} with ${participants.length} participant${participants.length > 1 ? "s" : ""}!`,
           duration: 6000, // Show for 6 seconds
         })
+        console.log('🎉 TOUR CREATION TOAST CALLED')
       }, 100)
 
             // Reset form
