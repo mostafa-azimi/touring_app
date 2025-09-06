@@ -94,6 +94,9 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
   const { toast } = useToast()
   const [isCanceling, setIsCanceling] = useState(false)
   const [showProgressDialog, setShowProgressDialog] = useState(false)
+  const [canceledWorkflows, setCanceledWorkflows] = useState<Set<string>>(new Set())
+  const [canceledAllSales, setCanceledAllSales] = useState(false)
+  const [canceledAllPurchase, setCanceledAllPurchase] = useState(false)
   const [progressStatus, setProgressStatus] = useState<{
     current: number
     total: number
@@ -268,6 +271,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
       completeProgress(successCount, errorCount, orderType)
 
       if (successCount === ordersToProcess.length) {
+        // Mark this workflow as canceled
+        setCanceledWorkflows(prev => new Set([...prev, `${orderType}-${workflow}`]))
         toast({
           title: "Orders Canceled",
           description: `Successfully canceled ${successCount} ${orderType} orders in ${workflow} workflow.`,
@@ -387,6 +392,12 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
       }
 
       if (successCount === ordersToProcess.length) {
+        // Mark all orders of this type as canceled
+        if (orderType === 'sales') {
+          setCanceledAllSales(true)
+        } else {
+          setCanceledAllPurchase(true)
+        }
         toast({
           title: "All Orders Canceled",
           description: `Successfully canceled all ${successCount} ${orderType} orders.`,
@@ -537,40 +548,60 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {Object.entries(salesOrdersByWorkflow).map(([workflow, orders]) => (
-                    <div key={workflow} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                    <div key={workflow} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <div className="flex items-center gap-3">
                           <Badge className={workflowLabels[workflow]?.color || "bg-gray-100 text-gray-800"}>
                             {workflowLabels[workflow]?.icon}
                             <span className="ml-1">{workflowLabels[workflow]?.label || workflow}</span>
                           </Badge>
-                          <span className="text-sm text-gray-600">({orders.length} orders)</span>
+                          <span className="text-sm font-medium text-gray-700">({orders.length} orders)</span>
                         </div>
                         <Button
                           size="sm"
-                          variant="destructive"
+                          variant={canceledWorkflows.has(`sales-${workflow}`) ? "secondary" : "destructive"}
                           onClick={() => cancelOrdersByWorkflow(workflow, 'sales')}
-                          disabled={isCanceling}
+                          disabled={isCanceling || canceledWorkflows.has(`sales-${workflow}`)}
                         >
-                          {isCanceling ? <RefreshCw className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                          Cancel {workflowLabels[workflow]?.label || workflow}
+                          {canceledWorkflows.has(`sales-${workflow}`) ? (
+                            <>
+                              <CheckCircle className="h-4 w-4" />
+                              Canceled
+                            </>
+                          ) : isCanceling ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              Canceling...
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="h-4 w-4" />
+                              Cancel All
+                            </>
+                          )}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                      
+                      {/* Table-like layout for orders */}
+                      <div className="space-y-1">
+                        <div className="grid grid-cols-2 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide px-2 py-1">
+                          <div>Order Number</div>
+                          <div>Recipient</div>
+                        </div>
                         {orders.map((order) => (
-                          <div key={order.order_number} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <div key={order.order_number} className="grid grid-cols-2 gap-4 p-2 hover:bg-gray-50 rounded border-b border-gray-100 last:border-b-0">
                             <div>
                               <a
                                 href={`https://app.shiphero.com/dashboard/orders/details/${order.legacy_id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                                className="font-mono text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
                               >
                                 {order.order_number}
                               </a>
-                              <div className="text-sm text-gray-600">
-                                {order.recipient.replace(' (extra)', '')}
-                              </div>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {order.recipient.replace(' (extra)', '')}
                             </div>
                           </div>
                         ))}
@@ -581,13 +612,27 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                   {(data.orders?.sales_orders?.length || 0) > 0 && (
                     <div className="pt-4 border-t">
                       <Button
-                        variant="destructive"
+                        variant={canceledAllSales ? "secondary" : "destructive"}
                         onClick={() => cancelAllOrders('sales')}
-                        disabled={isCanceling}
+                        disabled={isCanceling || canceledAllSales}
                         className="w-full"
                       >
-                        {isCanceling ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                        Cancel All Sales Orders
+                        {canceledAllSales ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            All Sales Orders Canceled
+                          </>
+                        ) : isCanceling ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                            Canceling All Sales Orders...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Cancel All Sales Orders
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}
@@ -609,38 +654,55 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {Object.entries(purchaseOrdersByWorkflow).map(([workflow, orders]) => (
-                    <div key={workflow} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                    <div key={workflow} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <div className="flex items-center gap-3">
                           <Badge className={workflowLabels[workflow]?.color || "bg-gray-100 text-gray-800"}>
                             {workflowLabels[workflow]?.icon}
                             <span className="ml-1">{workflowLabels[workflow]?.label || workflow}</span>
                           </Badge>
-                          <span className="text-sm text-gray-600">({orders.length} orders)</span>
+                          <span className="text-sm font-medium text-gray-700">({orders.length} orders)</span>
                         </div>
                         <Button
                           size="sm"
-                          variant="destructive"
+                          variant={canceledWorkflows.has(`purchase-${workflow}`) ? "secondary" : "destructive"}
                           onClick={() => cancelOrdersByWorkflow(workflow, 'purchase')}
-                          disabled={isCanceling}
+                          disabled={isCanceling || canceledWorkflows.has(`purchase-${workflow}`)}
                         >
-                          {isCanceling ? <RefreshCw className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                          Cancel {workflowLabels[workflow]?.label || workflow}
+                          {canceledWorkflows.has(`purchase-${workflow}`) ? (
+                            <>
+                              <CheckCircle className="h-4 w-4" />
+                              Canceled
+                            </>
+                          ) : isCanceling ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              Canceling...
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="h-4 w-4" />
+                              Cancel All
+                            </>
+                          )}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                      
+                      {/* Table-like layout for purchase orders */}
+                      <div className="space-y-1">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide px-2 py-1">
+                          Purchase Order Number
+                        </div>
                         {orders.map((order) => (
-                          <div key={order.po_number} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                            <div>
-                              <a
-                                href={`https://app.shiphero.com/dashboard/purchase-orders/details/${order.legacy_id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                              >
-                                {order.po_number}
-                              </a>
-                            </div>
+                          <div key={order.po_number} className="p-2 hover:bg-gray-50 rounded border-b border-gray-100 last:border-b-0">
+                            <a
+                              href={`https://app.shiphero.com/dashboard/purchase-orders/details/${order.legacy_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              {order.po_number}
+                            </a>
                           </div>
                         ))}
                       </div>
@@ -650,13 +712,27 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                   {(data.orders?.purchase_orders?.length || 0) > 0 && (
                     <div className="pt-4 border-t">
                       <Button
-                        variant="destructive"
+                        variant={canceledAllPurchase ? "secondary" : "destructive"}
                         onClick={() => cancelAllOrders('purchase')}
-                        disabled={isCanceling}
+                        disabled={isCanceling || canceledAllPurchase}
                         className="w-full"
                       >
-                        {isCanceling ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                        Cancel All Purchase Orders
+                        {canceledAllPurchase ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            All Purchase Orders Canceled
+                          </>
+                        ) : isCanceling ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                            Canceling All Purchase Orders...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Cancel All Purchase Orders
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}
