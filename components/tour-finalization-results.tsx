@@ -86,20 +86,10 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
   }
 
   const workflowLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-    'receive_to_light': { 
-      label: 'Receive-to-Light (R2L)', 
-      icon: <Package className="h-4 w-4" />, 
-      color: 'bg-green-100 text-green-800 border-green-200' 
-    },
     'standard_receiving': { 
       label: 'Standard Receiving (STD_REC)', 
       icon: <Package className="h-4 w-4" />, 
       color: 'bg-green-100 text-green-800 border-green-200' 
-    },
-    'pack_to_light': { 
-      label: 'Pack-to-Light (P2L)', 
-      icon: <Package className="h-4 w-4" />, 
-      color: 'bg-blue-100 text-blue-800 border-blue-200' 
     },
     'multi_item_batch': { 
       label: 'Multi-Item Batch (MIB)', 

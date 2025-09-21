@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import { WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
+import { SimpleQuickTourCreator } from "./simple-quick-tour-creator"
 // Products are managed through ShipHero inventory API
 
 // Generic component for product selection with quantities (used by all workflows)
@@ -175,13 +176,6 @@ const workflowOptions = [
     badge: "Standard"
   },
   {
-    id: "receive_to_light" as WorkflowOption,
-    name: "Receive to Light",
-    description: "Creates one purchase order using your selected SKUs and quantities for light-guided receiving training",
-    category: "Inbound",
-    badge: "Attainable Automation"
-  },
-  {
     id: "bulk_shipping" as WorkflowOption,
     name: "Bulk Shipping",
     description: "Creates identical orders with same SKUs shipping to different customer addresses (demonstrates bulk processing efficiency)",
@@ -202,13 +196,6 @@ const workflowOptions = [
     category: "Fulfillment",
     badge: "Standard"
   },
-  {
-    id: "pack_to_light" as WorkflowOption,
-    name: "Pack to Light",
-    description: "Creates participant orders using selected SKUs for light-guided packing demonstrations",
-    category: "Fulfillment",
-    badge: "Attainable Automation"
-  }
 ]
 
 const categories = [
@@ -845,6 +832,30 @@ export function ScheduleTourPage() {
         <p className="text-slate-600">Create a new warehouse tour and configure training workflows and products for realistic demonstrations.</p>
       </div>
 
+      {/* Quick Tour Creator */}
+      <div className="mb-8">
+        <div className="bg-card p-6 rounded-lg shadow-md text-center space-y-4 border">
+          <h2 className="text-xl font-bold text-foreground">🚀 Quick Tour Creator</h2>
+          <p className="text-muted-foreground">Create a complete tour with sample orders instantly</p>
+          <button 
+            className="bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90 font-medium"
+            onClick={() => alert('Quick Tour Creator button works! Ready to implement full functionality.')}
+          >
+            Create Sample Tour
+          </button>
+          <div className="text-sm text-muted-foreground">
+            <p>This will create:</p>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>1 Purchase Order (5 SKUs, random quantities 1-25)</li>
+              <li>10 Multi-item Batch Orders (2-4 SKUs each, max 2 units per SKU)</li>
+              <li>10 Single-item Batch Orders (1 SKU each)</li>
+              <li>25 Bulk Ship Orders (identical orders)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+
       <Card className="shadow-sm border-slate-200">
         <CardHeader className="bg-slate-50 border-b border-slate-200">
           <CardTitle className="text-lg font-semibold text-slate-800">Tour Configuration</CardTitle>
@@ -1140,7 +1151,7 @@ export function ScheduleTourPage() {
                             {selectedWorkflows.includes(option.id) && expandedWorkflows.includes(option.id) && (
                               <div className="ml-6 p-4 bg-muted/30 rounded-lg border space-y-4">
                                 {/* Order Count Input - Only for fulfillment workflows */}
-                                {!['standard_receiving', 'receive_to_light'].includes(option.id) && (
+                                {!['standard_receiving'].includes(option.id) && (
                                   <div className="flex items-center gap-4">
                                     <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
                                       📦 Orders to Create:

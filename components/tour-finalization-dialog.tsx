@@ -26,20 +26,6 @@ interface TourFinalizationDialogProps {
 
 const workflowOptions = [
   {
-    id: "receive_to_light" as WorkflowOption,
-    name: "Receive to Light",
-    description: "Creates sales orders for participants + aggregated purchase order (receive to light workflow)",
-    category: "As-Is Workflows",
-    badge: "Original"
-  },
-  {
-    id: "pack_to_light" as WorkflowOption,
-    name: "Pack to Light",
-    description: "Creates sales orders for participants + aggregated purchase order (pack to light workflow)",
-    category: "As-Is Workflows",
-    badge: "Original"
-  },
-  {
     id: "standard_receiving" as WorkflowOption,
     name: "Standard Receiving",
     description: "Creates a dedicated purchase order with 6 specific SKUs for receiving workflow training",

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Save, RefreshCw, Building2, Settings } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { Switch } from "@/components/ui/switch"
 
 interface TenantConfig {
   id?: string
@@ -16,6 +17,7 @@ interface TenantConfig {
   shop_name: string
   company_name: string
   default_fulfillment_status: string
+  enable_hold_until: boolean
 }
 
 const FULFILLMENT_STATUS_OPTIONS = [
@@ -32,7 +34,8 @@ export function TenantConfigTab() {
     shiphero_vendor_id: "",
     shop_name: "Tour Orders",
     company_name: "Tour Company",
-    default_fulfillment_status: "pending"
+    default_fulfillment_status: "pending",
+    enable_hold_until: false
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -95,7 +98,7 @@ export function TenantConfigTab() {
     }
   }
 
-  const handleInputChange = (field: keyof TenantConfig, value: string) => {
+  const handleInputChange = (field: keyof TenantConfig, value: string | boolean) => {
     setConfig(prev => ({
       ...prev,
       [field]: value
@@ -189,6 +192,23 @@ export function TenantConfigTab() {
               <p className="text-sm text-muted-foreground">
                 Default status for new orders
               </p>
+            </div>
+          </div>
+
+          {/* Hold Until Setting */}
+          <div className="space-y-4 pt-4 border-t">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="hold_until">Enable Hold Until</Label>
+                <p className="text-sm text-muted-foreground">
+                  When enabled, orders will be created with a "hold until" status to prevent immediate fulfillment
+                </p>
+              </div>
+              <Switch
+                id="hold_until"
+                checked={config.enable_hold_until}
+                onCheckedChange={(checked) => handleInputChange('enable_hold_until', checked)}
+              />
             </div>
           </div>
 

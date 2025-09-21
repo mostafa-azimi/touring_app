@@ -73,21 +73,11 @@ const workflowLabels: Record<string, { label: string; icon: React.ReactNode; col
     icon: <ShoppingCart className="h-4 w-4" />, 
     color: "bg-purple-100 text-purple-800" 
   },
-  pack_to_light: { 
-    label: "Pack to Light", 
-    icon: <Package className="h-4 w-4" />, 
-    color: "bg-orange-100 text-orange-800" 
-  },
   standard_receiving: { 
     label: "Standard Receiving", 
     icon: <FileText className="h-4 w-4" />, 
     color: "bg-gray-100 text-gray-800" 
   },
-  receive_to_light: { 
-    label: "Receive to Light", 
-    icon: <FileText className="h-4 w-4" />, 
-    color: "bg-yellow-100 text-yellow-800" 
-  }
 }
 
 export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogProps) {

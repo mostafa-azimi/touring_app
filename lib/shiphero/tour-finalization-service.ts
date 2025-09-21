@@ -42,8 +42,6 @@ export interface ExtraCustomer {
 }
 
 export type WorkflowOption = 
-  | "receive_to_light" 
-  | "pack_to_light" 
   | "standard_receiving" 
   | "bulk_shipping" 
   | "single_item_batch" 
@@ -167,10 +165,9 @@ export class TourFinalizationService {
     const bulkCount = workflowConfigs['bulk_shipping']?.orderCount || 0
     const singleCount = workflowConfigs['single_item_batch']?.orderCount || 0  
     const multiCount = workflowConfigs['multi_item_batch']?.orderCount || 0
-    const packCount = workflowConfigs['pack_to_light']?.orderCount || 0
     
-    const total = bulkCount + singleCount + multiCount + packCount
-    console.log(`📊 Total orders needed: ${total} (bulk: ${bulkCount}, single: ${singleCount}, multi: ${multiCount}, pack: ${packCount})`)
+    const total = bulkCount + singleCount + multiCount
+    console.log(`📊 Total orders needed: ${total} (bulk: ${bulkCount}, single: ${singleCount}, multi: ${multiCount})`)
     
     return total
   }
@@ -410,7 +407,7 @@ export class TourFinalizationService {
 
       // Calculate total fulfillment orders needed across ALL workflows
       const fulfillmentWorkflows = selectedOptions.filter(option => 
-        ['pack_to_light', 'bulk_shipping', 'single_item_batch', 'multi_item_batch'].includes(option)
+        ['bulk_shipping', 'single_item_batch', 'multi_item_batch'].includes(option)
       )
       
       let totalFulfillmentOrders = 0
@@ -451,21 +448,6 @@ export class TourFinalizationService {
               console.log("✅ Standard Receiving Workflow completed successfully")
               break
               
-            case "receive_to_light":
-              console.log("Executing: Receive to Light Workflow") 
-              await this.createReceiveToLightWorkflowOrders(tourData)
-              console.log("✅ Receive to Light Workflow completed successfully")
-              break
-              
-            case "pack_to_light":
-              console.log("Executing: Pack to Light Workflow")
-              const p2lOrderCount = workflowOrderCounts[option] || 5
-              const p2lRecipients = masterRecipients.slice(recipientIndex, recipientIndex + p2lOrderCount)
-              await this.createPackToLightWorkflowOrders(tourData, p2lRecipients)
-              recipientIndex += p2lOrderCount
-              console.log("✅ Pack to Light Workflow completed successfully")
-              break
-              
             case "bulk_shipping":
               console.log("Executing: Bulk Shipping Workflow")
               const bshipOrderCount = workflowOrderCounts[option] || 5
@@ -502,7 +484,7 @@ export class TourFinalizationService {
           workflowErrors.push(errorMessage)
           
           // For fulfillment workflows, still increment recipient index to keep distribution consistent
-          if (['pack_to_light', 'bulk_shipping', 'single_item_batch', 'multi_item_batch'].includes(option)) {
+          if (['bulk_shipping', 'single_item_batch', 'multi_item_batch'].includes(option)) {
             const orderCount = workflowOrderCounts[option] || 5
             recipientIndex += orderCount
             console.log(`⚠️ Skipping ${orderCount} recipients due to ${option} failure`)
@@ -676,103 +658,7 @@ export class TourFinalizationService {
   }
 
   /**
-   * MODULE 2: Creates a Purchase Order for "Receive to Light" workflow  
-   */
-  private async createReceiveToLightWorkflowOrders(tourData: TourData): Promise<void> {
-    console.log("🎯 Creating Receive to Light Purchase Order...")
-    
-    // Get tenant configuration
-    const config = await tenantConfigService.getConfig()
-    
-    const workflowConfig = tourData.workflow_configs?.['receive_to_light']
-    const skuQuantities = workflowConfig?.skuQuantities || {}
-    
-    if (Object.keys(skuQuantities).length === 0) {
-      console.warn("No SKU quantities configured for Receive to Light, using selected_skus with quantity 1")
-      // Fallback to legacy selected_skus
-      tourData.selected_skus.forEach(sku => {
-        skuQuantities[sku] = 1
-      })
-    }
-
-    console.log("📦 Using SKU quantities:", skuQuantities)
-
-    const poLineItems = Object.entries(skuQuantities).map(([sku, quantity]) => ({
-      sku: sku,
-      quantity: quantity,
-      expected_weight_in_lbs: "1.00",
-      vendor_id: config.shiphero_vendor_id,
-      quantity_received: 0,
-      quantity_rejected: 0,
-      price: "0.00",
-      product_name: sku,
-      fulfillment_status: config.default_fulfillment_status,
-      sell_ahead: 0
-    }))
-
-    const poData = {
-      po_number: `R2L-${tourData.tour_numeric_id}-${Date.now()}`,
-      po_date: this.getOrderDate(tourData.date),
-      vendor_id: config.shiphero_vendor_id,
-      warehouse_id: tourData.warehouse.shiphero_warehouse_id,
-      subtotal: "0.00",
-      tax: "0.00",
-      shipping_price: "0.00",
-      total_price: "0.00",
-      fulfillment_status: config.default_fulfillment_status,
-      discount: "0.00",
-      line_items: poLineItems
-    }
-
-    console.log("🔄 Creating Receive to Light PO...")
-    const result = await this.createPurchaseOrderViaAPI(poData)
-
-    if (result.data?.purchase_order_create?.purchase_order) {
-      const poInfo = result.data.purchase_order_create.purchase_order
-      console.log("✅ Receive to Light PO created successfully")
-      console.log(`   📋 PO Number: ${poInfo.po_number}`)
-      console.log(`   🆔 ShipHero ID: ${poInfo.id}`)
-      console.log(`   🆔 Legacy ID: ${poInfo.legacy_id}`)
-      console.log(`   💰 Total Price: ${poInfo.total_price}`)
-      
-      // Store for final summary
-      this.createdPurchaseOrders.push({
-        workflow: "R2L",
-        po_number: poInfo.po_number,
-        shiphero_id: poInfo.id,
-        legacy_id: poInfo.legacy_id
-      })
-    } else {
-      throw new Error(`Receive to Light PO creation failed: ${result.errors?.[0]?.message || 'Unknown error'}`)
-    }
-  }
-
-  /**
-   * MODULE 3: Creates Sales Orders for "Pack-to-Light" workflow
-   * Uses exact same format as adhoc sales orders with p2l prefix
-   */
-  private async createPackToLightWorkflowOrders(tourData: TourData, recipients: any[]): Promise<void> {
-    const workflowConfig = tourData.workflow_configs?.['pack_to_light']
-    const orderCount = recipients.length
-    const skuQuantities = workflowConfig?.skuQuantities || {}
-    const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
-    
-    if (workflowSkus.length === 0) {
-      console.log('⚠️ No SKUs selected for Pack-to-Light workflow')
-      return
-    }
-    
-    console.log(`Creating ${orderCount} pack-to-light orders with SKUs:`, workflowSkus)
-    console.log(`Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
-    
-    // Create orders using adhoc format with p2l prefix and provided recipients
-    await this.createFulfillmentOrdersWithRecipients(tourData, "p2l", recipients, workflowSkus, skuQuantities)
-    
-    console.log(`✅ Pack-to-Light completed: ${orderCount} orders created`)
-  }
-
-  /**
-   * MODULE 4: Creates Sales Orders for "Bulk Shipping"
+   * MODULE 2: Creates Sales Orders for "Bulk Shipping"
    * Uses exact same format as adhoc sales orders with bship prefix
    */
   private async createBulkShippingSOs(tourData: TourData, recipients: any[]): Promise<void> {
@@ -796,7 +682,7 @@ export class TourFinalizationService {
   }
 
   /**
-   * MODULE 5: Creates Sales Orders for "Single-Item Batch Picking"  
+   * MODULE 3: Creates Sales Orders for "Single-Item Batch Picking"  
    * Uses exact same format as adhoc sales orders with sib prefix
    */
   private async createSingleItemBatchSOs(tourData: TourData, recipients: any[]): Promise<void> {
@@ -820,7 +706,7 @@ export class TourFinalizationService {
   }
 
   /**
-   * MODULE 6: Creates Sales Orders for "Multi-Item Batch Picking"
+   * MODULE 4: Creates Sales Orders for "Multi-Item Batch Picking"
    * Uses exact same format as adhoc sales orders with mib prefix
    */
   private async createMultiItemBatchSOs(tourData: TourData, recipients: any[]): Promise<void> {
