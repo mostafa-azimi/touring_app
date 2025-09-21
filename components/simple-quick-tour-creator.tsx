@@ -72,12 +72,12 @@ export function SimpleQuickTourCreator() {
       
       toast({
         title: "🎉 Quick Tour Created!",
-        description: `Sample tour created for ${tourData.date}. You can now finalize it to create orders.`,
+        description: `Sample tour created for ${tourData.date}. Redirecting to View Tours page...`,
       })
       
-      // Refresh the page to show the new tour
+      // Navigate to the View Tours page to see the new tour
       setTimeout(() => {
-        window.location.reload()
+        window.location.href = '/?tab=view-tours'
       }, 2000)
       
     } catch (error: any) {

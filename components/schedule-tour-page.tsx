@@ -1263,6 +1263,9 @@ export function ScheduleTourPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Quick Tour Creator */}
+      <SimpleQuickTourCreator />
     </div>
   )
 }
