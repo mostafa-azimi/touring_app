@@ -488,21 +488,31 @@ export class TourFinalizationService {
 
   /**
    * MODULE 4: Creates Sales Orders for "Multi-Item Batch Picking"
+   * Uses randomized subset of SKUs with weighted random quantities for variety
    */
   private async createMultiItemBatchSOs(tourData: TourData): Promise<void> {
     const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
     const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
-    const workflowSkus = workflowConfig?.skuQuantities 
-      ? Object.keys(workflowConfig.skuQuantities)
+    const availableSkus = workflowConfig?.skuQuantities 
+      ? Object.keys(workflowConfig.skuQuantities).filter(sku => workflowConfig.skuQuantities[sku] > 0)
       : tourData.selected_skus // Fallback to legacy
     
-    console.log(`Creating ${orderCount} multi-item batch orders...`)
-    console.log(`🎯 Using SKUs for Multi-Item Batch:`, workflowSkus)
+    if (availableSkus.length === 0) {
+      console.log('⚠️ No SKUs selected for Multi-Item Batch workflow')
+      return
+    }
     
-    // Create all orders using the new recipient system (participants + host + extras as needed)
-    const allOrders = await this.createOrdersForWorkflow(tourData, "MULTI", orderCount, workflowSkus)
+    if (availableSkus.length < 2) {
+      console.log('⚠️ Multi-Item Batch requires at least 2 SKUs. Please select more SKUs.')
+      return
+    }
     
-    console.log(`✅ Multi-Item Batch completed: ${allOrders.length} orders using new recipient system`)
+    console.log(`Creating ${orderCount} randomized multi-item batch orders from ${availableSkus.length} available SKUs:`, availableSkus)
+    
+    // Create randomized orders using new recipient system
+    const allOrders = await this.createRandomizedOrdersForWorkflow(tourData, "MULTI", orderCount, availableSkus)
+    
+    console.log(`✅ Multi-Item Batch completed: ${allOrders.length} randomized orders created`)
   }
 
   /**

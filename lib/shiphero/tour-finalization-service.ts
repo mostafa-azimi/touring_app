@@ -707,26 +707,31 @@ export class TourFinalizationService {
 
   /**
    * MODULE 4: Creates Sales Orders for "Multi-Item Batch Picking"
-   * Uses exact same format as adhoc sales orders with mib prefix
+   * Uses randomized subset of SKUs with weighted random quantities for variety
    */
   private async createMultiItemBatchSOs(tourData: TourData, recipients: any[]): Promise<void> {
     const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
     const orderCount = recipients.length
     const skuQuantities = workflowConfig?.skuQuantities || {}
-    const workflowSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
+    const availableSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
     
-    if (workflowSkus.length === 0) {
+    if (availableSkus.length === 0) {
       console.log('⚠️ No SKUs selected for Multi-Item Batch workflow')
       return
     }
     
-    console.log(`Creating ${orderCount} multi-item batch orders with SKUs:`, workflowSkus)
+    if (availableSkus.length < 2) {
+      console.log('⚠️ Multi-Item Batch requires at least 2 SKUs. Please select more SKUs.')
+      return
+    }
+    
+    console.log(`Creating ${orderCount} multi-item batch orders from ${availableSkus.length} available SKUs:`, availableSkus)
     console.log(`Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     
-    // Create orders using adhoc format with mib prefix and provided recipients
-    await this.createFulfillmentOrdersWithRecipients(tourData, "mib", recipients, workflowSkus, skuQuantities)
+    // Create randomized orders for each recipient
+    await this.createRandomizedMultiItemOrders(tourData, "mib", recipients, availableSkus)
     
-    console.log(`✅ Multi-Item Batch completed: ${orderCount} orders created`)
+    console.log(`✅ Multi-Item Batch completed: ${orderCount} randomized orders created`)
   }
 
   /**
@@ -858,6 +863,154 @@ export class TourFinalizationService {
         throw error
       }
     }
+  }
+
+  /**
+   * Create randomized multi-item orders with variety in SKU selection and quantities
+   */
+  private async createRandomizedMultiItemOrders(
+    tourData: TourData, 
+    prefix: string, 
+    recipients: any[],
+    availableSkus: string[]
+  ): Promise<void> {
+    console.log(`🎲 CREATING RANDOMIZED MULTI-ITEM ORDERS`)
+    console.log(`📋 Available SKUs: ${availableSkus.length} (${availableSkus.join(', ')})`)
+    console.log(`👥 Recipients: ${recipients.length}`)
+    
+    // Helper function to get weighted random quantity (1=70%, 2=25%, 3=5%)
+    const getRandomQuantity = (): number => {
+      const rand = Math.random()
+      if (rand < 0.70) return 1      // 70% chance
+      if (rand < 0.95) return 2      // 25% chance  
+      return 3                       // 5% chance
+    }
+    
+    // Helper function to get random subset of SKUs (2-4 SKUs per order)
+    const getRandomSkuSubset = (skus: string[]): string[] => {
+      const minSkus = 2
+      const maxSkus = Math.min(4, skus.length) // Max 4 SKUs or all available if less
+      const skuCount = Math.floor(Math.random() * (maxSkus - minSkus + 1)) + minSkus
+      
+      // Shuffle and take first N SKUs
+      const shuffled = [...skus].sort(() => Math.random() - 0.5)
+      return shuffled.slice(0, skuCount)
+    }
+    
+    // Create each order with randomized SKUs and quantities
+    for (let i = 0; i < recipients.length; i++) {
+      const recipient = recipients[i]
+      const orderNumber = `${prefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
+      
+      // Get random subset of SKUs for this order
+      const orderSkus = getRandomSkuSubset(availableSkus)
+      
+      console.log(`🎲 Order ${i + 1}/${recipients.length}: ${orderNumber}`)
+      console.log(`   📦 Selected SKUs: ${orderSkus.join(', ')}`)
+      
+      // Create line items with random quantities
+      const lineItems = orderSkus.map((sku, index) => {
+        const quantity = getRandomQuantity()
+        console.log(`   🔢 ${sku}: ${quantity} unit${quantity > 1 ? 's' : ''}`)
+        
+        return {
+          sku: sku,
+          partner_line_item_id: `${orderNumber}-item-${index + 1}`,
+          quantity: quantity,
+          price: "0.00",
+          product_name: sku,
+          fulfillment_status: "Tour_Orders",
+          quantity_pending_fulfillment: quantity,
+          warehouse_id: tourData.warehouse.shiphero_warehouse_id
+        }
+      })
+      
+      // Get tenant configuration
+      const config = await tenantConfigService.getConfig()
+      
+      // Create order data - same format as other workflows
+      const orderData = {
+        order_number: orderNumber,
+        shop_name: config.shop_name,
+        fulfillment_status: config.default_fulfillment_status,
+        order_date: this.getOrderDate(tourData.date),
+        total_tax: "0.00",
+        subtotal: "0.00",
+        total_discounts: "0.00",
+        total_price: "0.00",
+        shipping_address: {
+          first_name: recipient.first_name,
+          last_name: recipient.last_name,
+          address1: recipient.address || tourData.warehouse.address,
+          address2: recipient.address2 || "",
+          city: recipient.city || tourData.warehouse.city,
+          state: recipient.state || tourData.warehouse.state,
+          state_code: recipient.state || tourData.warehouse.state,
+          zip: recipient.zip || tourData.warehouse.zip,
+          country: recipient.country || "US",
+          country_code: recipient.country || "US"
+        },
+        billing_address: {
+          first_name: recipient.first_name,
+          last_name: recipient.last_name,
+          address1: recipient.address || tourData.warehouse.address,
+          address2: recipient.address2 || "",
+          city: recipient.city || tourData.warehouse.city,
+          state: recipient.state || tourData.warehouse.state,
+          state_code: recipient.state || tourData.warehouse.state,
+          zip: recipient.zip || tourData.warehouse.zip,
+          country: recipient.country || "US",
+          country_code: recipient.country || "US"
+        },
+        shipping_lines: [{
+          title: "Standard Shipping",
+          price: "0.00"
+        }],
+        line_items: lineItems,
+        tags: [
+          `tour-${tourData.tour_numeric_id}`,
+          `warehouse-${tourData.warehouse.code}`,
+          `workflow-multi-item-batch`,
+          `randomized-order`
+        ]
+      }
+      
+      try {
+        console.log(`🔄 Creating randomized order ${orderNumber}...`)
+        const result = await this.createSalesOrderViaAPI(orderData)
+        
+        if (result.data?.order_create?.order) {
+          const createdOrder = result.data.order_create.order
+          console.log(`✅ Order ${orderNumber} created successfully`)
+          console.log(`   🆔 ShipHero ID: ${createdOrder.id}`)
+          console.log(`   🆔 Legacy ID: ${createdOrder.legacy_id}`)
+          console.log(`   📦 Line Items: ${lineItems.length}`)
+          console.log(`   🔢 Total Units: ${lineItems.reduce((sum, item) => sum + item.quantity, 0)}`)
+          
+          // Store for final summary
+          this.createdOrders.push({
+            workflow: prefix,
+            order_number: orderNumber,
+            shiphero_id: createdOrder.id,
+            legacy_id: createdOrder.legacy_id,
+            recipient: recipient.type === 'extra' ? `${recipient.first_name} ${recipient.last_name} (extra)` : `${recipient.first_name} ${recipient.last_name}`,
+            line_items: lineItems.length,
+            total_units: lineItems.reduce((sum, item) => sum + item.quantity, 0)
+          })
+        } else {
+          console.error(`❌ Unexpected API response structure for ${orderNumber}`)
+          throw new Error('Invalid response structure from ShipHero API')
+        }
+      } catch (error) {
+        console.error(`❌ Failed to create randomized order ${orderNumber}:`, error)
+        throw error
+      }
+    }
+    
+    console.log(`🎲 Randomized Multi-Item Batch Summary:`)
+    console.log(`   📦 Orders Created: ${recipients.length}`)
+    console.log(`   🎯 Each order has 2-4 random SKUs`)
+    console.log(`   🔢 Quantities: 1 unit (70%), 2 units (25%), 3 units (5%)`)
   }
 
   /**
