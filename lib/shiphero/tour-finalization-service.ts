@@ -928,7 +928,7 @@ export class TourFinalizationService {
       // Get tenant configuration
       const config = await tenantConfigService.getConfig()
       
-      // Create order data - same format as other workflows
+      // Create order data - EXACT same format as bulk shipping orders
       const orderData = {
         order_number: orderNumber,
         shop_name: config.shop_name,
@@ -938,6 +938,8 @@ export class TourFinalizationService {
         subtotal: "0.00",
         total_discounts: "0.00",
         total_price: "0.00",
+        required_ship_date: tourData.date,
+        hold_until: this.getHoldUntilDate(tourData.date, tourData.time),
         shipping_address: {
           first_name: recipient.first_name,
           last_name: recipient.last_name,
