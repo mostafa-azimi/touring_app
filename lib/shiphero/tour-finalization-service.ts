@@ -795,7 +795,8 @@ export class TourFinalizationService {
     prefix: string, 
     recipients: any[],
     workflowSkus: string[], 
-    skuQuantities: {[sku: string]: number}
+    skuQuantities: {[sku: string]: number},
+    extraTags: string[] = []
   ): Promise<void> {
     console.log(`🚀 STARTING ${prefix.toUpperCase()} WORKFLOW - Creating ${recipients.length} orders`)
     console.log(`📋 Tour ID: ${tourData.id}, Tour Numeric ID: ${tourData.tour_numeric_id}`)
@@ -879,7 +880,7 @@ export class TourFinalizationService {
         
         required_ship_date: this.getRequiredShipDate(tourData.date),
         hold_until_date: this.getHoldUntilDate(tourData.date, tourData.time),
-        tags: [`tour-${tourData.tour_numeric_id}`, tourData.warehouse.code].filter(Boolean),
+        tags: [`tour-${tourData.tour_numeric_id}`, tourData.warehouse.code, ...extraTags].filter(Boolean),
         line_items: lineItems
       }
       
