@@ -247,6 +247,18 @@ export function ScheduleTourPage() {
   const [defaultsLoaded, setDefaultsLoaded] = useState(false)
   const [editingWorkflows, setEditingWorkflows] = useState<string[]>([])
 
+  // Default order counts for each workflow (should match Settings)
+  const getDefaultOrderCount = (workflowId: string): number => {
+    switch (workflowId) {
+      case 'standard_receiving': return 1 // 1 purchase order
+      case 'bulk_shipping': return 25 // 25 bulk shipping orders
+      case 'single_item_batch': return 10 // 10 single-item orders
+      case 'multi_item_batch': return 5 // 5 multi-item orders
+      case 'pack_to_light': return 10 // 10 pack to light orders
+      default: return 5
+    }
+  }
+
   const handleWorkflowChange = useCallback((optionId: string, checked: boolean) => {
     
     if (checked) {
@@ -258,7 +270,7 @@ export function ScheduleTourPage() {
         return {
           ...prev,
           [optionId]: {
-            orderCount: 5, // Default to 5 orders
+            orderCount: getDefaultOrderCount(optionId), // Use proper defaults
             selectedSkus: [],
             skuQuantities: {} // For Standard Receiving quantities
           }
@@ -307,7 +319,7 @@ export function ScheduleTourPage() {
     setWorkflowConfigs(prev => ({
       ...prev,
       [workflowId]: {
-        orderCount: prev[workflowId]?.orderCount || 5,
+        orderCount: prev[workflowId]?.orderCount || getDefaultOrderCount(workflowId),
         selectedSkus: checked 
           ? [...(prev[workflowId]?.selectedSkus || []), sku]
           : (prev[workflowId]?.selectedSkus || []).filter(s => s !== sku)
@@ -539,19 +551,30 @@ export function ScheduleTourPage() {
         const defaults = configData.workflow_defaults
         
         // Load workflow configurations
+        console.log('📋 Loading workflow defaults from database:', defaults)
         setWorkflowConfigs(defaults)
         
         // Load selected workflows from defaults
         const savedWorkflows = Object.keys(defaults).filter(key => 
-          defaults[key] && Object.keys(defaults[key]).length > 0
+          defaults[key] && typeof defaults[key] === 'object' && Object.keys(defaults[key]).length > 0
         )
+        
+        console.log('🎯 Found configured workflows:', savedWorkflows)
         
         if (savedWorkflows.length > 0) {
           setSelectedWorkflows(savedWorkflows)
-          setExpandedWorkflows(savedWorkflows)
+          // Don't auto-expand - keep minimal interface
+          setExpandedWorkflows([])
         }
 
         setDefaultsLoaded(true)
+        
+        // Log what was actually loaded for each workflow
+        savedWorkflows.forEach(workflow => {
+          const config = defaults[workflow]
+          console.log(`✅ Loaded ${workflow}: ${config.orderCount} orders, ${Object.keys(config.skuQuantities || {}).length} SKUs`)
+        })
+        
         toast({
           title: "Defaults Loaded",
           description: `Loaded default configurations for ${savedWorkflows.length} workflows`,
@@ -1264,23 +1287,21 @@ export function ScheduleTourPage() {
                                     </Button>
                                   </div>
                                   
-                                  {/* Order Count Input - Only for fulfillment workflows */}
-                                  {!['standard_receiving'].includes(option.id) && (
-                                    <div className="flex items-center gap-4">
-                                      <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
-                                        📦 Orders to Create:
-                                      </Label>
-                                      <Input
-                                        id={`${option.id}-count`}
-                                        type="number"
-                                        min="1"
-                                        max="50"
-                                        value={workflowConfigs[option.id]?.orderCount || 5}
-                                        onChange={(e) => updateWorkflowOrderCount(option.id, parseInt(e.target.value) || 5)}
-                                        className="w-20"
-                                      />
-                                    </div>
-                                  )}
+                                  {/* Order Count Input - For all workflows */}
+                                  <div className="flex items-center gap-4">
+                                    <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
+                                      📦 {option.id === 'standard_receiving' ? 'Purchase Orders to Create:' : 'Sales Orders to Create:'}
+                                    </Label>
+                                    <Input
+                                      id={`${option.id}-count`}
+                                      type="number"
+                                      min="1"
+                                      max="100"
+                                      value={workflowConfigs[option.id]?.orderCount || getDefaultOrderCount(option.id)}
+                                      onChange={(e) => updateWorkflowOrderCount(option.id, parseInt(e.target.value) || getDefaultOrderCount(option.id))}
+                                      className="w-20"
+                                    />
+                                  </div>
 
                                   {/* Product Selection - Special handling for Multi-Item Batch */}
                                   {option.id !== 'multi_item_batch' ? (
