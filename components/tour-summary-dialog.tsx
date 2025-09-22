@@ -775,7 +775,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               </div>
               <Button asChild variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-100">
                 <a 
-                  href={`https://app.shiphero.com/dashboard/orders/v2/manage?end_date=08%2F31%2F2026&preselectedDate=custom&fulfillment_status=unfulfilled&tags=tour-${data.tourNumericId || data.tourId}`}
+                  href={`https://app.shiphero.com/dashboard/orders/v2/manage?end_date=08%2F31%2F2026&preselectedDate=custom&tags=tour-${data.tourNumericId || data.tourId}`}
                   target="_blank" 
                   rel="noopener noreferrer"
                 >
@@ -785,7 +785,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
               </Button>
             </div>
             <div className="text-xs text-blue-600 mt-1">
-              Click to view all orders with tag "tour-{data.tourNumericId || data.tourId}" in ShipHero dashboard
+              Click to view all orders (fulfilled & unfulfilled) with tag "tour-{data.tourNumericId || data.tourId}" in ShipHero dashboard
             </div>
           </div>
 
