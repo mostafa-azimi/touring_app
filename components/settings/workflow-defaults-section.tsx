@@ -158,24 +158,53 @@ export function WorkflowDefaultsSection() {
       const { shipHeroDataService } = await import('@/lib/shiphero/data-service')
       const activeProducts = await shipHeroDataService.getActiveProducts()
       
-      console.log(`✅ Loaded ${activeProducts.length} products using shipHeroDataService`)
+      console.log(`✅ Loaded ${activeProducts.length} raw products using shipHeroDataService`)
       
       // Debug: Log first product to see structure
       if (activeProducts.length > 0) {
         console.log(`🔍 Sample product structure:`, activeProducts[0])
       }
       
-      // Sort alphabetically by SKU (same as Tour Creation)
-      const sortedProducts = activeProducts.sort((a, b) => a.sku.localeCompare(b.sku))
+      // Aggregate products by SKU to combine quantities from multiple warehouses
+      const productMap = new Map<string, any>()
       
-      // Debug: Log quantities for first few products
-      sortedProducts.slice(0, 5).forEach(product => {
+      activeProducts.forEach((product: any) => {
+        const sku = product.sku
         const qty = product.inventory?.available || 0
-        console.log(`📦 ${product.sku}: ${qty} available (inventory.available: ${product.inventory?.available})`)
+        
+        if (productMap.has(sku)) {
+          // Product already exists, add to quantity
+          const existing = productMap.get(sku)
+          existing.totalAvailable += qty
+          existing.warehouseCount += 1
+          console.log(`🔄 Combining ${sku}: ${existing.totalAvailable} total units (from ${existing.warehouseCount} warehouses)`)
+        } else {
+          // New product
+          productMap.set(sku, {
+            ...product,
+            totalAvailable: qty,
+            warehouseCount: 1
+          })
+          console.log(`✅ Added ${sku}: ${qty} units`)
+        }
       })
       
-      setAllSkus(sortedProducts)
-      console.log(`✅ Settings page now using SAME products as Tour Creation page`)
+      // Convert back to array and sort alphabetically
+      const aggregatedProducts = Array.from(productMap.values()).map(product => ({
+        ...product,
+        inventory: {
+          ...product.inventory,
+          available: product.totalAvailable // Use combined quantity
+        }
+      })).sort((a, b) => a.sku.localeCompare(b.sku))
+      
+      console.log(`📊 AGGREGATED ${aggregatedProducts.length} unique products:`)
+      aggregatedProducts.slice(0, 5).forEach(product => {
+        console.log(`  ${product.sku}: ${product.inventory?.available} total units`)
+      })
+      
+      setAllSkus(aggregatedProducts)
+      console.log(`✅ Settings page showing ${aggregatedProducts.length} unique products with combined quantities`)
       
     } catch (error: any) {
       console.error('Error loading products with shipHeroDataService:', error)
