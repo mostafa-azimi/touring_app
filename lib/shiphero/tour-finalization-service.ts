@@ -831,7 +831,7 @@ export class TourFinalizationService {
       const orderData = {
         order_number: orderNumber,
         shop_name: await tenantConfigService.getShopName(),
-        fulfillment_status: config.default_fulfillment_status,
+        fulfillment_status: await tenantConfigService.getDefaultFulfillmentStatus(),
         order_date: this.getOrderDate(tourData.date), // One business day before tour date
         total_tax: "0.00",
         subtotal: "0.00",
@@ -985,7 +985,7 @@ export class TourFinalizationService {
       const orderData = {
         order_number: orderNumber,
         shop_name: await tenantConfigService.getShopName(),
-        fulfillment_status: config.default_fulfillment_status,
+        fulfillment_status: await tenantConfigService.getDefaultFulfillmentStatus(),
         order_date: this.getOrderDate(tourData.date),
         total_tax: "0.00",
         subtotal: "0.00",
