@@ -527,14 +527,16 @@ export function ScheduleTourPage() {
       const { data, error } = await supabase
         .from('tenant_config')
         .select('workflow_defaults')
-        .single()
+        .limit(1)
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
+        console.warn('Error loading workflow defaults:', error)
         throw error
       }
 
-      if (data?.workflow_defaults && Object.keys(data.workflow_defaults).length > 0) {
-        const defaults = data.workflow_defaults
+      const configData = data && data.length > 0 ? data[0] : null
+      if (configData?.workflow_defaults && Object.keys(configData.workflow_defaults).length > 0) {
+        const defaults = configData.workflow_defaults
         
         // Load workflow configurations
         setWorkflowConfigs(defaults)

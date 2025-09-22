@@ -247,7 +247,7 @@ export function WorkflowDefaultsSection() {
       const { data, error } = await supabase
         .from('tenant_config')
         .select('workflow_defaults')
-        .maybeSingle()
+        .limit(1)
 
       if (error) {
         console.warn('Error loading workflow defaults:', error)
@@ -255,8 +255,9 @@ export function WorkflowDefaultsSection() {
         return
       }
 
-      if (data?.workflow_defaults && typeof data.workflow_defaults === 'object') {
-        const defaults = data.workflow_defaults
+      const configData = data && data.length > 0 ? data[0] : null
+      if (configData?.workflow_defaults && typeof configData.workflow_defaults === 'object') {
+        const defaults = configData.workflow_defaults
         
         // Load saved workflow configurations
         setWorkflowConfigs(defaults)
@@ -286,18 +287,19 @@ export function WorkflowDefaultsSection() {
       
       console.log('💾 SAVING workflow defaults:', workflowConfigs)
       
-      // First check if a tenant_config row exists
-      const { data: existingConfig, error: selectError } = await supabase
+      // Handle multiple tenant_config rows by using the first one or creating new
+      const { data: existingConfigs, error: selectError } = await supabase
         .from('tenant_config')
         .select('id')
-        .maybeSingle()
+        .limit(1)
       
       if (selectError) {
         console.warn('Error checking existing config:', selectError)
       }
       
       let saveError
-      if (existingConfig) {
+      if (existingConfigs && existingConfigs.length > 0) {
+        const existingConfig = existingConfigs[0]
         console.log('📝 Updating existing tenant_config:', existingConfig.id)
         // Update existing config
         const { error } = await supabase
