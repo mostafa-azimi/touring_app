@@ -1168,26 +1168,46 @@ export function ScheduleTourPage() {
                                   </div>
                                 )}
 
-                                {/* Simplified Product Selection for All Workflows */}
-                                <WorkflowProductSelection 
-                                  allSkus={allSkus}
-                                  workflowConfig={workflowConfigs[option.id]}
-                                  selectedWarehouse={selectedWarehouse}
-                                  workflowName={option.name}
-                                  workflowId={option.id}
-                                  onSkuQuantityChange={(sku, quantity) => {
-                                    setWorkflowConfigs(prev => ({
-                                      ...prev,
-                                      [option.id]: {
-                                        orderCount: prev[option.id]?.orderCount || 5,
-                                        skuQuantities: {
-                                          ...prev[option.id]?.skuQuantities,
-                                          [sku]: quantity
+                                {/* Product Selection - Hidden for Multi-Item Batch (uses randomization) */}
+                                {option.id !== 'multi_item_batch' ? (
+                                  <WorkflowProductSelection 
+                                    allSkus={allSkus}
+                                    workflowConfig={workflowConfigs[option.id]}
+                                    selectedWarehouse={selectedWarehouse}
+                                    workflowName={option.name}
+                                    workflowId={option.id}
+                                    onSkuQuantityChange={(sku, quantity) => {
+                                      setWorkflowConfigs(prev => ({
+                                        ...prev,
+                                        [option.id]: {
+                                          orderCount: prev[option.id]?.orderCount || 5,
+                                          skuQuantities: {
+                                            ...prev[option.id]?.skuQuantities,
+                                            [sku]: quantity
+                                          }
                                         }
-                                      }
-                                    }))
-                                  }}
-                                />
+                                      }))
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className="text-blue-600 text-lg">🎲</span>
+                                      <h4 className="font-medium text-blue-900">Randomized Multi-Item Orders</h4>
+                                    </div>
+                                    <p className="text-sm text-blue-700 mb-2">
+                                      This workflow automatically creates randomized orders with:
+                                    </p>
+                                    <ul className="text-sm text-blue-600 space-y-1 ml-4">
+                                      <li>• 2-4 random SKUs per order (from all available products)</li>
+                                      <li>• Random quantities: 1 unit (70%), 2 units (25%), 3 units (5%)</li>
+                                      <li>• Different combinations for each order to provide variety</li>
+                                    </ul>
+                                    <p className="text-xs text-blue-500 mt-2 italic">
+                                      No product selection needed - randomization happens automatically!
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>

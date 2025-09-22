@@ -710,23 +710,24 @@ export class TourFinalizationService {
    * Uses randomized subset of SKUs with weighted random quantities for variety
    */
   private async createMultiItemBatchSOs(tourData: TourData, recipients: any[]): Promise<void> {
-    const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
     const orderCount = recipients.length
-    const skuQuantities = workflowConfig?.skuQuantities || {}
-    const availableSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
+    
+    // Use ALL selected SKUs from the tour for randomization (not workflow-specific)
+    const availableSkus = tourData.selected_skus || []
     
     if (availableSkus.length === 0) {
-      console.log('⚠️ No SKUs selected for Multi-Item Batch workflow')
+      console.log('⚠️ No SKUs available for Multi-Item Batch workflow. Please select SKUs for the tour.')
       return
     }
     
     if (availableSkus.length < 2) {
-      console.log('⚠️ Multi-Item Batch requires at least 2 SKUs. Please select more SKUs.')
+      console.log('⚠️ Multi-Item Batch requires at least 2 SKUs. Please select more SKUs for the tour.')
       return
     }
     
-    console.log(`Creating ${orderCount} multi-item batch orders from ${availableSkus.length} available SKUs:`, availableSkus)
-    console.log(`Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
+    console.log(`🎲 Creating ${orderCount} randomized multi-item batch orders from ${availableSkus.length} available SKUs:`, availableSkus)
+    console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
+    console.log(`📋 Using ALL tour SKUs for randomization (no specific product selection needed)`)
     
     // Create randomized orders for each recipient
     await this.createRandomizedMultiItemOrders(tourData, "mib", recipients, availableSkus)
@@ -1003,8 +1004,28 @@ export class TourFinalizationService {
           console.error(`❌ Unexpected API response structure for ${orderNumber}`)
           throw new Error('Invalid response structure from ShipHero API')
         }
-      } catch (error) {
-        console.error(`❌ Failed to create randomized order ${orderNumber}:`, error)
+      } catch (error: any) {
+        console.error(`❌ DETAILED ERROR for randomized order ${orderNumber}:`)
+        console.error(`   🔍 Error Type: ${error.constructor.name}`)
+        console.error(`   📝 Error Message: ${error.message}`)
+        console.error(`   📊 HTTP Status: ${error.status || 'Unknown'}`)
+        console.error(`   🔗 Request URL: ${error.url || 'Unknown'}`)
+        console.error(`   📋 Order Data:`, JSON.stringify(orderData, null, 2))
+        console.error(`   👤 Recipient:`, recipient)
+        console.error(`   📦 Line Items:`, lineItems)
+        console.error(`   🏢 Warehouse:`, tourData.warehouse)
+        console.error(`   ⏰ Timestamp: ${new Date().toISOString()}`)
+        
+        if (error.response) {
+          console.error(`   📡 Response Status: ${error.response.status}`)
+          console.error(`   📡 Response Headers:`, error.response.headers)
+          console.error(`   📡 Response Data:`, error.response.data)
+        }
+        
+        if (error.stack) {
+          console.error(`   📚 Stack Trace:`, error.stack)
+        }
+        
         throw error
       }
     }
