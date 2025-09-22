@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Calendar, MapPin, Users, Gift, Upload, Download, FileText, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, X, Calendar, MapPin, Users, Gift, Upload, Download, FileText, ChevronDown, ChevronUp, RefreshCw, Zap } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -240,6 +240,7 @@ export function ScheduleTourPage() {
   const [isLoadingSkus, setIsLoadingSkus] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
+  const [isLoadingDefaults, setIsLoadingDefaults] = useState(false)
 
   const handleWorkflowChange = useCallback((optionId: string, checked: boolean) => {
     
@@ -512,6 +513,58 @@ export function ScheduleTourPage() {
 
   const removeParticipant = (id: string) => {
     setParticipants(participants.filter((p) => p.id !== id))
+  }
+
+  const loadWorkflowDefaults = async () => {
+    try {
+      setIsLoadingDefaults(true)
+      
+      const { data, error } = await supabase
+        .from('tenant_config')
+        .select('workflow_defaults')
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        throw error
+      }
+
+      if (data?.workflow_defaults && Object.keys(data.workflow_defaults).length > 0) {
+        const defaults = data.workflow_defaults
+        
+        // Load workflow configurations
+        setWorkflowConfigs(defaults)
+        
+        // Load selected workflows from defaults
+        const savedWorkflows = Object.keys(defaults).filter(key => 
+          defaults[key] && Object.keys(defaults[key]).length > 0
+        )
+        
+        if (savedWorkflows.length > 0) {
+          setSelectedWorkflows(savedWorkflows)
+          setExpandedWorkflows(savedWorkflows)
+        }
+
+        toast({
+          title: "Defaults Loaded",
+          description: `Loaded default configurations for ${savedWorkflows.length} workflows`,
+        })
+      } else {
+        toast({
+          title: "No Defaults Found",
+          description: "No workflow defaults have been configured. Go to Settings > Configuration to set them up.",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error('Error loading workflow defaults:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load workflow defaults",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingDefaults(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1101,9 +1154,31 @@ export function ScheduleTourPage() {
                 <h3 className="text-lg font-semibold">Training Workflows</h3>
                 <span className="text-sm text-muted-foreground">({selectedWorkflows.length} selected)</span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Select the training workflows to create when finalizing this tour. These will generate specific orders in ShipHero for different training scenarios.
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Select the training workflows to create when finalizing this tour. These will generate specific orders in ShipHero for different training scenarios.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={loadWorkflowDefaults}
+                  disabled={isLoadingDefaults}
+                  className="flex items-center gap-2"
+                >
+                  {isLoadingDefaults ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4" />
+                      Load Defaults
+                    </>
+                  )}
+                </Button>
+              </div>
 
               <div className="space-y-6">
                 {categories.map(category => {

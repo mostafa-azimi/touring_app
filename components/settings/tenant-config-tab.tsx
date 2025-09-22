@@ -10,6 +10,7 @@ import { Save, RefreshCw, Building2, Settings } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
+import { WorkflowDefaultsSection } from "./workflow-defaults-section"
 
 interface TenantConfig {
   id?: string
@@ -229,6 +230,9 @@ export function TenantConfigTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Workflow Defaults Section */}
+      <WorkflowDefaultsSection />
     </div>
   )
 }
