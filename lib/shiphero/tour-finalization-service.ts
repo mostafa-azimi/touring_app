@@ -784,6 +784,8 @@ export class TourFinalizationService {
     
     console.log(`📦 Found ${availableSkus.length} available SKUs (excluding ${packToLightSkus.length} Pack to Light SKUs)`)
     console.log(`🚫 Excluded Pack to Light SKUs:`, packToLightSkus)
+    console.log(`🎯 Randomization Strategy: 60% get 2 SKUs, 30% get 1 SKU, 10% get 3 SKUs`)
+    console.log(`🎯 Quantity Strategy: 80% get 1 unit per SKU, 20% get 2 units per SKU`)
     
     // Create randomized orders - each order gets different SKUs and quantities
     await this.createRandomizedMultiItemOrders(tourData, recipients, availableSkus)
@@ -808,17 +810,20 @@ export class TourFinalizationService {
       const recipient = recipients[i]
       const orderNumber = `mib-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
       
-      // Randomly select 1-3 SKUs for this order
-      const skuCount = Math.floor(Math.random() * 3) + 1 // 1, 2, or 3 SKUs
+      // More reasonable randomization for small tours
+      // 60% chance of 2 SKUs, 30% chance of 1 SKU, 10% chance of 3 SKUs
+      const rand = Math.random()
+      const skuCount = rand < 0.6 ? 2 : (rand < 0.9 ? 1 : 3)
+      
       const shuffledSkus = [...availableSkus].sort(() => 0.5 - Math.random())
       const selectedSkus = shuffledSkus.slice(0, skuCount)
       
       // Get fulfillment status once per order
       const defaultFulfillmentStatus = await tenantConfigService.getDefaultFulfillmentStatus()
       
-      // Create line items with random quantities (1-2 units each)
+      // Create line items - favor 1 unit per SKU for simplicity (80% chance)
       const lineItems = selectedSkus.map((sku, index) => {
-        const quantity = Math.floor(Math.random() * 2) + 1 // 1 or 2 units
+        const quantity = Math.random() < 0.8 ? 1 : 2 // 80% chance of 1 unit, 20% chance of 2 units
         return {
           sku: sku,
           quantity: quantity,
