@@ -752,6 +752,17 @@ export class TourFinalizationService {
    * Uses randomized subset of SKUs with weighted random quantities for variety
    */
   private async createMultiItemBatchSOs(tourData: TourData, recipients: any[]): Promise<void> {
+    console.log(`🔍 MIB DEBUG - createMultiItemBatchSOs called with:`, {
+      tourData: !!tourData,
+      recipients: recipients ? recipients.length : 'undefined',
+      recipientsType: typeof recipients,
+      recipientsIsArray: Array.isArray(recipients)
+    })
+    
+    if (!recipients || !Array.isArray(recipients)) {
+      throw new Error(`Multi-Item Batch: Invalid recipients parameter: ${recipients}`)
+    }
+    
     const orderCount = recipients.length
     
     console.log(`🎲 Creating ${orderCount} RANDOMIZED multi-item batch orders`)
@@ -798,6 +809,20 @@ export class TourFinalizationService {
    * Each order gets 1-3 random SKUs with 1-2 units each
    */
   private async createRandomizedMultiItemOrders(tourData: TourData, recipients: any[], availableSkus: string[]): Promise<void> {
+    console.log(`🔍 MIB DEBUG - Function called with:`, {
+      tourData: !!tourData,
+      recipients: recipients ? recipients.length : 'undefined',
+      availableSkus: availableSkus ? availableSkus.length : 'undefined'
+    })
+    
+    if (!recipients || !Array.isArray(recipients)) {
+      throw new Error(`Invalid recipients parameter: ${recipients}`)
+    }
+    
+    if (!availableSkus || !Array.isArray(availableSkus)) {
+      throw new Error(`Invalid availableSkus parameter: ${availableSkus}`)
+    }
+    
     console.log(`🚀 STARTING RANDOMIZED MIB WORKFLOW - Creating ${recipients.length} orders`)
     console.log(`📋 Tour ID: ${tourData.id}, Tour Numeric ID: ${tourData.tour_numeric_id}`)
     console.log(`🏢 Warehouse: ${tourData.warehouse.name} (${tourData.warehouse.code})`)
