@@ -94,6 +94,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
   const [canceledAllPurchase, setCanceledAllPurchase] = useState(false)
   const [successfullyCanceledButtons, setSuccessfullyCanceledButtons] = useState<Set<string>>(new Set())
   const [entireTourCanceled, setEntireTourCanceled] = useState(false)
+  const [canceledIndividualOrders, setCanceledIndividualOrders] = useState<Set<string>>(new Set())
 
   // Initialize button states based on actual order statuses when dialog opens
   useEffect(() => {
@@ -300,6 +301,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             
             const cancelResult = await cancelResponse.json()
             if (cancelResult.success) {
+              // Track individual canceled order
+              setCanceledIndividualOrders(prev => new Set([...prev, order.order_number]))
               updateProgress(`✅ ${order.order_number}: Canceled`, [`✅ ${order.order_number}: Canceled`], [], true)
               successCount++
             } else {
@@ -346,6 +349,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             console.log(`🔍 CLIENT DEBUG: API response result:`, result)
             
             if (result.success) {
+              // Track individual canceled order
+              setCanceledIndividualOrders(prev => new Set([...prev, order.po_number]))
               updateProgress(`✅ ${order.po_number}: Canceled`, [`✅ ${order.po_number}: Canceled`], [], true)
               successCount++
             } else {
@@ -459,6 +464,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             const cancelResult = await cancelResponse.json()
             if (cancelResult.success) {
               console.log(`✅ Successfully canceled sales order: ${order.order_number}`)
+              // Track individual canceled order
+              setCanceledIndividualOrders(prev => new Set([...prev, order.order_number]))
               successCount++
             } else {
               throw new Error(cancelResult.errors?.[0]?.error || 'Failed to cancel sales order')
@@ -494,6 +501,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             
             if (result.success) {
               console.log(`✅ Successfully canceled purchase order: ${order.po_number}`)
+              // Track individual canceled order
+              setCanceledIndividualOrders(prev => new Set([...prev, order.po_number]))
               successCount++
             } else {
               console.error(`❌ CLIENT DEBUG (cancelAll): Purchase order cancellation failed:`, result)
@@ -599,7 +608,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                 'Authorization': `Bearer ${accessToken}`
               },
               body: JSON.stringify({
-                orders: [{ id: order.id, legacy_id: order.legacy_id }],
+                orders: [{ id: order.shiphero_id, legacy_id: order.legacy_id }],
                 type: 'sales',
                 use_cancel_mutation: true
               })
@@ -608,6 +617,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             const cancelResult = await cancelResponse.json()
             if (cancelResult.success) {
               totalSuccessful++
+              // Track individual canceled order
+              setCanceledIndividualOrders(prev => new Set([...prev, order.order_number]))
               updateProgress(`✅ Canceled sales order: ${order.order_number}`, [], [], true)
             } else {
               throw new Error(cancelResult.errors?.[0]?.error || 'Failed to cancel sales order')
@@ -641,7 +652,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                 'Authorization': `Bearer ${accessToken}`
               },
               body: JSON.stringify({
-                orders: [{ id: order.id, legacy_id: order.legacy_id }],
+                orders: [{ id: order.shiphero_id, legacy_id: order.legacy_id }],
                 type: 'purchase',
                 use_cancel_mutation: true
               })
@@ -650,6 +661,8 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             const result = await response.json()
             if (result.success) {
               totalSuccessful++
+              // Track individual canceled order
+              setCanceledIndividualOrders(prev => new Set([...prev, order.po_number]))
               updateProgress(`✅ Canceled purchase order: ${order.po_number}`, [], [], true)
             } else {
               const errorMessage = result.errors?.[0]?.error || result.errors?.[0]?.server_details || 'Failed to cancel purchase order'
@@ -920,23 +933,28 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                           <div>Order Number</div>
                           <div>Recipient</div>
                         </div>
-                        {orders.map((order) => (
-                          <div key={order.order_number} className="grid grid-cols-2 gap-4 p-2 hover:bg-gray-50 rounded border-b border-gray-100 last:border-b-0">
-                            <div>
-                              <a
-                                href={`https://app.shiphero.com/dashboard/orders/details/${order.legacy_id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-mono text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                              >
-                                {order.order_number}
-                              </a>
+                        {orders.map((order) => {
+                          const isCanceled = canceledIndividualOrders.has(order.order_number)
+                          return (
+                            <div key={order.order_number} className={`grid grid-cols-2 gap-4 p-2 hover:bg-gray-50 rounded border-b border-gray-100 last:border-b-0 ${isCanceled ? 'opacity-50 bg-red-50' : ''}`}>
+                              <div className="flex items-center gap-2">
+                                {isCanceled && <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
+                                <a
+                                  href={`https://app.shiphero.com/dashboard/orders/details/${order.legacy_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`font-mono text-sm font-medium hover:underline ${isCanceled ? 'text-red-600 line-through' : 'text-blue-600 hover:text-blue-800'}`}
+                                >
+                                  {order.order_number}
+                                </a>
+                                {isCanceled && <Badge variant="destructive" className="text-xs">CANCELED</Badge>}
+                              </div>
+                              <div className={`text-sm ${isCanceled ? 'text-red-500 line-through' : 'text-gray-600'}`}>
+                                {order.recipient.replace(' (extra)', '')}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-600">
-                              {order.recipient.replace(' (extra)', '')}
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
@@ -1026,18 +1044,25 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide px-2 py-1">
                           Purchase Order Number
                         </div>
-                        {orders.map((order) => (
-                          <div key={order.po_number} className="p-2 hover:bg-gray-50 rounded border-b border-gray-100 last:border-b-0">
-                            <a
-                              href={`https://app.shiphero.com/dashboard/purchase-orders/details/${order.legacy_id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-mono text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                            >
-                              {order.po_number}
-                            </a>
-                          </div>
-                        ))}
+                        {orders.map((order) => {
+                          const isCanceled = canceledIndividualOrders.has(order.po_number)
+                          return (
+                            <div key={order.po_number} className={`p-2 hover:bg-gray-50 rounded border-b border-gray-100 last:border-b-0 ${isCanceled ? 'opacity-50 bg-red-50' : ''}`}>
+                              <div className="flex items-center gap-2">
+                                {isCanceled && <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
+                                <a
+                                  href={`https://app.shiphero.com/dashboard/purchase-orders/details/${order.legacy_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`font-mono text-sm font-medium hover:underline ${isCanceled ? 'text-red-600 line-through' : 'text-blue-600 hover:text-blue-800'}`}
+                                >
+                                  {order.po_number}
+                                </a>
+                                {isCanceled && <Badge variant="destructive" className="text-xs">CANCELED</Badge>}
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
