@@ -247,14 +247,14 @@ export function ScheduleTourPage() {
   const [defaultsLoaded, setDefaultsLoaded] = useState(false)
   const [editingWorkflows, setEditingWorkflows] = useState<string[]>([])
 
-  // Default order counts for each workflow (should match Settings)
+  // Default order counts for each workflow (should match Settings and database)
   const getDefaultOrderCount = (workflowId: string): number => {
     switch (workflowId) {
       case 'standard_receiving': return 1 // 1 purchase order
-      case 'bulk_shipping': return 25 // 25 bulk shipping orders
-      case 'single_item_batch': return 10 // 10 single-item orders
-      case 'multi_item_batch': return 5 // 5 multi-item orders
-      case 'pack_to_light': return 10 // 10 pack to light orders
+      case 'bulk_shipping': return 15 // 15 bulk shipping orders (matches Settings)
+      case 'single_item_batch': return 5 // 5 single-item orders (matches Settings)
+      case 'multi_item_batch': return 8 // 8 multi-item orders (matches Settings)
+      case 'pack_to_light': return 5 // 5 pack to light orders (matches Settings)
       default: return 5
     }
   }
