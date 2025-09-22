@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { Plus, X, Calendar, MapPin, Users, Gift, Upload, Download, FileText, ChevronDown, ChevronUp, RefreshCw, Zap, Edit3, Package } from "lucide-react"
+import { Plus, X, Calendar, MapPin, Users, Gift, Upload, Download, FileText, ChevronDown, ChevronUp, RefreshCw, Zap, Edit3, Package, Settings } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -227,12 +227,7 @@ export function ScheduleTourPage() {
     "multi_item_batch"
   ])
   const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, skuQuantities: {[sku: string]: number}}}>({})
-  const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([
-    "standard_receiving", 
-    "bulk_shipping", 
-    "single_item_batch", 
-    "multi_item_batch"
-  ])
+  const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([])
   const [allSkus, setAllSkus] = useState<any[]>([]) // Store all SKUs for filtering
   
   
@@ -571,11 +566,19 @@ export function ScheduleTourPage() {
   }
 
   const toggleWorkflowEditing = (workflowId: string) => {
-    setEditingWorkflows(prev => 
-      prev.includes(workflowId) 
-        ? prev.filter(id => id !== workflowId)
-        : [...prev, workflowId]
-    )
+    setEditingWorkflows(prev => {
+      const isCurrentlyEditing = prev.includes(workflowId)
+      if (isCurrentlyEditing) {
+        // Stop editing - remove from editing list
+        return prev.filter(id => id !== workflowId)
+      } else {
+        // Start editing - add to editing list and ensure it's expanded
+        setExpandedWorkflows(prevExpanded => 
+          prevExpanded.includes(workflowId) ? prevExpanded : [...prevExpanded, workflowId]
+        )
+        return [...prev, workflowId]
+      }
+    })
   }
 
   const getWorkflowSummary = (workflowId: string) => {
@@ -1239,44 +1242,71 @@ export function ScheduleTourPage() {
                             {/* Workflow Configuration Section - Phased Approach */}
                             {selectedWorkflows.includes(option.id) && (
                               <div className="ml-6 mt-4">
-                                {defaultsLoaded && !editingWorkflows.includes(option.id) ? (
-                                  /* Phase 1: Show Summary with Edit Button */
-                                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3">
-                                        <Package className="h-4 w-4 text-green-600" />
-                                        <div>
-                                          <h4 className="font-medium text-green-900">Configuration Loaded</h4>
-                                          {(() => {
-                                            const summary = getWorkflowSummary(option.id)
-                                            if (!summary) return <p className="text-sm text-green-700">No configuration found</p>
-                                            
-                                            return (
-                                              <div className="text-sm text-green-700">
-                                                {!['standard_receiving'].includes(option.id) && (
-                                                  <span>{summary.orderCount} orders • </span>
-                                                )}
-                                                {option.id === 'multi_item_batch' ? (
-                                                  <span>{summary.skuCount} SKUs for randomization</span>
-                                                ) : (
-                                                  <span>{summary.skuCount} products • {summary.totalQuantity} total units</span>
-                                                )}
+                                {!editingWorkflows.includes(option.id) && !expandedWorkflows.includes(option.id) ? (
+                                  /* Phase 1: Show Summary or Configure Button */
+                                  (() => {
+                                    const summary = getWorkflowSummary(option.id)
+                                    const hasConfiguration = summary && (summary.skuCount > 0 || summary.orderCount > 0)
+                                    
+                                    if (hasConfiguration) {
+                                      // Show loaded configuration summary
+                                      return (
+                                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                              <Package className="h-4 w-4 text-green-600" />
+                                              <div>
+                                                <h4 className="font-medium text-green-900">Configuration Loaded</h4>
+                                                <div className="text-sm text-green-700">
+                                                  {!['standard_receiving'].includes(option.id) && (
+                                                    <span>{summary.orderCount} orders • </span>
+                                                  )}
+                                                  {option.id === 'multi_item_batch' ? (
+                                                    <span>{summary.skuCount} SKUs for randomization</span>
+                                                  ) : (
+                                                    <span>{summary.skuCount} products • {summary.totalQuantity} total units</span>
+                                                  )}
+                                                </div>
                                               </div>
-                                            )
-                                          })()}
+                                            </div>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => toggleWorkflowEditing(option.id)}
+                                              className="flex items-center gap-2"
+                                            >
+                                              <Edit3 className="h-4 w-4" />
+                                              Customize
+                                            </Button>
+                                          </div>
                                         </div>
-                                      </div>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => toggleWorkflowEditing(option.id)}
-                                        className="flex items-center gap-2"
-                                      >
-                                        <Edit3 className="h-4 w-4" />
-                                        Customize
-                                      </Button>
-                                    </div>
-                                  </div>
+                                      )
+                                    } else {
+                                      // Show configure button for unconfigured workflows
+                                      return (
+                                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                              <Settings className="h-4 w-4 text-blue-600" />
+                                              <div>
+                                                <h4 className="font-medium text-blue-900">Configure {option.name}</h4>
+                                                <p className="text-sm text-blue-700">Set up products and quantities for this workflow</p>
+                                              </div>
+                                            </div>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => toggleWorkflowEditing(option.id)}
+                                              className="flex items-center gap-2"
+                                            >
+                                              <Edit3 className="h-4 w-4" />
+                                              Configure
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )
+                                    }
+                                  })()
                                 ) : selectedWorkflows.includes(option.id) && (expandedWorkflows.includes(option.id) || editingWorkflows.includes(option.id)) ? (
                                   /* Phase 2: Show Full Configuration */
                                   <div className="p-4 bg-muted/30 rounded-lg border space-y-4">
@@ -1334,41 +1364,25 @@ export function ScheduleTourPage() {
                                         }}
                                       />
                                     ) : (
-                                      <div className="space-y-4">
-                                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                          <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-blue-600 text-lg">🎲</span>
-                                            <h4 className="font-medium text-blue-900">Randomized Multi-Item Orders</h4>
-                                          </div>
-                                          <p className="text-sm text-blue-700 mb-2">
-                                            Select which SKUs to use for randomization. Orders will be created with:
-                                          </p>
-                                          <ul className="text-sm text-blue-600 space-y-1 ml-4">
-                                            <li>• 2-4 random SKUs per order (from your selected SKUs below)</li>
-                                            <li>• Random quantities: 1 unit (70%), 2 units (25%), 3 units (5%)</li>
-                                            <li>• Different combinations for each order to provide variety</li>
-                                          </ul>
-                                        </div>
-                                        <WorkflowProductSelection 
-                                          allSkus={allSkus}
-                                          workflowConfig={workflowConfigs[option.id]}
-                                          selectedWarehouse={selectedWarehouse}
-                                          workflowName={`${option.name} (Randomization Pool)`}
-                                          workflowId={option.id}
-                                          onSkuQuantityChange={(sku, quantity) => {
-                                            setWorkflowConfigs(prev => ({
-                                              ...prev,
-                                              [option.id]: {
-                                                orderCount: prev[option.id]?.orderCount || 5,
-                                                skuQuantities: {
-                                                  ...prev[option.id]?.skuQuantities,
-                                                  [sku]: quantity
-                                                }
+                                      <WorkflowProductSelection 
+                                        allSkus={allSkus}
+                                        workflowConfig={workflowConfigs[option.id]}
+                                        selectedWarehouse={selectedWarehouse}
+                                        workflowName={`${option.name} (Randomization Pool)`}
+                                        workflowId={option.id}
+                                        onSkuQuantityChange={(sku, quantity) => {
+                                          setWorkflowConfigs(prev => ({
+                                            ...prev,
+                                            [option.id]: {
+                                              orderCount: prev[option.id]?.orderCount || 5,
+                                              skuQuantities: {
+                                                ...prev[option.id]?.skuQuantities,
+                                                [sku]: quantity
                                               }
-                                            }))
-                                          }}
-                                        />
-                                      </div>
+                                            }
+                                          }))
+                                        }}
+                                      />
                                     )}
                                   </div>
                                 ) : null}
