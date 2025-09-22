@@ -627,7 +627,7 @@ export class TourFinalizationService {
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      fulfillment_status: fulfillmentStatus,
+      // fulfillment_status: fulfillmentStatus, // Not needed for purchase order line items
       sell_ahead: 0
     }))
 
@@ -640,7 +640,7 @@ export class TourFinalizationService {
       tax: "0.00",
       shipping_price: "0.00", 
       total_price: "0.00",
-      fulfillment_status: fulfillmentStatus,
+      // fulfillment_status: fulfillmentStatus, // Purchase orders might not need this field
       discount: "0.00",
       line_items: poLineItems
     }
@@ -742,8 +742,14 @@ export class TourFinalizationService {
     console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     console.log(`📋 Using workflow-specific SKUs from Settings configuration`)
     
-    // Create randomized orders for each recipient
-    await this.createRandomizedMultiItemOrders(tourData, "mib", recipients, availableSkus)
+    // Use the same method as other working workflows instead of randomized method
+    await this.createFulfillmentOrdersWithRecipients(
+      tourData, 
+      "mib", 
+      recipients, 
+      availableSkus, 
+      skuQuantities
+    )
     
     console.log(`✅ Multi-Item Batch completed: ${orderCount} randomized orders created`)
   }
