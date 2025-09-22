@@ -160,9 +160,26 @@ export function WorkflowDefaultsSection() {
       // Load products from all warehouses
       const allProductsMap = new Map<string, any>()
       
+      // Get access token for ShipHero API calls
+      const accessToken = localStorage.getItem('shiphero_access_token')
+      if (!accessToken) {
+        console.warn('No ShipHero access token found. Please configure ShipHero integration.')
+        toast({
+          title: "Authentication Required",
+          description: "Please configure ShipHero integration in Settings > ShipHero tab first.",
+          variant: "destructive",
+        })
+        return
+      }
+      
       for (const warehouse of warehouses) {
         try {
-          const response = await fetch(`/api/shiphero/inventory?warehouse_id=${warehouse.id}`)
+          const response = await fetch(`/api/shiphero/inventory?warehouse_id=${warehouse.id}`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          })
           
           if (response.ok) {
             const data = await response.json()
@@ -225,13 +242,15 @@ export function WorkflowDefaultsSection() {
       const { data, error } = await supabase
         .from('tenant_config')
         .select('workflow_defaults')
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') {
-        throw error
+      if (error) {
+        console.warn('Error loading workflow defaults:', error)
+        // Don't throw error, just continue with empty defaults
+        return
       }
 
-      if (data?.workflow_defaults) {
+      if (data?.workflow_defaults && typeof data.workflow_defaults === 'object') {
         const defaults = data.workflow_defaults
         
         // Load saved workflow configurations
@@ -239,15 +258,20 @@ export function WorkflowDefaultsSection() {
         
         // Load selected workflows from defaults
         const savedWorkflows = Object.keys(defaults).filter(key => 
-          defaults[key] && Object.keys(defaults[key]).length > 0
+          defaults[key] && typeof defaults[key] === 'object' && Object.keys(defaults[key]).length > 0
         )
         if (savedWorkflows.length > 0) {
           setSelectedWorkflows(savedWorkflows)
           setExpandedWorkflows(savedWorkflows)
         }
+        
+        console.log(`Loaded workflow defaults for ${savedWorkflows.length} workflows`)
+      } else {
+        console.log('No workflow defaults found, using default configuration')
       }
     } catch (error) {
-      console.error('Error loading workflow defaults:', error)
+      console.warn('Failed to load workflow defaults:', error)
+      // Continue with default settings
     }
   }
 
@@ -255,14 +279,43 @@ export function WorkflowDefaultsSection() {
     try {
       setIsSaving(true)
       
-      const { error } = await supabase
+      // First check if a tenant_config row exists
+      const { data: existingConfig, error: selectError } = await supabase
         .from('tenant_config')
-        .upsert({
-          workflow_defaults: workflowConfigs,
-          updated_at: new Date().toISOString()
-        })
+        .select('id')
+        .maybeSingle()
+      
+      if (selectError) {
+        console.warn('Error checking existing config:', selectError)
+      }
+      
+      let saveError
+      if (existingConfig) {
+        // Update existing config
+        const { error } = await supabase
+          .from('tenant_config')
+          .update({
+            workflow_defaults: workflowConfigs,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingConfig.id)
+        saveError = error
+      } else {
+        // Insert new config
+        const { error } = await supabase
+          .from('tenant_config')
+          .insert({
+            workflow_defaults: workflowConfigs,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+        saveError = error
+      }
 
-      if (error) throw error
+      if (saveError) {
+        console.error('Save error:', saveError)
+        throw saveError
+      }
 
       toast({
         title: "Workflow Defaults Saved",
@@ -272,7 +325,7 @@ export function WorkflowDefaultsSection() {
       console.error('Error saving workflow defaults:', error)
       toast({
         title: "Error",
-        description: "Failed to save workflow defaults",
+        description: `Failed to save workflow defaults: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       })
     } finally {
