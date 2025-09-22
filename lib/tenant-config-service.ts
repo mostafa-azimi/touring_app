@@ -82,19 +82,28 @@ export class TenantConfigService {
   }
 
   /**
-   * Get default fulfillment status
+   * Get default fulfillment status for SALES ORDERS
    */
   async getDefaultFulfillmentStatus(): Promise<string> {
     try {
       const config = await this.getConfig()
       const status = config.default_fulfillment_status || "pending"
-      console.log(`🔍 getDefaultFulfillmentStatus returning: "${status}"`)
+      console.log(`🔍 getDefaultFulfillmentStatus (for sales orders) returning: "${status}"`)
       return status
     } catch (error) {
       console.error('Error getting fulfillment status:', error)
       console.log(`🔍 getDefaultFulfillmentStatus fallback: "pending"`)
       return "pending"
     }
+  }
+
+  /**
+   * Get fulfillment status for PURCHASE ORDERS (always "pending")
+   */
+  async getPurchaseOrderFulfillmentStatus(): Promise<string> {
+    // Purchase orders ALWAYS use "pending" regardless of tenant config
+    console.log(`🔍 getPurchaseOrderFulfillmentStatus returning: "pending" (required for POs)`)
+    return "pending"
   }
 
   /**

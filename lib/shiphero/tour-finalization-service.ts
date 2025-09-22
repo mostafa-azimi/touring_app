@@ -617,10 +617,11 @@ export class TourFinalizationService {
 
     console.log("📦 Using SKU quantities:", skuQuantities)
 
-    const fulfillmentStatus = await tenantConfigService.getDefaultFulfillmentStatus()
+    // Purchase orders require specific fulfillment status
+    const purchaseOrderFulfillmentStatus = await tenantConfigService.getPurchaseOrderFulfillmentStatus()
     
     console.log(`🔍 PURCHASE ORDER DEBUG:`)
-    console.log(`  📊 Fulfillment Status: "${fulfillmentStatus}"`)
+    console.log(`  📊 PO Fulfillment Status: "${purchaseOrderFulfillmentStatus}" (from getPurchaseOrderFulfillmentStatus)`)
     console.log(`  🏭 Vendor ID: "${config.shiphero_vendor_id}"`)
     console.log(`  🏢 Warehouse ID: "${tourData.warehouse.shiphero_warehouse_id}"`)
     
@@ -633,7 +634,7 @@ export class TourFinalizationService {
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      fulfillment_status: fulfillmentStatus, // Required field - must be "pending" for new POs
+      fulfillment_status: purchaseOrderFulfillmentStatus, // Always "pending" for purchase orders
       sell_ahead: 0
     }))
 
@@ -646,7 +647,7 @@ export class TourFinalizationService {
       tax: "0.00",
       shipping_price: "0.00", 
       total_price: "0.00",
-      fulfillment_status: fulfillmentStatus, // Required field - must be "pending" for new POs
+      fulfillment_status: purchaseOrderFulfillmentStatus, // Always "pending" for purchase orders
       discount: "0.00",
       line_items: poLineItems
     }
