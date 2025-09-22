@@ -109,9 +109,21 @@ export class TourFinalizationService {
 
   /**
    * Calculate the hold until date/time (tour date at 1:00 AM Eastern - 5 hours earlier than before)
+   * Returns null if hold until is disabled in settings
    */
-  private getHoldUntilDate(tourDate: string, tourTime: string): string {
+  private async getHoldUntilDate(tourDate: string, tourTime: string): Promise<string | null> {
     console.log(`⏳ Calculating hold until date for tour: ${tourDate} at ${tourTime}`)
+    
+    // Check if hold until is enabled in tenant config
+    const { tenantConfigService } = await import('@/lib/tenant-config-service')
+    const isHoldUntilEnabled = await tenantConfigService.isHoldUntilEnabled()
+    
+    if (!isHoldUntilEnabled) {
+      console.log(`🔒 Hold Until is DISABLED in settings - not setting hold_until date`)
+      return null
+    }
+    
+    console.log(`🔒 Hold Until is ENABLED in settings - calculating hold_until date`)
     
     // Create 1:00 AM Eastern time on the tour date (5 hours earlier than 6:00 AM)
     // We'll create a date string for 1:00 AM and let JavaScript handle the timezone conversion
@@ -904,9 +916,14 @@ export class TourFinalizationService {
         },
         
         required_ship_date: this.getRequiredShipDate(tourData.date),
-        hold_until_date: this.getHoldUntilDate(tourData.date, tourData.time),
         tags: [`tour-${tourData.tour_numeric_id}`, tourData.warehouse.code, ...extraTags].filter(Boolean),
         line_items: lineItems
+      }
+
+      // Add hold_until_date only if enabled in settings
+      const holdUntilDate = await this.getHoldUntilDate(tourData.date, tourData.time)
+      if (holdUntilDate) {
+        orderData.hold_until_date = holdUntilDate
       }
       
       console.log(`📦 Creating order ${i + 1}/${recipients.length} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)
@@ -1018,7 +1035,6 @@ export class TourFinalizationService {
         total_discounts: "0.00",
         total_price: "0.00",
         required_ship_date: tourData.date,
-        hold_until: this.getHoldUntilDate(tourData.date, tourData.time),
         shipping_address: {
           first_name: recipient.first_name,
           last_name: recipient.last_name,
@@ -1054,6 +1070,12 @@ export class TourFinalizationService {
           `workflow-multi-item-batch`,
           `randomized-order`
         ]
+      }
+
+      // Add hold_until only if enabled in settings
+      const holdUntilDate = await this.getHoldUntilDate(tourData.date, tourData.time)
+      if (holdUntilDate) {
+        orderData.hold_until = holdUntilDate
       }
       
       try {
@@ -1214,8 +1236,13 @@ export class TourFinalizationService {
         })),
         
         required_ship_date: this.getRequiredShipDate(tourData.date),
-        hold_until_date: this.getHoldUntilDate(tourData.date, tourData.time),
         tags: [`tour-${tourData.tour_numeric_id}`, tourData.warehouse.code].filter(Boolean)
+      }
+
+      // Add hold_until_date only if enabled in settings
+      const holdUntilDate = await this.getHoldUntilDate(tourData.date, tourData.time)
+      if (holdUntilDate) {
+        orderData.hold_until_date = holdUntilDate
       }
       
       console.log(`📦 Creating ${prefix} order ${i + 1}/${orderCount} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)
