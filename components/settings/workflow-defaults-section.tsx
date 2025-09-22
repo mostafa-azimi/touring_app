@@ -130,6 +130,18 @@ export function WorkflowDefaultsSection() {
   const { toast } = useToast()
   const supabase = createClient()
 
+  // Default order counts for each workflow
+  const getDefaultOrderCount = (workflowId: string): number => {
+    switch (workflowId) {
+      case 'standard_receiving': return 1 // 1 purchase order
+      case 'bulk_shipping': return 25 // 25 bulk shipping orders
+      case 'single_item_batch': return 10 // 10 single-item orders
+      case 'multi_item_batch': return 5 // 5 multi-item orders
+      case 'pack_to_light': return 10 // 10 pack to light orders
+      default: return 5
+    }
+  }
+
   // Load all products and existing defaults
   useEffect(() => {
     loadAllProducts()
@@ -280,19 +292,19 @@ export function WorkflowDefaultsSection() {
         : prev.filter(id => id !== workflowId)
     )
     
-    if (checked) {
-      setExpandedWorkflows(prev => [...prev, workflowId])
-      // Initialize with default values if not already set
-      if (!workflowConfigs[workflowId]) {
-        setWorkflowConfigs(prev => ({
-          ...prev,
-          [workflowId]: {
-            orderCount: 5,
-            skuQuantities: {}
-          }
-        }))
-      }
-    } else {
+      if (checked) {
+        setExpandedWorkflows(prev => [...prev, workflowId])
+        // Initialize with default values if not already set
+        if (!workflowConfigs[workflowId]) {
+          setWorkflowConfigs(prev => ({
+            ...prev,
+            [workflowId]: {
+              orderCount: getDefaultOrderCount(workflowId),
+              skuQuantities: {}
+            }
+          }))
+        }
+      } else {
       setExpandedWorkflows(prev => prev.filter(id => id !== workflowId))
     }
   }, [workflowConfigs])
@@ -397,23 +409,21 @@ export function WorkflowDefaultsSection() {
                     {/* Expandable Configuration Section */}
                     {selectedWorkflows.includes(option.id) && expandedWorkflows.includes(option.id) && (
                       <div className="ml-6 p-4 bg-muted/30 rounded-lg border space-y-4 mt-4">
-                        {/* Order Count Input - Only for fulfillment workflows */}
-                        {!['standard_receiving'].includes(option.id) && (
-                          <div className="flex items-center gap-4">
-                            <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
-                              📦 Default Orders to Create:
-                            </Label>
-                            <Input
-                              id={`${option.id}-count`}
-                              type="number"
-                              min="1"
-                              max="50"
-                              value={workflowConfigs[option.id]?.orderCount || 5}
-                              onChange={(e) => updateWorkflowOrderCount(option.id, parseInt(e.target.value) || 5)}
-                              className="w-20"
-                            />
-                          </div>
-                        )}
+                        {/* Order Count Input - For all workflows */}
+                        <div className="flex items-center gap-4">
+                          <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
+                            📦 {option.id === 'standard_receiving' ? 'Purchase Orders to Create:' : 'Sales Orders to Create:'}
+                          </Label>
+                          <Input
+                            id={`${option.id}-count`}
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={workflowConfigs[option.id]?.orderCount || getDefaultOrderCount(option.id)}
+                            onChange={(e) => updateWorkflowOrderCount(option.id, parseInt(e.target.value) || getDefaultOrderCount(option.id))}
+                            className="w-20"
+                          />
+                        </div>
 
                         {/* Product Selection - Special handling for Multi-Item Batch */}
                         {option.id !== 'multi_item_batch' ? (
