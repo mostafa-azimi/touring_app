@@ -768,159 +768,107 @@ export class TourFinalizationService {
     console.log(`🎲 Creating ${orderCount} RANDOMIZED multi-item batch orders`)
     console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     
-    // TEMPORARY: Use the old working method until we can debug the new one
-    console.log(`🚨 TEMPORARY: Using old working method to prevent job loss`)
-    
-    // Use workflow-specific selected SKUs for now (the old working way)
-    const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
-    const skuQuantities = workflowConfig?.skuQuantities || {}
-    const availableSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
-    
-    if (availableSkus.length === 0) {
-      console.log('⚠️ No SKUs selected for Multi-Item Batch workflow. Please configure SKUs in Settings > Configuration.')
-      return
+    try {
+      // Get all available SKUs from the system
+      console.log(`🔍 Loading all products from ShipHero...`)
+      const { shipHeroDataService } = await import('@/lib/shiphero/data-service')
+      const allProducts = await shipHeroDataService.getActiveProducts()
+      console.log(`📦 Loaded ${allProducts.length} total products`)
+      
+      // Get Pack to Light SKUs to exclude them
+      const packToLightConfig = tourData.workflow_configs?.['pack_to_light']
+      const packToLightSkus = packToLightConfig?.skuQuantities ? 
+        Object.keys(packToLightConfig.skuQuantities).filter(sku => packToLightConfig.skuQuantities[sku] > 0) : 
+        []
+      
+      console.log(`🚫 Pack to Light SKUs to exclude:`, packToLightSkus)
+      
+      // Filter available SKUs (exclude Pack to Light SKUs and ensure inventory > 0)
+      const availableSkus = allProducts
+        .filter(product => 
+          product.inventory?.available > 0 && // Has inventory
+          !packToLightSkus.includes(product.sku) // Not used in Pack to Light
+        )
+        .map(product => product.sku)
+      
+      console.log(`📦 Found ${availableSkus.length} available SKUs after filtering`)
+      
+      if (availableSkus.length < 3) {
+        console.log(`⚠️ Not enough SKUs for randomization. Using fallback method.`)
+        // Fallback to old method
+        const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
+        const skuQuantities = workflowConfig?.skuQuantities || {}
+        const configuredSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
+        
+        await this.createFulfillmentOrdersWithRecipients(
+          tourData, 
+          "mib", 
+          recipients, 
+          configuredSkus, 
+          skuQuantities
+        )
+        return
+      }
+      
+      console.log(`🎲 Proceeding with randomization using ${availableSkus.length} SKUs`)
+      
+      // Create randomized orders one by one (safer approach)
+      await this.createRandomizedMultiItemOrdersSafe(tourData, recipients, availableSkus)
+      
+    } catch (error: any) {
+      console.error(`❌ Error in randomization, falling back to old method:`, error.message)
+      // Fallback to the working method
+      const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
+      const skuQuantities = workflowConfig?.skuQuantities || {}
+      const availableSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
+      
+      await this.createFulfillmentOrdersWithRecipients(
+        tourData, 
+        "mib", 
+        recipients, 
+        availableSkus, 
+        skuQuantities
+      )
     }
     
-    console.log(`📦 Using configured SKUs:`, availableSkus)
-    console.log(`🔢 SKU Quantities:`, skuQuantities)
-    
-    // Use the working method temporarily
-    await this.createFulfillmentOrdersWithRecipients(
-      tourData, 
-      "mib", 
-      recipients, 
-      availableSkus, 
-      skuQuantities
-    )
-    
-    console.log(`✅ Multi-Item Batch completed: ${orderCount} orders created (using old method temporarily)`)
+    console.log(`✅ Multi-Item Batch completed: ${orderCount} orders created`)
   }
 
   /**
-   * Helper method to create truly randomized multi-item batch orders
-   * Each order gets 1-3 random SKUs with 1-2 units each
+   * Safer method to create randomized multi-item batch orders
+   * Each order gets different SKUs and quantities
    */
-  private async createRandomizedMultiItemOrders(tourData: TourData, recipients: any[], availableSkus: string[]): Promise<void> {
-    console.log(`🔍 MIB DEBUG - Function called with:`, {
-      tourData: !!tourData,
-      recipients: recipients ? recipients.length : 'undefined',
-      availableSkus: availableSkus ? availableSkus.length : 'undefined'
-    })
-    
-    if (!recipients || !Array.isArray(recipients)) {
-      throw new Error(`Invalid recipients parameter: ${recipients}`)
-    }
-    
-    if (!availableSkus || !Array.isArray(availableSkus)) {
-      throw new Error(`Invalid availableSkus parameter: ${availableSkus}`)
-    }
-    
-    console.log(`🚀 STARTING RANDOMIZED MIB WORKFLOW - Creating ${recipients.length} orders`)
-    console.log(`📋 Tour ID: ${tourData.id}, Tour Numeric ID: ${tourData.tour_numeric_id}`)
-    console.log(`🏢 Warehouse: ${tourData.warehouse.name} (${tourData.warehouse.code})`)
-    console.log(`🏷️ Warehouse code for tagging: ${tourData.warehouse.code}`)
+  private async createRandomizedMultiItemOrdersSafe(tourData: TourData, recipients: any[], availableSkus: string[]): Promise<void> {
+    console.log(`🚀 STARTING SAFE RANDOMIZED MIB - Creating ${recipients.length} orders`)
     console.log(`📦 Available SKUs pool: ${availableSkus.length} SKUs`)
-
-    const { tenantConfigService } = await import('@/lib/tenant-config-service')
-
+    
+    // Create each order individually with different random SKUs
     for (let i = 0; i < recipients.length; i++) {
       const recipient = recipients[i]
-      const orderNumber = `mib-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
       
-      // More reasonable randomization for small tours
-      // 60% chance of 2 SKUs, 30% chance of 1 SKU, 10% chance of 3 SKUs
-      const rand = Math.random()
-      const skuCount = rand < 0.6 ? 2 : (rand < 0.9 ? 1 : 3)
-      
+      // Randomly select 2 SKUs (most common case) with 1 unit each for simplicity
       const shuffledSkus = [...availableSkus].sort(() => 0.5 - Math.random())
-      const selectedSkus = shuffledSkus.slice(0, skuCount)
+      const selectedSkus = shuffledSkus.slice(0, 2) // Always 2 SKUs for now
       
-      // Get fulfillment status once per order
-      const defaultFulfillmentStatus = await tenantConfigService.getDefaultFulfillmentStatus()
-      
-      // Create line items - favor 1 unit per SKU for simplicity (80% chance)
-      const lineItems = selectedSkus.map((sku, index) => {
-        const quantity = Math.random() < 0.8 ? 1 : 2 // 80% chance of 1 unit, 20% chance of 2 units
-        return {
-          sku: sku,
-          quantity: quantity,
-          price: "0.00",
-          product_name: sku,
-          fulfillment_status: defaultFulfillmentStatus,
-          warehouse_id: tourData.warehouse.shiphero_warehouse_id,
-          partner_line_item_id: `${orderNumber}-${sku}-${index + 1}`
-        }
+      // Create a simple SKU quantities object for this order
+      const skuQuantities: {[sku: string]: number} = {}
+      selectedSkus.forEach(sku => {
+        skuQuantities[sku] = 1 // Always 1 unit for simplicity
       })
-
-      // Calculate order date and hold until
-      const orderDate = this.calculateOrderDate(tourData.tour_date)
-      const holdUntilDate = await this.getHoldUntilDate(tourData.tour_date, tourData.tour_time)
-
-      // Build order data
-      const orderData: any = {
-        order_number: orderNumber,
-        shop_name: "Tour Orders",
-        fulfillment_status: defaultFulfillmentStatus,
-        order_date: orderDate,
-        total_tax: "0.00",
-        subtotal: "0.00",
-        total_discounts: "0.00",
-        total_price: "0.00",
-        auto_print_return_label: false,
-        
-        // Shipping info
-        shipping_address: {
-          first_name: recipient.first_name,
-          last_name: recipient.last_name,
-          address1: recipient.address1 || tourData.warehouse.address,
-          address2: recipient.address2 || "",
-          city: recipient.city || tourData.warehouse.city,
-          state: recipient.state || tourData.warehouse.state,
-          country: recipient.country || "US",
-          zip: recipient.zip || tourData.warehouse.zip,
-          phone: recipient.phone || ""
-        },
-        
-        // Email for notifications
-        email: recipient.email,
-        
-        // Line items
-        line_items: lineItems,
-        
-        // Tags for filtering
-        tags: [
-          `tour-${tourData.tour_numeric_id}`,
-          tourData.warehouse.code,
-          "mib01" // Multi-item batch tag
-        ]
-      }
-
-      // Add hold until date if enabled
-      if (holdUntilDate) {
-        orderData.hold_until_date = holdUntilDate
-      }
-
-      // Set required ship date to tour date
-      orderData.required_ship_date = tourData.tour_date
-
-      console.log(`📦 Creating randomized order ${i + 1}/${recipients.length} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)
-      console.log(`🎲 Order ${orderNumber}: ${selectedSkus.length} SKUs (${selectedSkus.join(', ')}) with quantities: ${lineItems.map(item => `${item.sku}:${item.quantity}`).join(', ')}`)
-
-      try {
-        const result = await this.createSalesOrderViaAPI(orderData)
-        
-        if (result.data?.order_create?.order) {
-          const createdOrder = result.data.order_create.order
-          console.log(`✅ Order created: ${orderNumber} (ShipHero ID: ${createdOrder.legacy_id})`)
-        } else {
-          throw new Error(`Order creation failed: ${result.errors?.[0]?.message || 'Unknown error'}`)
-        }
-        
-      } catch (error: any) {
-        console.error(`❌ Failed to create order ${orderNumber}:`, error.message)
-        throw error
-      }
+      
+      console.log(`🎲 Order ${i + 1}: SKUs [${selectedSkus.join(', ')}] with 1 unit each`)
+      
+      // Use the working method but with randomized SKUs for just this recipient
+      await this.createFulfillmentOrdersWithRecipients(
+        tourData, 
+        "mib", 
+        [recipient], // Single recipient
+        selectedSkus, // Random SKUs for this order
+        skuQuantities // 1 unit each
+      )
     }
+    
+    console.log(`✅ All ${recipients.length} randomized multi-item batch orders created`)
   }
 
   /**
