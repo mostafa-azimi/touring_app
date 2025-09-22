@@ -284,6 +284,8 @@ export function WorkflowDefaultsSection() {
     try {
       setIsSaving(true)
       
+      console.log('💾 SAVING workflow defaults:', workflowConfigs)
+      
       // First check if a tenant_config row exists
       const { data: existingConfig, error: selectError } = await supabase
         .from('tenant_config')
@@ -296,6 +298,7 @@ export function WorkflowDefaultsSection() {
       
       let saveError
       if (existingConfig) {
+        console.log('📝 Updating existing tenant_config:', existingConfig.id)
         // Update existing config
         const { error } = await supabase
           .from('tenant_config')
@@ -306,6 +309,7 @@ export function WorkflowDefaultsSection() {
           .eq('id', existingConfig.id)
         saveError = error
       } else {
+        console.log('📝 Creating new tenant_config')
         // Insert new config
         const { error } = await supabase
           .from('tenant_config')
@@ -318,19 +322,26 @@ export function WorkflowDefaultsSection() {
       }
 
       if (saveError) {
-        console.error('Save error:', saveError)
+        console.error('❌ Save error:', saveError)
         throw saveError
       }
+
+      console.log('✅ Workflow defaults saved successfully!')
+      console.log('📋 Saved configurations:', workflowConfigs)
 
       toast({
         title: "Workflow Defaults Saved",
         description: "Your workflow configurations have been saved successfully",
       })
+      
+      // DON'T reload products after saving - this might be causing the reset
+      console.log('💡 Keeping current product state (not reloading after save)')
+      
     } catch (error: any) {
-      console.error('Error saving workflow defaults:', error)
+      console.error('❌ Error saving workflow defaults:', error)
       toast({
         title: "Error",
-        description: `Failed to save workflow defaults: ${error.message || 'Unknown error'}`,
+        description: `Failed to save workflow defaults: ${error?.message || 'Unknown error'}`,
         variant: "destructive",
       })
     } finally {
@@ -363,14 +374,19 @@ export function WorkflowDefaultsSection() {
   }, [workflowConfigs])
 
   const updateWorkflowOrderCount = (workflowId: string, count: number) => {
-    setWorkflowConfigs(prev => ({
-      ...prev,
-      [workflowId]: {
-        ...prev[workflowId],
-        orderCount: count,
-        skuQuantities: prev[workflowId]?.skuQuantities || {}
+    console.log(`🔢 Updating ${workflowId} order count to: ${count}`)
+    setWorkflowConfigs(prev => {
+      const newConfig = {
+        ...prev,
+        [workflowId]: {
+          ...prev[workflowId],
+          orderCount: count,
+          skuQuantities: prev[workflowId]?.skuQuantities || {}
+        }
       }
-    }))
+      console.log('📋 New workflow configs after order count update:', newConfig)
+      return newConfig
+    })
   }
 
   const toggleWorkflowExpansion = (workflowId: string) => {
@@ -487,16 +503,21 @@ export function WorkflowDefaultsSection() {
                             workflowName={option.name}
                             workflowId={option.id}
                             onSkuQuantityChange={(sku, quantity) => {
-                              setWorkflowConfigs(prev => ({
-                                ...prev,
-                                [option.id]: {
-                                  orderCount: prev[option.id]?.orderCount || 5,
-                                  skuQuantities: {
-                                    ...prev[option.id]?.skuQuantities,
-                                    [sku]: quantity
+                              console.log(`📦 Updating ${option.id} SKU ${sku} quantity to: ${quantity}`)
+                              setWorkflowConfigs(prev => {
+                                const newConfig = {
+                                  ...prev,
+                                  [option.id]: {
+                                    orderCount: prev[option.id]?.orderCount || getDefaultOrderCount(option.id),
+                                    skuQuantities: {
+                                      ...prev[option.id]?.skuQuantities,
+                                      [sku]: quantity
+                                    }
                                   }
                                 }
-                              }))
+                                console.log(`📋 Updated ${option.id} config:`, newConfig[option.id])
+                                return newConfig
+                              })
                             }}
                           />
                         ) : (
@@ -522,16 +543,21 @@ export function WorkflowDefaultsSection() {
                               workflowName={`${option.name} (Randomization Pool)`}
                               workflowId={option.id}
                               onSkuQuantityChange={(sku, quantity) => {
-                                setWorkflowConfigs(prev => ({
-                                  ...prev,
-                                  [option.id]: {
-                                    orderCount: prev[option.id]?.orderCount || 5,
-                                    skuQuantities: {
-                                      ...prev[option.id]?.skuQuantities,
-                                      [sku]: quantity
+                                console.log(`🎲 Updating ${option.id} SKU ${sku} quantity to: ${quantity}`)
+                                setWorkflowConfigs(prev => {
+                                  const newConfig = {
+                                    ...prev,
+                                    [option.id]: {
+                                      orderCount: prev[option.id]?.orderCount || getDefaultOrderCount(option.id),
+                                      skuQuantities: {
+                                        ...prev[option.id]?.skuQuantities,
+                                        [sku]: quantity
+                                      }
                                     }
                                   }
-                                }))
+                                  console.log(`📋 Updated ${option.id} config:`, newConfig[option.id])
+                                  return newConfig
+                                })
                               }}
                             />
                           </div>
