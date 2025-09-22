@@ -768,40 +768,32 @@ export class TourFinalizationService {
     console.log(`🎲 Creating ${orderCount} RANDOMIZED multi-item batch orders`)
     console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     
-    // Get all available SKUs from the system
-    const { shipHeroDataService } = await import('@/lib/shiphero/data-service')
-    const allProducts = await shipHeroDataService.getActiveProducts()
+    // TEMPORARY: Use the old working method until we can debug the new one
+    console.log(`🚨 TEMPORARY: Using old working method to prevent job loss`)
     
-    // Get Pack to Light SKUs to exclude them
-    const packToLightConfig = tourData.workflow_configs?.['pack_to_light']
-    const packToLightSkus = packToLightConfig?.skuQuantities ? 
-      Object.keys(packToLightConfig.skuQuantities).filter(sku => packToLightConfig.skuQuantities[sku] > 0) : 
-      []
+    // Use workflow-specific selected SKUs for now (the old working way)
+    const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
+    const skuQuantities = workflowConfig?.skuQuantities || {}
+    const availableSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
     
-    // Filter available SKUs (exclude Pack to Light SKUs and ensure inventory > 0)
-    const availableSkus = allProducts
-      .filter(product => 
-        product.inventory?.available > 0 && // Has inventory
-        !packToLightSkus.includes(product.sku) // Not used in Pack to Light
-      )
-      .map(product => product.sku)
-    
-    if (availableSkus.length < 3) {
-      console.log(`⚠️ Multi-Item Batch requires at least 3 available SKUs (excluding Pack to Light). Found: ${availableSkus.length}`)
-      console.log(`📦 Available SKUs:`, availableSkus)
-      console.log(`🚫 Excluded Pack to Light SKUs:`, packToLightSkus)
+    if (availableSkus.length === 0) {
+      console.log('⚠️ No SKUs selected for Multi-Item Batch workflow. Please configure SKUs in Settings > Configuration.')
       return
     }
     
-    console.log(`📦 Found ${availableSkus.length} available SKUs (excluding ${packToLightSkus.length} Pack to Light SKUs)`)
-    console.log(`🚫 Excluded Pack to Light SKUs:`, packToLightSkus)
-    console.log(`🎯 Randomization Strategy: 60% get 2 SKUs, 30% get 1 SKU, 10% get 3 SKUs`)
-    console.log(`🎯 Quantity Strategy: 80% get 1 unit per SKU, 20% get 2 units per SKU`)
+    console.log(`📦 Using configured SKUs:`, availableSkus)
+    console.log(`🔢 SKU Quantities:`, skuQuantities)
     
-    // Create randomized orders - each order gets different SKUs and quantities
-    await this.createRandomizedMultiItemOrders(tourData, recipients, availableSkus)
+    // Use the working method temporarily
+    await this.createFulfillmentOrdersWithRecipients(
+      tourData, 
+      "mib", 
+      recipients, 
+      availableSkus, 
+      skuQuantities
+    )
     
-    console.log(`✅ Multi-Item Batch completed: ${orderCount} randomized orders created`)
+    console.log(`✅ Multi-Item Batch completed: ${orderCount} orders created (using old method temporarily)`)
   }
 
   /**
