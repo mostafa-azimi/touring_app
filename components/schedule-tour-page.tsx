@@ -356,6 +356,8 @@ export function ScheduleTourPage() {
     fetchHosts()
     // Auto-load SKUs when component mounts for better UX
     loadAllSkus()
+    // Auto-load workflow defaults on page load
+    loadWorkflowDefaults()
   }, [])
 
   const fetchWarehouses = async () => {
