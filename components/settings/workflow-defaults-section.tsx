@@ -157,8 +157,11 @@ export function WorkflowDefaultsSection() {
         return
       }
 
+      console.log(`🏭 Found ${warehouses.length} warehouses:`, warehouses.map(w => `${w.name} (${w.code})`))
+
       // Load products from all warehouses
       const allProductsMap = new Map<string, any>()
+      const processedWarehouses = new Set<string>()
       
       // Get access token for ShipHero API calls
       let accessToken = localStorage.getItem('shiphero_access_token')
@@ -192,7 +195,16 @@ export function WorkflowDefaultsSection() {
       }
       
       for (const warehouse of warehouses) {
+        // Skip if we've already processed this warehouse
+        if (processedWarehouses.has(warehouse.id)) {
+          console.log(`⚠️ Skipping duplicate warehouse: ${warehouse.name} (${warehouse.id})`)
+          continue
+        }
+        processedWarehouses.add(warehouse.id)
+        
         try {
+          console.log(`🔄 Processing warehouse: ${warehouse.name} (${warehouse.code}) - ID: ${warehouse.id}`)
+          
           const response = await fetch(`/api/shiphero/inventory?warehouse_id=${warehouse.id}`, {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
@@ -206,23 +218,41 @@ export function WorkflowDefaultsSection() {
             
             console.log(`🏭 Loaded ${products.length} products from ${warehouse.name}`)
             
+            // Debug: Log first product structure to understand API response
+            if (products.length > 0) {
+              console.log(`🔍 Sample product structure from ${warehouse.name}:`, products[0])
+            }
+            
             // Aggregate products across warehouses
-            products.forEach((product: any) => {
+            products.forEach((product: any, index: number) => {
               const existingProduct = allProductsMap.get(product.sku)
-              const productAvailable = parseInt(product.available) || 0
               
-              console.log(`📦 Processing ${product.sku} from ${warehouse.name}: ${productAvailable} units`)
+              // Try multiple possible quantity field names
+              const productAvailable = parseInt(product.available) || 
+                                     parseInt(product.quantity_available) || 
+                                     parseInt(product.on_hand) || 
+                                     parseInt(product.quantity_on_hand) || 
+                                     parseInt(product.inventory_quantity) || 0
+              
+              console.log(`📦 [${index + 1}/${products.length}] Processing ${product.sku} from ${warehouse.name}: ${productAvailable} units (available: ${product.available}, on_hand: ${product.on_hand}, qty_available: ${product.quantity_available})`)
               
               if (existingProduct) {
-                // Combine quantities from multiple warehouses
-                existingProduct.available += productAvailable
-                existingProduct.warehouses = existingProduct.warehouses || []
-                existingProduct.warehouses.push({
-                  warehouse_code: warehouse.code,
-                  warehouse_name: warehouse.name,
-                  available: productAvailable
-                })
-                console.log(`🔄 Updated ${product.sku} total: ${existingProduct.available} units`)
+                // Check if this warehouse is already recorded for this product
+                const warehouseExists = existingProduct.warehouses?.some((w: any) => w.warehouse_code === warehouse.code)
+                
+                if (!warehouseExists) {
+                  // Combine quantities from multiple warehouses
+                  existingProduct.available += productAvailable
+                  existingProduct.warehouses = existingProduct.warehouses || []
+                  existingProduct.warehouses.push({
+                    warehouse_code: warehouse.code,
+                    warehouse_name: warehouse.name,
+                    available: productAvailable
+                  })
+                  console.log(`🔄 Updated ${product.sku} total: ${existingProduct.available} units`)
+                } else {
+                  console.log(`⚠️ Skipping duplicate ${product.sku} from ${warehouse.name}`)
+                }
               } else {
                 // New product
                 allProductsMap.set(product.sku, {
