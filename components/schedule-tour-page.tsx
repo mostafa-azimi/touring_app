@@ -669,6 +669,16 @@ export function ScheduleTourPage() {
         workflow_configs: workflowConfigs, // New detailed configuration
       }
       
+      // CRITICAL DEBUGGING - Show workflow configs being saved
+      console.log('🚨 CRITICAL DEBUG - Tour creation data:')
+      console.log('📋 Selected workflows:', selectedWorkflows)
+      console.log('📦 Workflow configs being saved:', workflowConfigs)
+      console.log('🔍 Workflow config details:')
+      Object.keys(workflowConfigs).forEach(workflow => {
+        const config = workflowConfigs[workflow]
+        console.log(`  ${workflow}: ${config.orderCount} orders, SKUs:`, Object.keys(config.skuQuantities || {}))
+      })
+      
       
       // DETAILED DEBUGGING - Show exactly what's being sent
 

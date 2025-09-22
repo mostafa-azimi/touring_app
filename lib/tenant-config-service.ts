@@ -6,6 +6,7 @@ export interface TenantConfig {
   shop_name: string
   company_name: string
   default_fulfillment_status: string
+  enable_hold_until: boolean
 }
 
 export class TenantConfigService {
@@ -29,18 +30,21 @@ export class TenantConfigService {
       const { data, error } = await this.supabase
         .from('tenant_config')
         .select('*')
-        .single()
+        .limit(1)
 
-      if (error && error.code !== 'PGRST116') {
-        throw error
+      if (error) {
+        console.warn('Error loading tenant config:', error)
       }
+      
+      const configData = data && data.length > 0 ? data[0] : null
 
       // Use provided data or defaults
       const config: TenantConfig = data || {
         shiphero_vendor_id: "1076735", // Default fallback
         shop_name: "Tour Orders",
         company_name: "Tour Company",
-        default_fulfillment_status: "pending"
+        default_fulfillment_status: "pending",
+        enable_hold_until: false // Default to disabled
       }
 
       // Cache the config
@@ -56,10 +60,27 @@ export class TenantConfigService {
         shiphero_vendor_id: "1076735",
         shop_name: "Tour Orders",
         company_name: "Tour Company",
-        default_fulfillment_status: "pending"
+        default_fulfillment_status: "pending",
+        enable_hold_until: false // Default to disabled
       }
       
       return defaultConfig
+    }
+  }
+
+  /**
+   * Check if hold until is enabled
+   */
+  async isHoldUntilEnabled(): Promise<boolean> {
+    try {
+      const config = await this.getConfig()
+      const enabled = config.enable_hold_until || false
+      console.log(`🔒 Hold Until setting: ${enabled ? 'ENABLED' : 'DISABLED'}`)
+      return enabled
+    } catch (error) {
+      console.error('Error checking hold until setting:', error)
+      console.log('🔒 Hold Until setting: DISABLED (fallback due to error)')
+      return false // Default to disabled on error
     }
   }
 
