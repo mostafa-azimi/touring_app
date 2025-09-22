@@ -195,6 +195,13 @@ const workflowOptions = [
     category: "Fulfillment",
     badge: "Standard"
   },
+  {
+    id: "pack_to_light" as WorkflowOption,
+    name: "Pack to Light",
+    description: "Creates orders with pack to light workflow for training packing station operations with light-guided assistance",
+    category: "Fulfillment",
+    badge: "Standard"
+  },
 ]
 
 const categories = [
@@ -224,7 +231,8 @@ export function ScheduleTourPage() {
     "standard_receiving", 
     "bulk_shipping", 
     "single_item_batch", 
-    "multi_item_batch"
+    "multi_item_batch",
+    "pack_to_light"
   ])
   const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, skuQuantities: {[sku: string]: number}}}>({})
   const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([])

@@ -94,7 +94,12 @@ export function TourFinalizationResults({ isOpen, onClose, result }: TourFinaliz
     'multi_item_batch': { 
       label: 'Multi-Item Batch (MIB)', 
       icon: <ShoppingCart className="h-4 w-4" />, 
-      color: 'bg-purple-100 text-purple-800 border-purple-200' 
+      color: 'bg-purple-100 text-purple-800 border-purple-200'
+    },
+    'pack_to_light': { 
+      label: 'Pack to Light (P2L)', 
+      icon: <Package className="h-4 w-4" />, 
+      color: 'bg-yellow-100 text-yellow-800 border-yellow-200'
     },
     'single_item_batch': { 
       label: 'Single-Item Batch (SIB)', 

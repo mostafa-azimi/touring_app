@@ -43,6 +43,13 @@ const workflowOptions = [
     category: "Fulfillment",
     badge: "Standard"
   },
+  {
+    id: "pack_to_light" as WorkflowOption,
+    name: "Pack to Light",
+    description: "Creates orders with pack to light workflow for training packing station operations with light-guided assistance",
+    category: "Fulfillment",
+    badge: "Standard"
+  },
 ]
 
 // Generic component for product selection with quantities (reused from Schedule Tour page)
@@ -112,14 +119,16 @@ export function WorkflowDefaultsSection() {
     "standard_receiving", 
     "bulk_shipping", 
     "single_item_batch", 
-    "multi_item_batch"
+    "multi_item_batch",
+    "pack_to_light"
   ])
   const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, skuQuantities: {[sku: string]: number}}}>({})
   const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([
     "standard_receiving", 
     "bulk_shipping", 
     "single_item_batch", 
-    "multi_item_batch"
+    "multi_item_batch",
+    "pack_to_light"
   ])
 
   const { toast } = useToast()
