@@ -1203,189 +1203,118 @@ export function ScheduleTourPage() {
                         {categoryOptions.map(option => (
                           <div key={option.id} className="space-y-3">
                             {/* Workflow Selection Row */}
-                            <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50">
-                              <Checkbox
-                                id={option.id}
-                                checked={selectedWorkflows.includes(option.id)}
-                                onCheckedChange={(checked) => handleWorkflowChange(option.id, checked as boolean)}
-                              />
-                              <div className="flex-1 space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <Label htmlFor={option.id} className="font-medium cursor-pointer">
-                                    {option.name}
-                                  </Label>
-                                  <Badge variant={option.badge === "Original" ? "default" : "secondary"} className="text-xs">
-                                    {option.badge}
-                                  </Badge>
-                                  {selectedWorkflows.includes(option.id) && (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => toggleWorkflowExpansion(option.id)}
-                                      className="ml-auto h-6 px-2"
-                                    >
-                                      {expandedWorkflows.includes(option.id) ? (
-                                        <ChevronUp className="h-4 w-4" />
-                                      ) : (
-                                        <ChevronDown className="h-4 w-4" />
-                                      )}
-                                    </Button>
-                                  )}
+                            <div className="flex items-start justify-between p-3 rounded-lg border hover:bg-muted/50">
+                              <div className="flex items-start space-x-3 flex-1">
+                                <Checkbox
+                                  id={option.id}
+                                  checked={selectedWorkflows.includes(option.id)}
+                                  onCheckedChange={(checked) => handleWorkflowChange(option.id, checked as boolean)}
+                                />
+                                <div className="flex-1 space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <Label htmlFor={option.id} className="font-medium cursor-pointer">
+                                      {option.name}
+                                    </Label>
+                                    <Badge variant={option.badge === "Original" ? "default" : "secondary"} className="text-xs">
+                                      {option.badge}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {option.description}
+                                  </p>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                  {option.description}
-                                </p>
                               </div>
+                              {selectedWorkflows.includes(option.id) && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => toggleWorkflowEditing(option.id)}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                  {editingWorkflows.includes(option.id) ? 'Done' : 'Edit'}
+                                </Button>
+                              )}
                             </div>
 
-                            {/* Workflow Configuration Section - Phased Approach */}
-                            {selectedWorkflows.includes(option.id) && (
+                            {/* Workflow Configuration Section - Only Show When Editing */}
+                            {selectedWorkflows.includes(option.id) && editingWorkflows.includes(option.id) && (
                               <div className="ml-6 mt-4">
-                                {!editingWorkflows.includes(option.id) && !expandedWorkflows.includes(option.id) ? (
-                                  /* Phase 1: Show Summary or Configure Button */
-                                  (() => {
-                                    const summary = getWorkflowSummary(option.id)
-                                    const hasConfiguration = summary && (summary.skuCount > 0 || summary.orderCount > 0)
-                                    
-                                    if (hasConfiguration) {
-                                      // Show loaded configuration summary
-                                      return (
-                                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                                          <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                              <Package className="h-4 w-4 text-green-600" />
-                                              <div>
-                                                <h4 className="font-medium text-green-900">Configuration Loaded</h4>
-                                                <div className="text-sm text-green-700">
-                                                  {!['standard_receiving'].includes(option.id) && (
-                                                    <span>{summary.orderCount} orders • </span>
-                                                  )}
-                                                  {option.id === 'multi_item_batch' ? (
-                                                    <span>{summary.skuCount} SKUs for randomization</span>
-                                                  ) : (
-                                                    <span>{summary.skuCount} products • {summary.totalQuantity} total units</span>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </div>
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() => toggleWorkflowEditing(option.id)}
-                                              className="flex items-center gap-2"
-                                            >
-                                              <Edit3 className="h-4 w-4" />
-                                              Customize
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      )
-                                    } else {
-                                      // Show configure button for unconfigured workflows
-                                      return (
-                                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                          <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                              <Settings className="h-4 w-4 text-blue-600" />
-                                              <div>
-                                                <h4 className="font-medium text-blue-900">Configure {option.name}</h4>
-                                                <p className="text-sm text-blue-700">Set up products and quantities for this workflow</p>
-                                              </div>
-                                            </div>
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() => toggleWorkflowEditing(option.id)}
-                                              className="flex items-center gap-2"
-                                            >
-                                              <Edit3 className="h-4 w-4" />
-                                              Configure
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      )
-                                    }
-                                  })()
-                                ) : selectedWorkflows.includes(option.id) && (expandedWorkflows.includes(option.id) || editingWorkflows.includes(option.id)) ? (
-                                  /* Phase 2: Show Full Configuration */
-                                  <div className="p-4 bg-muted/30 rounded-lg border space-y-4">
-                                    {editingWorkflows.includes(option.id) && (
-                                      <div className="flex items-center justify-between mb-2">
-                                        <h4 className="font-medium text-sm">Customize {option.name}</h4>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => toggleWorkflowEditing(option.id)}
-                                          className="text-xs"
-                                        >
-                                          Done Editing
-                                        </Button>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Order Count Input - Only for fulfillment workflows */}
-                                    {!['standard_receiving'].includes(option.id) && (
-                                      <div className="flex items-center gap-4">
-                                        <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
-                                          📦 Orders to Create:
-                                        </Label>
-                                        <Input
-                                          id={`${option.id}-count`}
-                                          type="number"
-                                          min="1"
-                                          max="50"
-                                          value={workflowConfigs[option.id]?.orderCount || 5}
-                                          onChange={(e) => updateWorkflowOrderCount(option.id, parseInt(e.target.value) || 5)}
-                                          className="w-20"
-                                        />
-                                      </div>
-                                    )}
-
-                                    {/* Product Selection - Special handling for Multi-Item Batch */}
-                                    {option.id !== 'multi_item_batch' ? (
-                                      <WorkflowProductSelection 
-                                        allSkus={allSkus}
-                                        workflowConfig={workflowConfigs[option.id]}
-                                        selectedWarehouse={selectedWarehouse}
-                                        workflowName={option.name}
-                                        workflowId={option.id}
-                                        onSkuQuantityChange={(sku, quantity) => {
-                                          setWorkflowConfigs(prev => ({
-                                            ...prev,
-                                            [option.id]: {
-                                              orderCount: prev[option.id]?.orderCount || 5,
-                                              skuQuantities: {
-                                                ...prev[option.id]?.skuQuantities,
-                                                [sku]: quantity
-                                              }
-                                            }
-                                          }))
-                                        }}
-                                      />
-                                    ) : (
-                                      <WorkflowProductSelection 
-                                        allSkus={allSkus}
-                                        workflowConfig={workflowConfigs[option.id]}
-                                        selectedWarehouse={selectedWarehouse}
-                                        workflowName={`${option.name} (Randomization Pool)`}
-                                        workflowId={option.id}
-                                        onSkuQuantityChange={(sku, quantity) => {
-                                          setWorkflowConfigs(prev => ({
-                                            ...prev,
-                                            [option.id]: {
-                                              orderCount: prev[option.id]?.orderCount || 5,
-                                              skuQuantities: {
-                                                ...prev[option.id]?.skuQuantities,
-                                                [sku]: quantity
-                                              }
-                                            }
-                                          }))
-                                        }}
-                                      />
-                                    )}
+                                <div className="p-4 bg-muted/30 rounded-lg border space-y-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-medium text-sm">Configure {option.name}</h4>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => toggleWorkflowEditing(option.id)}
+                                      className="text-xs"
+                                    >
+                                      Done Editing
+                                    </Button>
                                   </div>
-                                ) : null}
+                                  
+                                  {/* Order Count Input - Only for fulfillment workflows */}
+                                  {!['standard_receiving'].includes(option.id) && (
+                                    <div className="flex items-center gap-4">
+                                      <Label htmlFor={`${option.id}-count`} className="text-sm font-medium">
+                                        📦 Orders to Create:
+                                      </Label>
+                                      <Input
+                                        id={`${option.id}-count`}
+                                        type="number"
+                                        min="1"
+                                        max="50"
+                                        value={workflowConfigs[option.id]?.orderCount || 5}
+                                        onChange={(e) => updateWorkflowOrderCount(option.id, parseInt(e.target.value) || 5)}
+                                        className="w-20"
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* Product Selection - Special handling for Multi-Item Batch */}
+                                  {option.id !== 'multi_item_batch' ? (
+                                    <WorkflowProductSelection 
+                                      allSkus={allSkus}
+                                      workflowConfig={workflowConfigs[option.id]}
+                                      selectedWarehouse={selectedWarehouse}
+                                      workflowName={option.name}
+                                      workflowId={option.id}
+                                      onSkuQuantityChange={(sku, quantity) => {
+                                        setWorkflowConfigs(prev => ({
+                                          ...prev,
+                                          [option.id]: {
+                                            orderCount: prev[option.id]?.orderCount || 5,
+                                            skuQuantities: {
+                                              ...prev[option.id]?.skuQuantities,
+                                              [sku]: quantity
+                                            }
+                                          }
+                                        }))
+                                      }}
+                                    />
+                                  ) : (
+                                    <WorkflowProductSelection 
+                                      allSkus={allSkus}
+                                      workflowConfig={workflowConfigs[option.id]}
+                                      selectedWarehouse={selectedWarehouse}
+                                      workflowName={`${option.name} (Randomization Pool)`}
+                                      workflowId={option.id}
+                                      onSkuQuantityChange={(sku, quantity) => {
+                                        setWorkflowConfigs(prev => ({
+                                          ...prev,
+                                          [option.id]: {
+                                            orderCount: prev[option.id]?.orderCount || 5,
+                                            skuQuantities: {
+                                              ...prev[option.id]?.skuQuantities,
+                                              [sku]: quantity
+                                            }
+                                          }
+                                        }))
+                                      }}
+                                    />
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
