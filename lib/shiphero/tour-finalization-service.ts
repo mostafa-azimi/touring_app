@@ -816,19 +816,9 @@ export class TourFinalizationService {
       await this.createRandomizedMultiItemOrdersSafe(tourData, recipients, availableSkus)
       
     } catch (error: any) {
-      console.error(`❌ Error in randomization, falling back to old method:`, error.message)
-      // Fallback to the working method
-      const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
-      const skuQuantities = workflowConfig?.skuQuantities || {}
-      const availableSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
-      
-      await this.createFulfillmentOrdersWithRecipients(
-        tourData, 
-        "mib", 
-        recipients, 
-        availableSkus, 
-        skuQuantities
-      )
+      console.error(`❌ Error in randomization:`, error.message)
+      // Don't fallback to avoid duplicate order numbers
+      throw error
     }
     
     console.log(`✅ Multi-Item Batch completed: ${orderCount} orders created`)
@@ -859,9 +849,10 @@ export class TourFinalizationService {
       console.log(`🎲 Order ${i + 1}: SKUs [${selectedSkus.join(', ')}] with 1 unit each`)
       
       // Use the working method but with randomized SKUs for just this recipient
+      // Use unique prefix to avoid conflicts
       await this.createFulfillmentOrdersWithRecipients(
         tourData, 
-        "mib", 
+        `mib-r${i+1}`, // Unique prefix for each randomized order
         [recipient], // Single recipient
         selectedSkus, // Random SKUs for this order
         skuQuantities // 1 unit each
