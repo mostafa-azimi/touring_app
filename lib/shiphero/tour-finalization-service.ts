@@ -633,7 +633,7 @@ export class TourFinalizationService {
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      // fulfillment_status: fulfillmentStatus, // Not needed for purchase order line items
+      fulfillment_status: fulfillmentStatus, // Required field - must be "pending" for new POs
       sell_ahead: 0
     }))
 
@@ -646,7 +646,7 @@ export class TourFinalizationService {
       tax: "0.00",
       shipping_price: "0.00", 
       total_price: "0.00",
-      // fulfillment_status: fulfillmentStatus, // Purchase orders might not need this field
+      fulfillment_status: fulfillmentStatus, // Required field - must be "pending" for new POs
       discount: "0.00",
       line_items: poLineItems
     }

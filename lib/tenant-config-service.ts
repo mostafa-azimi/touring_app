@@ -39,13 +39,13 @@ export class TenantConfigService {
       const configData = data && data.length > 0 ? data[0] : null
 
       // Use provided data or defaults
-      const config: TenantConfig = configData || {
-        shiphero_vendor_id: "1076735", // Default fallback
-        shop_name: "Tour Orders",
-        company_name: "Tour Company",
-        default_fulfillment_status: "pending",
-        enable_hold_until: false // Default to disabled
-      }
+        const config: TenantConfig = configData || {
+          shiphero_vendor_id: "1076735", // Default fallback
+          shop_name: "Tour Orders",
+          company_name: "Tour Company",
+          default_fulfillment_status: "pending", // Correct default for new purchase orders
+          enable_hold_until: false // Default to disabled
+        }
 
       // Cache the config
       this.configCache = config
@@ -87,9 +87,12 @@ export class TenantConfigService {
   async getDefaultFulfillmentStatus(): Promise<string> {
     try {
       const config = await this.getConfig()
-      return config.default_fulfillment_status || "pending"
+      const status = config.default_fulfillment_status || "pending"
+      console.log(`🔍 getDefaultFulfillmentStatus returning: "${status}"`)
+      return status
     } catch (error) {
       console.error('Error getting fulfillment status:', error)
+      console.log(`🔍 getDefaultFulfillmentStatus fallback: "pending"`)
       return "pending"
     }
   }
