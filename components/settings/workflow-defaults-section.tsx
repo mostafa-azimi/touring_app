@@ -61,15 +61,11 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
   workflowName: string
   workflowId: string
 }) {
-  const filteredSkus = selectedWarehouse 
-    ? allSkus.filter(sku => sku.warehouse_id === selectedWarehouse)
-    : allSkus
-
-  if (filteredSkus.length === 0) {
+  if (allSkus.length === 0) {
     return (
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
         <p className="text-sm text-yellow-700">
-          {selectedWarehouse ? 'No products found for selected warehouse' : 'Please select a warehouse to see available products'}
+          Loading products from all warehouses...
         </p>
       </div>
     )
@@ -79,13 +75,18 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
     <div className="space-y-3">
       <h4 className="font-medium text-sm">📦 Select Products & Quantities for {workflowName}</h4>
       <div className="grid gap-3 max-h-64 overflow-y-auto">
-        {filteredSkus.map((sku) => {
+        {allSkus.map((sku) => {
           const currentQuantity = workflowConfig?.skuQuantities?.[sku.sku] || 0
           return (
             <div key={sku.sku} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
               <div className="flex-1">
                 <div className="font-medium text-sm">{sku.name}</div>
-                <div className="text-xs text-muted-foreground">SKU: {sku.sku}</div>
+                <div className="text-xs text-muted-foreground">
+                  SKU: {sku.sku} • Total Available: {sku.available} units
+                  {sku.warehouses && sku.warehouses.length > 1 && (
+                    <span className="text-blue-600"> (across {sku.warehouses.length} warehouses)</span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Label htmlFor={`${workflowId}-${sku.sku}`} className="text-xs">Qty:</Label>
@@ -108,9 +109,7 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
 }
 
 export function WorkflowDefaultsSection() {
-  const [warehouses, setWarehouses] = useState<any[]>([])
   const [allSkus, setAllSkus] = useState<any[]>([])
-  const [selectedWarehouse, setSelectedWarehouse] = useState("")
   const [isLoadingSkus, setIsLoadingSkus] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   
@@ -134,54 +133,86 @@ export function WorkflowDefaultsSection() {
   const { toast } = useToast()
   const supabase = createClient()
 
-  // Load warehouses and existing defaults
+  // Load all products and existing defaults
   useEffect(() => {
-    loadWarehouses()
+    loadAllProducts()
     loadWorkflowDefaults()
   }, [])
 
-  // Load SKUs when warehouse changes
-  useEffect(() => {
-    if (selectedWarehouse) {
-      loadSkus(selectedWarehouse)
-    }
-  }, [selectedWarehouse])
-
-  const loadWarehouses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('warehouses')
-        .select('*')
-        .order('name')
-
-      if (error) throw error
-      setWarehouses(data || [])
-      
-      // Auto-select first warehouse if none selected
-      if (data && data.length > 0 && !selectedWarehouse) {
-        setSelectedWarehouse(data[0].id)
-      }
-    } catch (error) {
-      console.error('Error loading warehouses:', error)
-    }
-  }
-
-  const loadSkus = async (warehouseId: string) => {
+  const loadAllProducts = async () => {
     try {
       setIsLoadingSkus(true)
-      const response = await fetch(`/api/shiphero/inventory?warehouse_id=${warehouseId}`)
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch inventory')
+      // First, get all warehouses
+      const { data: warehouses, error: warehouseError } = await supabase
+        .from('warehouses')
+        .select('id, code, name')
+        .order('name')
+
+      if (warehouseError) throw warehouseError
+
+      if (!warehouses || warehouses.length === 0) {
+        console.warn('No warehouses found')
+        setAllSkus([])
+        return
       }
 
-      const data = await response.json()
-      setAllSkus(data.products || [])
+      // Load products from all warehouses
+      const allProductsMap = new Map<string, any>()
+      
+      for (const warehouse of warehouses) {
+        try {
+          const response = await fetch(`/api/shiphero/inventory?warehouse_id=${warehouse.id}`)
+          
+          if (response.ok) {
+            const data = await response.json()
+            const products = data.products || []
+            
+            // Aggregate products across warehouses
+            products.forEach((product: any) => {
+              const existingProduct = allProductsMap.get(product.sku)
+              if (existingProduct) {
+                // Combine quantities from multiple warehouses
+                existingProduct.available += product.available || 0
+                existingProduct.warehouses = existingProduct.warehouses || []
+                existingProduct.warehouses.push({
+                  warehouse_code: warehouse.code,
+                  warehouse_name: warehouse.name,
+                  available: product.available || 0
+                })
+              } else {
+                // New product
+                allProductsMap.set(product.sku, {
+                  ...product,
+                  available: product.available || 0,
+                  warehouses: [{
+                    warehouse_code: warehouse.code,
+                    warehouse_name: warehouse.name,
+                    available: product.available || 0
+                  }]
+                })
+              }
+            })
+          }
+        } catch (error) {
+          console.warn(`Failed to load inventory for warehouse ${warehouse.name}:`, error)
+          // Continue with other warehouses
+        }
+      }
+
+      // Convert map to array and sort by name
+      const aggregatedProducts = Array.from(allProductsMap.values()).sort((a, b) => 
+        a.name.localeCompare(b.name)
+      )
+      
+      setAllSkus(aggregatedProducts)
+      console.log(`Loaded ${aggregatedProducts.length} unique products from ${warehouses.length} warehouses`)
+      
     } catch (error) {
-      console.error('Error loading SKUs:', error)
+      console.error('Error loading all products:', error)
       toast({
         title: "Error",
-        description: "Failed to load products. Please try again.",
+        description: "Failed to load products from warehouses. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -310,21 +341,15 @@ export function WorkflowDefaultsSection() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Warehouse Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="default-warehouse">Default Warehouse (for product selection)</Label>
-            <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a warehouse to configure products" />
-              </SelectTrigger>
-              <SelectContent>
-                {warehouses.map((warehouse) => (
-                  <SelectItem key={warehouse.id} value={warehouse.id}>
-                    {warehouse.name} ({warehouse.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Information about product aggregation */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-blue-600 text-lg">📦</span>
+              <h4 className="font-medium text-blue-900">All Warehouse Products</h4>
+            </div>
+            <p className="text-sm text-blue-700">
+              Showing all products from all warehouses with combined quantities. These defaults will work for any warehouse when creating tours.
+            </p>
           </div>
 
           {/* Workflow Configuration */}
@@ -402,7 +427,7 @@ export function WorkflowDefaultsSection() {
                           <WorkflowProductSelection 
                             allSkus={allSkus}
                             workflowConfig={workflowConfigs[option.id]}
-                            selectedWarehouse={selectedWarehouse}
+                            selectedWarehouse=""
                             workflowName={option.name}
                             workflowId={option.id}
                             onSkuQuantityChange={(sku, quantity) => {
@@ -437,7 +462,7 @@ export function WorkflowDefaultsSection() {
                             <WorkflowProductSelection 
                               allSkus={allSkus}
                               workflowConfig={workflowConfigs[option.id]}
-                              selectedWarehouse={selectedWarehouse}
+                              selectedWarehouse=""
                               workflowName={`${option.name} (Randomization Pool)`}
                               workflowId={option.id}
                               onSkuQuantityChange={(sku, quantity) => {
