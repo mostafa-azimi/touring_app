@@ -766,6 +766,29 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
             </DialogDescription>
           </DialogHeader>
 
+          {/* Tour ID with ShipHero Dashboard Link */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-blue-900">Tour ID</div>
+                <div className="font-mono text-lg font-bold text-blue-800">{data.tourNumericId || 'Unknown'}</div>
+              </div>
+              <Button asChild variant="outline" size="sm" className="border-blue-300 text-blue-700 hover:bg-blue-100">
+                <a 
+                  href={`https://app.shiphero.com/dashboard/orders/v2/manage?end_date=08%2F31%2F2026&preselectedDate=custom&fulfillment_status=unfulfilled&tags=tour-${data.tourNumericId || data.tourId}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View in ShipHero
+                </a>
+              </Button>
+            </div>
+            <div className="text-xs text-blue-600 mt-1">
+              Click to view all orders with tag "tour-{data.tourNumericId || data.tourId}" in ShipHero dashboard
+            </div>
+          </div>
+
           <div className="space-y-6">
             {/* Tour Details */}
             <Card>
