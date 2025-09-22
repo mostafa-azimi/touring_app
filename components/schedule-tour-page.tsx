@@ -220,9 +220,19 @@ export function ScheduleTourPage() {
   })
   const [newParticipant, setNewParticipant] = useState({ first_name: "", last_name: "", email: "", company: "", title: "" })
   const [isUploadingCSV, setIsUploadingCSV] = useState(false)
-  const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([])
+  const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([
+    "standard_receiving", 
+    "bulk_shipping", 
+    "single_item_batch", 
+    "multi_item_batch"
+  ])
   const [workflowConfigs, setWorkflowConfigs] = useState<{[key: string]: {orderCount: number, skuQuantities: {[sku: string]: number}}}>({})
-  const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([])
+  const [expandedWorkflows, setExpandedWorkflows] = useState<string[]>([
+    "standard_receiving", 
+    "bulk_shipping", 
+    "single_item_batch", 
+    "multi_item_batch"
+  ])
   const [allSkus, setAllSkus] = useState<any[]>([]) // Store all SKUs for filtering
   
   
