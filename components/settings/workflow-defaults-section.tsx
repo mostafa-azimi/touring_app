@@ -82,10 +82,7 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
               <div className="flex-1">
                 <div className="font-medium text-sm">{sku.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  SKU: {sku.sku} • Total Available: {sku.available} units
-                  {sku.warehouses && sku.warehouses.length > 1 && (
-                    <span className="text-blue-600"> (across {sku.warehouses.filter((w: any) => w.available > 0).length} warehouses)</span>
-                  )}
+                  SKU: {sku.sku} • Available: {sku.inventory?.available || 0} units
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -143,156 +140,36 @@ export function WorkflowDefaultsSection() {
     try {
       setIsLoadingSkus(true)
       
-      // First, get all warehouses
-      const { data: warehouses, error: warehouseError } = await supabase
-        .from('warehouses')
-        .select('id, code, name')
-        .order('name')
-
-      if (warehouseError) throw warehouseError
-
-      if (!warehouses || warehouses.length === 0) {
-        console.warn('No warehouses found')
-        setAllSkus([])
-        return
-      }
-
-      console.log(`🏭 Found ${warehouses.length} warehouses:`, warehouses.map(w => `${w.name} (${w.code})`))
-
-      // Load products from all warehouses
-      const allProductsMap = new Map<string, any>()
-      const processedWarehouses = new Set<string>()
+      console.log('🚀 Loading products using SAME method as Tour Creation page...')
       
-      // Get access token for ShipHero API calls
-      let accessToken = localStorage.getItem('shiphero_access_token')
+      // Use the EXACT same method as Tour Creation page
+      const { shipHeroDataService } = await import('@/lib/shiphero/data-service')
+      const activeProducts = await shipHeroDataService.getActiveProducts()
       
-      // If no token in localStorage, try to get a fresh one
-      if (!accessToken) {
-        try {
-          const tokenResponse = await fetch('/api/shiphero/access-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          
-          if (tokenResponse.ok) {
-            const tokenData = await tokenResponse.json()
-            accessToken = tokenData.access_token
-            console.log('🔑 Retrieved fresh access token for Settings')
-          }
-        } catch (error) {
-          console.warn('Failed to get fresh access token:', error)
-        }
+      console.log(`✅ Loaded ${activeProducts.length} products using shipHeroDataService`)
+      
+      // Debug: Log first product to see structure
+      if (activeProducts.length > 0) {
+        console.log(`🔍 Sample product structure:`, activeProducts[0])
       }
       
-      if (!accessToken) {
-        console.warn('No ShipHero access token available. Please configure ShipHero integration.')
-        toast({
-          title: "Authentication Required",
-          description: "Please configure ShipHero integration in Settings > ShipHero tab first.",
-          variant: "destructive",
-        })
-        return
-      }
+      // Sort alphabetically by SKU (same as Tour Creation)
+      const sortedProducts = activeProducts.sort((a, b) => a.sku.localeCompare(b.sku))
       
-      for (const warehouse of warehouses) {
-        // Skip if we've already processed this warehouse
-        if (processedWarehouses.has(warehouse.id)) {
-          console.log(`⚠️ Skipping duplicate warehouse: ${warehouse.name} (${warehouse.id})`)
-          continue
-        }
-        processedWarehouses.add(warehouse.id)
-        
-        try {
-          console.log(`🔄 Processing warehouse: ${warehouse.name} (${warehouse.code}) - ID: ${warehouse.id}`)
-          
-          const response = await fetch(`/api/shiphero/inventory?warehouse_id=${warehouse.id}`, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          })
-          
-          if (response.ok) {
-            const data = await response.json()
-            const products = data.products || []
-            
-            console.log(`🏭 Loaded ${products.length} products from ${warehouse.name}`)
-            
-            // Debug: Log first product structure to understand API response
-            if (products.length > 0) {
-              console.log(`🔍 Sample product structure from ${warehouse.name}:`, products[0])
-            }
-            
-            // Aggregate products across warehouses
-            products.forEach((product: any, index: number) => {
-              const existingProduct = allProductsMap.get(product.sku)
-              
-              // Try multiple possible quantity field names
-              const productAvailable = parseInt(product.available) || 
-                                     parseInt(product.quantity_available) || 
-                                     parseInt(product.on_hand) || 
-                                     parseInt(product.quantity_on_hand) || 
-                                     parseInt(product.inventory_quantity) || 0
-              
-              console.log(`📦 [${index + 1}/${products.length}] Processing ${product.sku} from ${warehouse.name}: ${productAvailable} units (available: ${product.available}, on_hand: ${product.on_hand}, qty_available: ${product.quantity_available})`)
-              
-              if (existingProduct) {
-                // Check if this warehouse is already recorded for this product
-                const warehouseExists = existingProduct.warehouses?.some((w: any) => w.warehouse_code === warehouse.code)
-                
-                if (!warehouseExists) {
-                  // Combine quantities from multiple warehouses
-                  existingProduct.available += productAvailable
-                  existingProduct.warehouses = existingProduct.warehouses || []
-                  existingProduct.warehouses.push({
-                    warehouse_code: warehouse.code,
-                    warehouse_name: warehouse.name,
-                    available: productAvailable
-                  })
-                  console.log(`🔄 Updated ${product.sku} total: ${existingProduct.available} units`)
-                } else {
-                  console.log(`⚠️ Skipping duplicate ${product.sku} from ${warehouse.name}`)
-                }
-              } else {
-                // New product
-                allProductsMap.set(product.sku, {
-                  ...product,
-                  available: productAvailable,
-                  warehouses: [{
-                    warehouse_code: warehouse.code,
-                    warehouse_name: warehouse.name,
-                    available: productAvailable
-                  }]
-                })
-                console.log(`✅ Added new ${product.sku}: ${productAvailable} units`)
-              }
-            })
-          }
-        } catch (error) {
-          console.warn(`Failed to load inventory for warehouse ${warehouse.name}:`, error)
-          // Continue with other warehouses
-        }
-      }
-
-      // Convert map to array and sort by name
-      const aggregatedProducts = Array.from(allProductsMap.values()).sort((a, b) => 
-        a.name.localeCompare(b.name)
-      )
-      
-      // Debug: Log final aggregated results
-      console.log(`📊 FINAL AGGREGATION RESULTS:`)
-      aggregatedProducts.forEach(product => {
-        console.log(`  ${product.sku}: ${product.available} total units from ${product.warehouses?.length || 0} warehouses`)
+      // Debug: Log quantities for first few products
+      sortedProducts.slice(0, 5).forEach(product => {
+        const qty = product.inventory?.available || 0
+        console.log(`📦 ${product.sku}: ${qty} available (inventory.available: ${product.inventory?.available})`)
       })
       
-      setAllSkus(aggregatedProducts)
-      console.log(`✅ Loaded ${aggregatedProducts.length} unique products from ${warehouses.length} warehouses`)
+      setAllSkus(sortedProducts)
+      console.log(`✅ Settings page now using SAME products as Tour Creation page`)
       
-    } catch (error) {
-      console.error('Error loading all products:', error)
+    } catch (error: any) {
+      console.error('Error loading products with shipHeroDataService:', error)
       toast({
         title: "Error",
-        description: "Failed to load products from warehouses. Please try again.",
+        description: `Failed to load products: ${error?.message || 'Unknown error'}`,
         variant: "destructive",
       })
     } finally {
