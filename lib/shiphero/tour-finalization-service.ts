@@ -618,6 +618,12 @@ export class TourFinalizationService {
     console.log("📦 Using SKU quantities:", skuQuantities)
 
     const fulfillmentStatus = await tenantConfigService.getDefaultFulfillmentStatus()
+    
+    console.log(`🔍 PURCHASE ORDER DEBUG:`)
+    console.log(`  📊 Fulfillment Status: "${fulfillmentStatus}"`)
+    console.log(`  🏭 Vendor ID: "${config.shiphero_vendor_id}"`)
+    console.log(`  🏢 Warehouse ID: "${tourData.warehouse.shiphero_warehouse_id}"`)
+    
     const poLineItems = Object.entries(skuQuantities).map(([sku, quantity]) => ({
       sku: sku,
       quantity: quantity,
@@ -645,7 +651,10 @@ export class TourFinalizationService {
       line_items: poLineItems
     }
 
+    console.log(`📋 COMPLETE PO DATA BEING SENT:`)
+    console.log(JSON.stringify(poData, null, 2))
     console.log("🔄 Creating Standard Receiving PO...")
+    
     const result = await this.createPurchaseOrderViaAPI(poData)
 
     if (result.data?.purchase_order_create?.purchase_order) {
@@ -664,7 +673,16 @@ export class TourFinalizationService {
         legacy_id: poInfo.legacy_id
       })
     } else {
-      throw new Error(`Standard Receiving PO creation failed: ${result.errors?.[0]?.message || 'Unknown error'}`)
+      console.error("❌ Failed to create Standard Receiving PO")
+      console.error("🔍 DETAILED PO API ERROR:")
+      console.error("  📊 Full API Response:", JSON.stringify(result, null, 2))
+      if (result.errors) {
+        console.error("  ⚠️ GraphQL Errors:", result.errors)
+      }
+      if (result.data?.purchase_order_create?.user_errors) {
+        console.error("  🚨 User Errors:", result.data.purchase_order_create.user_errors)
+      }
+      throw new Error(`Standard Receiving PO creation failed: ${JSON.stringify(result.errors || result.data?.purchase_order_create?.user_errors || 'Unknown error')}`)
     }
   }
 
