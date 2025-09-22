@@ -712,22 +712,24 @@ export class TourFinalizationService {
   private async createMultiItemBatchSOs(tourData: TourData, recipients: any[]): Promise<void> {
     const orderCount = recipients.length
     
-    // Use ALL selected SKUs from the tour for randomization (not workflow-specific)
-    const availableSkus = tourData.selected_skus || []
+    // Use workflow-specific selected SKUs for randomization
+    const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
+    const skuQuantities = workflowConfig?.skuQuantities || {}
+    const availableSkus = Object.keys(skuQuantities).filter(sku => skuQuantities[sku] > 0)
     
     if (availableSkus.length === 0) {
-      console.log('⚠️ No SKUs available for Multi-Item Batch workflow. Please select SKUs for the tour.')
+      console.log('⚠️ No SKUs selected for Multi-Item Batch workflow. Please configure SKUs in Settings > Configuration.')
       return
     }
     
     if (availableSkus.length < 2) {
-      console.log('⚠️ Multi-Item Batch requires at least 2 SKUs. Please select more SKUs for the tour.')
+      console.log('⚠️ Multi-Item Batch requires at least 2 SKUs. Please select more SKUs in Settings > Configuration.')
       return
     }
     
-    console.log(`🎲 Creating ${orderCount} randomized multi-item batch orders from ${availableSkus.length} available SKUs:`, availableSkus)
+    console.log(`🎲 Creating ${orderCount} randomized multi-item batch orders from ${availableSkus.length} selected SKUs:`, availableSkus)
     console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
-    console.log(`📋 Using ALL tour SKUs for randomization (no specific product selection needed)`)
+    console.log(`📋 Using workflow-specific SKUs from Settings configuration`)
     
     // Create randomized orders for each recipient
     await this.createRandomizedMultiItemOrders(tourData, "mib", recipients, availableSkus)
