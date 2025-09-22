@@ -39,7 +39,7 @@ export class TenantConfigService {
       const configData = data && data.length > 0 ? data[0] : null
 
       // Use provided data or defaults
-      const config: TenantConfig = data || {
+      const config: TenantConfig = configData || {
         shiphero_vendor_id: "1076735", // Default fallback
         shop_name: "Tour Orders",
         company_name: "Tour Company",

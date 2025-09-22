@@ -773,103 +773,17 @@ export class TourFinalizationService {
     console.log(`🔢 SKU Quantities:`, skuQuantities)
     console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
 
-    const orderDate = this.calculateOrderDate(tourData.date)
-    console.log(`📅 Final order date/time: ${orderDate.toISOString()} (${orderDate.toISOString().split('T')[0]} with Eastern time)`)
-
-    // Set required ship date to tour date
-    const requiredShipDate = tourData.date
-    console.log(`📅 Setting required ship date to tour date: ${requiredShipDate}`)
-
-    // Calculate hold until date (release orders at 1:00 AM Eastern on tour date)
-    const holdUntilDate = this.calculateHoldUntilDate(tourData.date, tourData.time)
-    console.log(`⏳ Hold until date/time: ${holdUntilDate.toISOString()} (release orders at 1:00 AM Eastern on tour date)`)
-
-    // Create orders for each recipient
-    for (let i = 0; i < recipients.length; i++) {
-      const recipient = recipients[i]
-      const orderNumber = `p2l-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
-      
-      console.log(`📦 Creating order ${i + 1}/${recipients.length} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)
-
-      const orderDate = this.calculateOrderDate(tourData.date, i)
-      console.log(`📅 Final order date/time: ${orderDate.toISOString()} (${orderDate.toISOString().split('T')[0]} with Eastern time)`)
-
-      const requiredShipDate = tourData.date
-      console.log(`📅 Setting required ship date to tour date: ${requiredShipDate}`)
-
-      const holdUntilDate = this.calculateHoldUntilDate(tourData.date, tourData.time)
-      console.log(`⏳ Hold until date/time: ${holdUntilDate.toISOString()} (release orders at 1:00 AM Eastern on tour date)`)
-
-      try {
-        const orderResponse = await this.createSalesOrderViaAPI({
-          order_number: orderNumber,
-          shop_name: await tenantConfigService.getShopName(),
-          fulfillment_status: await tenantConfigService.getDefaultFulfillmentStatus(),
-          order_date: orderDate.toISOString(),
-          required_ship_date: requiredShipDate,
-          warehouse: tourData.warehouse.code,
-          tags: [`TOUR-${tourData.tour_numeric_id}`, tourData.warehouse.code, 'ps01'], // Added ps01 tag
-          custom_invoice_url: "",
-          profile: "tour",
-          hold_until: await tenantConfigService.isHoldUntilEnabled() ? holdUntilDate.toISOString() : undefined,
-          shipping_lines: {
-            title: "Standard Shipping",
-            price: "0.00"
-          },
-          shipping_address: {
-            first_name: recipient.first_name,
-            last_name: recipient.last_name,
-            company: recipient.company || "",
-            address1: "123 Training St",
-            address2: "",
-            city: "Training City",
-            state: "GA",
-            state_code: "GA",
-            zip: "30309",
-            country: "US",
-            country_code: "US",
-            email: recipient.email,
-            phone: "555-0123"
-          },
-          billing_address: {
-            first_name: recipient.first_name,
-            last_name: recipient.last_name,
-            company: recipient.company || "",
-            address1: "123 Training St",
-            address2: "",
-            city: "Training City",
-            state: "GA",
-            state_code: "GA",
-            zip: "30309",
-            country: "US",
-            country_code: "US",
-            email: recipient.email,
-            phone: "555-0123"
-          },
-          line_items: availableSkus.map(sku => ({
-            sku: sku,
-            quantity: skuQuantities[sku] || 1
-          }))
-        })
-
-        console.log(`✅ Order created: ${orderNumber} (ShipHero ID: ${orderResponse.legacy_id})`)
-        
-        // Store the order information
-        this.createdOrders.push({
-          type: 'sales_order',
-          workflow: 'pack_to_light',
-          order_number: orderNumber,
-          shiphero_id: orderResponse.id,
-          legacy_id: orderResponse.legacy_id,
-          recipient: `${recipient.first_name} ${recipient.last_name}`,
-          line_items: availableSkus.map(sku => `${sku}: ${skuQuantities[sku] || 1}`).join(', ')
-        })
-
-      } catch (error: any) {
-        console.error(`❌ Failed to create pack to light order ${orderNumber}:`, error.message)
-        throw error
-      }
-    }
+    // Use the existing createFulfillmentOrdersWithRecipients method instead of duplicating logic
+    await this.createFulfillmentOrdersWithRecipients(
+      tourData, 
+      "p2l", 
+      recipients, 
+      availableSkus.map(sku => ({
+        sku: sku,
+        quantity: skuQuantities[sku] || 1
+      })),
+      ['ps01'] // Special tag for pack to light
+    )
     
     console.log(`✅ Pack to Light completed: ${orderCount} orders created`)
   }
