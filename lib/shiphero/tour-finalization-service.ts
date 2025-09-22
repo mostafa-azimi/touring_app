@@ -1025,7 +1025,7 @@ export class TourFinalizationService {
           
           // Store created order for summary
           this.createdOrders.push({
-            workflow: prefix,
+            workflow: prefix.startsWith('mib-r') ? 'multi_item_batch' : prefix, // Group all MIB orders under same workflow
             order_number: orderNumber,
             shiphero_id: createdOrder.id,
             legacy_id: createdOrder.legacy_id,
