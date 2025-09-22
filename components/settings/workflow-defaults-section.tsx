@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -73,34 +73,58 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
 
   return (
     <div className="space-y-3">
-      <h4 className="font-medium text-sm">📦 Select Products & Quantities for {workflowName}</h4>
-      <div className="grid gap-3 max-h-64 overflow-y-auto">
-        {allSkus.map((sku) => {
-          const currentQuantity = workflowConfig?.skuQuantities?.[sku.sku] || 0
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">📦 Select products and quantities for {workflowName}:</Label>
+      </div>
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        {allSkus.map((product) => {
+          const currentQuantity = workflowConfig?.skuQuantities?.[product.sku] || 0
+          const availableQty = product.inventory?.available || 0
+          
           return (
-            <div key={sku.sku} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
-              <div className="flex-1">
-                <div className="font-medium text-sm">{sku.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  SKU: {sku.sku} • Available: {sku.inventory?.available || 0} units
+            <div 
+              key={product.sku} 
+              className="relative flex flex-col space-y-3 p-4 rounded-lg border transition-all duration-200 border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-900 truncate">
+                  {product.sku}
+                </div>
+                <div className="text-xs text-slate-500 truncate">
+                  {product.name}
+                </div>
+                <div className="flex items-center mt-2">
+                  <span className={`text-xs font-medium px-2 py-1 rounded ${
+                    availableQty > 0 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {availableQty} available
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Label htmlFor={`${workflowId}-${sku.sku}`} className="text-xs">Qty:</Label>
+                <Label htmlFor={`qty-${product.sku}`} className="text-xs">Qty:</Label>
                 <Input
-                  id={`${workflowId}-${sku.sku}`}
+                  id={`qty-${product.sku}`}
                   type="number"
                   min="0"
-                  max="100"
                   value={currentQuantity}
-                  onChange={(e) => onSkuQuantityChange(sku.sku, parseInt(e.target.value) || 0)}
-                  className="w-16 h-8 text-xs"
+                  onChange={(e) => {
+                    const newQuantity = parseInt(e.target.value) || 0
+                    onSkuQuantityChange(product.sku, newQuantity)
+                  }}
+                  className="w-20 h-8 text-sm"
+                  placeholder="0"
                 />
               </div>
             </div>
           )
         })}
       </div>
+      <p className="text-xs text-muted-foreground">
+        Enter quantities for products you want to include in the {workflowName.toLowerCase()}. Set to 0 to exclude.
+      </p>
     </div>
   )
 }
