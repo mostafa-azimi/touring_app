@@ -894,28 +894,6 @@ export function ScheduleTourPage() {
         <p className="text-slate-600">Create a new warehouse tour and configure training workflows and products for realistic demonstrations.</p>
       </div>
 
-      {/* Quick Tour Creator */}
-      <div className="mb-8">
-        <div className="bg-card p-6 rounded-lg shadow-md text-center space-y-4 border">
-          <h2 className="text-xl font-bold text-foreground">🚀 Quick Tour Creator</h2>
-          <p className="text-muted-foreground">Create a complete tour with sample orders instantly</p>
-          <button 
-            className="bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90 font-medium"
-            onClick={() => alert('Quick Tour Creator button works! Ready to implement full functionality.')}
-          >
-            Create Sample Tour
-          </button>
-          <div className="text-sm text-muted-foreground">
-            <p>This will create:</p>
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>1 Purchase Order (5 SKUs, random quantities 1-25)</li>
-              <li>10 Multi-item Batch Orders (2-4 SKUs each, max 2 units per SKU)</li>
-              <li>10 Single-item Batch Orders (1 SKU each)</li>
-              <li>25 Bulk Ship Orders (identical orders)</li>
-            </ul>
-          </div>
-        </div>
-      </div>
 
 
       <Card className="shadow-sm border-slate-200">
