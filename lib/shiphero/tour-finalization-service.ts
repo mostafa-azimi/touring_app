@@ -811,14 +811,15 @@ export class TourFinalizationService {
     console.log(`🔢 SKU Quantities:`, skuQuantities)
     console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
 
-    // Use the existing createFulfillmentOrdersWithRecipients method
+    // Use the existing createFulfillmentOrdersWithRecipients method with custom fulfillment status
     await this.createFulfillmentOrdersWithRecipients(
       tourData, 
       "p2l", 
       recipients, 
       availableSkus, // Just the SKU strings
       skuQuantities, // Separate quantities object
-      ['ps01'] // Special tag for pack to light
+      ['ps01'], // Special tag for pack to light
+      "Pack to Light" // Custom fulfillment status for Pack to Light orders
     )
     
     console.log(`✅ Pack to Light completed: ${orderCount} orders created`)
@@ -833,13 +834,17 @@ export class TourFinalizationService {
     recipients: any[],
     workflowSkus: string[], 
     skuQuantities: {[sku: string]: number},
-    extraTags: string[] = []
+    extraTags: string[] = [],
+    customFulfillmentStatus?: string
   ): Promise<void> {
     console.log(`🚀 STARTING ${prefix.toUpperCase()} WORKFLOW - Creating ${recipients.length} orders`)
     console.log(`📋 Tour ID: ${tourData.id}, Tour Numeric ID: ${tourData.tour_numeric_id}`)
     console.log(`🏢 Warehouse: ${tourData.warehouse.name} (${tourData.warehouse.code})`)
     console.log(`🏷️ Warehouse code for tagging:`, tourData.warehouse.code)
     console.log(`📦 Selected SKUs:`, workflowSkus)
+    if (customFulfillmentStatus) {
+      console.log(`🎯 Using CUSTOM fulfillment status: "${customFulfillmentStatus}"`)
+    }
     console.log(`🔢 SKU Quantities:`, skuQuantities)
     console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
     
@@ -857,7 +862,7 @@ export class TourFinalizationService {
         quantity: skuQuantities[sku] || 1,
         price: "0.00",
         product_name: sku, // Use SKU as product name
-        fulfillment_status: "Tour_Orders",
+        fulfillment_status: customFulfillmentStatus || "Tour_Orders",
         quantity_pending_fulfillment: skuQuantities[sku] || 1,
         warehouse_id: tourData.warehouse.shiphero_warehouse_id
       }))
@@ -869,7 +874,7 @@ export class TourFinalizationService {
       const orderData = {
         order_number: orderNumber,
         shop_name: await tenantConfigService.getShopName(),
-        fulfillment_status: await tenantConfigService.getDefaultFulfillmentStatus(),
+        fulfillment_status: customFulfillmentStatus || await tenantConfigService.getDefaultFulfillmentStatus(),
         order_date: this.getOrderDate(tourData.date), // One business day before tour date
         total_tax: "0.00",
         subtotal: "0.00",
