@@ -84,7 +84,7 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
                 <div className="text-xs text-muted-foreground">
                   SKU: {sku.sku} • Total Available: {sku.available} units
                   {sku.warehouses && sku.warehouses.length > 1 && (
-                    <span className="text-blue-600"> (across {sku.warehouses.length} warehouses)</span>
+                    <span className="text-blue-600"> (across {sku.warehouses.filter((w: any) => w.available > 0).length} warehouses)</span>
                   )}
                 </div>
               </div>
@@ -161,9 +161,28 @@ export function WorkflowDefaultsSection() {
       const allProductsMap = new Map<string, any>()
       
       // Get access token for ShipHero API calls
-      const accessToken = localStorage.getItem('shiphero_access_token')
+      let accessToken = localStorage.getItem('shiphero_access_token')
+      
+      // If no token in localStorage, try to get a fresh one
       if (!accessToken) {
-        console.warn('No ShipHero access token found. Please configure ShipHero integration.')
+        try {
+          const tokenResponse = await fetch('/api/shiphero/access-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          
+          if (tokenResponse.ok) {
+            const tokenData = await tokenResponse.json()
+            accessToken = tokenData.access_token
+            console.log('🔑 Retrieved fresh access token for Settings')
+          }
+        } catch (error) {
+          console.warn('Failed to get fresh access token:', error)
+        }
+      }
+      
+      if (!accessToken) {
+        console.warn('No ShipHero access token available. Please configure ShipHero integration.')
         toast({
           title: "Authentication Required",
           description: "Please configure ShipHero integration in Settings > ShipHero tab first.",
@@ -185,29 +204,37 @@ export function WorkflowDefaultsSection() {
             const data = await response.json()
             const products = data.products || []
             
+            console.log(`🏭 Loaded ${products.length} products from ${warehouse.name}`)
+            
             // Aggregate products across warehouses
             products.forEach((product: any) => {
               const existingProduct = allProductsMap.get(product.sku)
+              const productAvailable = parseInt(product.available) || 0
+              
+              console.log(`📦 Processing ${product.sku} from ${warehouse.name}: ${productAvailable} units`)
+              
               if (existingProduct) {
                 // Combine quantities from multiple warehouses
-                existingProduct.available += product.available || 0
+                existingProduct.available += productAvailable
                 existingProduct.warehouses = existingProduct.warehouses || []
                 existingProduct.warehouses.push({
                   warehouse_code: warehouse.code,
                   warehouse_name: warehouse.name,
-                  available: product.available || 0
+                  available: productAvailable
                 })
+                console.log(`🔄 Updated ${product.sku} total: ${existingProduct.available} units`)
               } else {
                 // New product
                 allProductsMap.set(product.sku, {
                   ...product,
-                  available: product.available || 0,
+                  available: productAvailable,
                   warehouses: [{
                     warehouse_code: warehouse.code,
                     warehouse_name: warehouse.name,
-                    available: product.available || 0
+                    available: productAvailable
                   }]
                 })
+                console.log(`✅ Added new ${product.sku}: ${productAvailable} units`)
               }
             })
           }
@@ -222,8 +249,14 @@ export function WorkflowDefaultsSection() {
         a.name.localeCompare(b.name)
       )
       
+      // Debug: Log final aggregated results
+      console.log(`📊 FINAL AGGREGATION RESULTS:`)
+      aggregatedProducts.forEach(product => {
+        console.log(`  ${product.sku}: ${product.available} total units from ${product.warehouses?.length || 0} warehouses`)
+      })
+      
       setAllSkus(aggregatedProducts)
-      console.log(`Loaded ${aggregatedProducts.length} unique products from ${warehouses.length} warehouses`)
+      console.log(`✅ Loaded ${aggregatedProducts.length} unique products from ${warehouses.length} warehouses`)
       
     } catch (error) {
       console.error('Error loading all products:', error)
