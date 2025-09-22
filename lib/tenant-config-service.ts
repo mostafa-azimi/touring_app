@@ -107,13 +107,31 @@ export class TenantConfigService {
   }
 
   /**
-   * Check if hold until is enabled
+   * Check if hold until is enabled (bypasses cache for real-time settings check)
    */
   async isHoldUntilEnabled(): Promise<boolean> {
     try {
-      const config = await this.getConfig()
-      const enabled = config.enable_hold_until || false
-      console.log(`🔒 Hold Until setting: ${enabled ? 'ENABLED' : 'DISABLED'}`)
+      console.log('🔍 HOLD UNTIL CHECK: Fetching fresh config from database (bypassing cache)...')
+      
+      // Bypass cache for hold until check to get real-time setting
+      const { data, error } = await this.supabase
+        .from('tenant_config')
+        .select('enable_hold_until')
+        .limit(1)
+
+      if (error) {
+        console.error('🔒 Error checking hold until setting:', error)
+        console.log('🔒 Hold Until setting: DISABLED (fallback due to error)')
+        return false
+      }
+      
+      const configData = data && data.length > 0 ? data[0] : null
+      const enabled = configData?.enable_hold_until || false
+      
+      console.log(`🔒 HOLD UNTIL SETTING (fresh from DB): ${enabled ? 'ENABLED' : 'DISABLED'}`)
+      console.log(`🔍 Raw database value:`, configData?.enable_hold_until)
+      console.log(`🔍 Config data found:`, configData ? 'YES' : 'NO')
+      
       return enabled
     } catch (error) {
       console.error('Error checking hold until setting:', error)
@@ -123,9 +141,10 @@ export class TenantConfigService {
   }
 
   /**
-   * Clear the config cache (useful after updates)
+   * Clear the config cache (useful when settings are updated)
    */
   clearCache(): void {
+    console.log('🗑️ Clearing tenant config cache')
     this.configCache = null
     this.cacheExpiry = 0
   }

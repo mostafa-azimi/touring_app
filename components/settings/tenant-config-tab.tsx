@@ -83,6 +83,11 @@ export function TenantConfigTab() {
 
       if (error) throw error
 
+      // Clear the tenant config cache so changes take effect immediately
+      const { tenantConfigService } = await import('@/lib/tenant-config-service')
+      tenantConfigService.clearCache()
+      console.log('🔄 Cleared tenant config cache after save')
+
       toast({
         title: "Configuration Saved",
         description: "Tenant settings have been updated successfully",
