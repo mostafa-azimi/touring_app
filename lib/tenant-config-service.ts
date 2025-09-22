@@ -69,6 +69,32 @@ export class TenantConfigService {
   }
 
   /**
+   * Get shop name for orders
+   */
+  async getShopName(): Promise<string> {
+    try {
+      const config = await this.getConfig()
+      return config.shop_name || "Tour Orders"
+    } catch (error) {
+      console.error('Error getting shop name:', error)
+      return "Tour Orders"
+    }
+  }
+
+  /**
+   * Get default fulfillment status
+   */
+  async getDefaultFulfillmentStatus(): Promise<string> {
+    try {
+      const config = await this.getConfig()
+      return config.default_fulfillment_status || "pending"
+    } catch (error) {
+      console.error('Error getting fulfillment status:', error)
+      return "pending"
+    }
+  }
+
+  /**
    * Check if hold until is enabled
    */
   async isHoldUntilEnabled(): Promise<boolean> {

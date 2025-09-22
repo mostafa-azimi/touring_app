@@ -617,6 +617,7 @@ export class TourFinalizationService {
 
     console.log("📦 Using SKU quantities:", skuQuantities)
 
+    const fulfillmentStatus = await tenantConfigService.getDefaultFulfillmentStatus()
     const poLineItems = Object.entries(skuQuantities).map(([sku, quantity]) => ({
       sku: sku,
       quantity: quantity,
@@ -626,7 +627,7 @@ export class TourFinalizationService {
       quantity_rejected: 0,
       price: "0.00",
       product_name: sku,
-      fulfillment_status: config.default_fulfillment_status,
+      fulfillment_status: fulfillmentStatus,
       sell_ahead: 0
     }))
 
@@ -639,7 +640,7 @@ export class TourFinalizationService {
       tax: "0.00",
       shipping_price: "0.00", 
       total_price: "0.00",
-      fulfillment_status: config.default_fulfillment_status,
+      fulfillment_status: fulfillmentStatus,
       discount: "0.00",
       line_items: poLineItems
     }
@@ -773,15 +774,13 @@ export class TourFinalizationService {
     console.log(`🔢 SKU Quantities:`, skuQuantities)
     console.log(`👥 Recipients:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.type})`).join(', '))
 
-    // Use the existing createFulfillmentOrdersWithRecipients method instead of duplicating logic
+    // Use the existing createFulfillmentOrdersWithRecipients method
     await this.createFulfillmentOrdersWithRecipients(
       tourData, 
       "p2l", 
       recipients, 
-      availableSkus.map(sku => ({
-        sku: sku,
-        quantity: skuQuantities[sku] || 1
-      })),
+      availableSkus, // Just the SKU strings
+      skuQuantities, // Separate quantities object
       ['ps01'] // Special tag for pack to light
     )
     
@@ -831,7 +830,7 @@ export class TourFinalizationService {
       
       const orderData = {
         order_number: orderNumber,
-        shop_name: config.shop_name,
+        shop_name: await tenantConfigService.getShopName(),
         fulfillment_status: config.default_fulfillment_status,
         order_date: this.getOrderDate(tourData.date), // One business day before tour date
         total_tax: "0.00",
@@ -985,7 +984,7 @@ export class TourFinalizationService {
       // Create order data - EXACT same format as bulk shipping orders
       const orderData = {
         order_number: orderNumber,
-        shop_name: config.shop_name,
+        shop_name: await tenantConfigService.getShopName(),
         fulfillment_status: config.default_fulfillment_status,
         order_date: this.getOrderDate(tourData.date),
         total_tax: "0.00",
