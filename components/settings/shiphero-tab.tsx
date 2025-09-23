@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { RefreshCw, TestTube, Plus, ShoppingCart, Package, Copy } from "lucide-react"
+import { RefreshCw, TestTube, Plus, ShoppingCart, Package, Copy, Trash2 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -439,6 +439,48 @@ export function ShipHeroTab() {
       })
     } finally {
       setIsTesting(false)
+    }
+  }
+
+  const handleClearTokens = async () => {
+    try {
+      // Import the database token service
+      const { DatabaseTokenService } = await import('@/lib/shiphero/database-token-service')
+      const tokenService = new DatabaseTokenService()
+      
+      // Clear tokens from database
+      const success = await tokenService.clearAllTokens()
+      
+      if (success) {
+        // Clear local storage as well
+        localStorage.removeItem('shiphero_refresh_token')
+        localStorage.removeItem('shiphero_access_token')
+        localStorage.removeItem('shiphero_token_expires_at')
+        
+        // Reset component state
+        setRefreshToken("")
+        setTokenExpiresAt(null)
+        setDaysRemaining(null)
+        setCountdown(null)
+        setTokenSaved(false)
+        
+        toast({
+          title: "🗑️ Tokens Cleared",
+          description: "All ShipHero tokens have been cleared. API access is now disabled.",
+        })
+        
+        console.log('✅ All ShipHero tokens cleared successfully')
+      } else {
+        throw new Error('Failed to clear tokens from database')
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Error clearing tokens:', error)
+      toast({
+        title: "Clear Failed",
+        description: error.message || "Failed to clear tokens",
+        variant: "destructive",
+      })
     }
   }
 
@@ -1045,6 +1087,29 @@ export function ShipHeroTab() {
               {isTesting ? "Testing..." : "Test Connection"}
             </Button>
           </div>
+          
+          {/* Clear Token Button - Danger Zone */}
+          {refreshToken && (
+            <div className="pt-4 border-t border-red-200">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-red-800">Danger Zone</h4>
+                    <p className="text-xs text-red-600 mt-1">Clear all ShipHero tokens and disable API access</p>
+                  </div>
+                  <Button
+                    onClick={handleClearTokens}
+                    variant="destructive"
+                    size="sm"
+                    disabled={isRefreshing || isTesting}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Clear Tokens
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
           
           {refreshToken && (
             <div className="text-sm bg-muted p-4 rounded-lg space-y-2">

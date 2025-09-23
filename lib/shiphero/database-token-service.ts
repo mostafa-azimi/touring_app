@@ -89,6 +89,32 @@ export class DatabaseTokenService {
   }
 
   /**
+   * Clear all stored tokens (disable ShipHero access)
+   */
+  async clearAllTokens(): Promise<boolean> {
+    try {
+      console.log('🗑️ Clearing all ShipHero tokens from database...')
+      
+      const { error } = await this.supabase
+        .from('shiphero_tokens')
+        .delete()
+        .neq('id', 0) // Delete all rows
+      
+      if (error) {
+        console.error('❌ Error clearing tokens:', error)
+        return false
+      }
+      
+      console.log('✅ All ShipHero tokens cleared from database')
+      return true
+      
+    } catch (error) {
+      console.error('❌ Error clearing tokens:', error)
+      return false
+    }
+  }
+
+  /**
    * Refresh token using ShipHero API and store the result
    */
   private async refreshAndStoreToken(refreshToken: string): Promise<TokenData | null> {
