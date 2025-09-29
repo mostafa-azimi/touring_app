@@ -424,25 +424,19 @@ export function ScheduleTourPage() {
       const result = await response.json()
       const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
       
+      console.log('🏭 ShipHero API response:', {
+        warehouses: shipHeroWarehouses.length,
+        validWarehousesInDB: validWarehouses.length,
+        shipHeroIds: shipHeroWarehouses.map((w: any) => w.id),
+        dbWarehouseIds: validWarehouses.map(w => w.shiphero_warehouse_id)
+      })
+      
       if (shipHeroWarehouses.length === 0) {
+        console.log('⚠️ No warehouses returned from ShipHero API, keeping existing:', validWarehouses.length)
         if (!hasExistingWarehouses) {
           setWarehouses([])
         }
         return
-      }
-      
-      // Get current ShipHero warehouse IDs
-      const currentShipHeroIds = new Set(shipHeroWarehouses.map((w: any) => w.id))
-      
-      // Filter validWarehouses to only include ones that exist in current ShipHero response
-      const currentValidWarehouses = validWarehouses.filter(w => 
-        currentShipHeroIds.has(w.shiphero_warehouse_id)
-      )
-      
-      // Update the warehouses displayed to only show current ones
-      // Only update if we got valid results, otherwise keep existing validWarehouses
-      if (currentValidWarehouses.length > 0) {
-        setWarehouses(currentValidWarehouses)
       }
       
       // Check which warehouses are new (not in local database)
@@ -450,6 +444,7 @@ export function ScheduleTourPage() {
       const newWarehouses = shipHeroWarehouses.filter(warehouse => !existingShipHeroIds.has(warehouse.id))
       
       if (newWarehouses.length > 0) {
+        console.log('➕ Found new warehouses to add:', newWarehouses.length)
         
         const warehousesToCreate = newWarehouses.map(warehouse => ({
           name: warehouse.address?.name || warehouse.identifier,
@@ -472,9 +467,10 @@ export function ScheduleTourPage() {
           console.error('❌ Error creating new warehouses in remote database:', createError)
           // Don't throw error, just log it - we still have existing warehouses
         } else {
+          console.log('✅ Created new warehouses:', createdWarehouses?.length)
           
-          // Merge current valid warehouses and new warehouses
-          const allWarehouses = [...(currentValidWarehouses || []), ...(createdWarehouses || [])]
+          // Merge valid warehouses and new warehouses
+          const allWarehouses = [...(validWarehouses || []), ...(createdWarehouses || [])]
           setWarehouses(allWarehouses)
           
           toast({
@@ -484,7 +480,7 @@ export function ScheduleTourPage() {
           })
         }
       } else {
-        // No new warehouses to add, currentValidWarehouses already set above
+        console.log('✅ No new warehouses to add. Using existing:', validWarehouses.length)
       }
       
     } catch (error) {
