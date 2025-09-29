@@ -69,22 +69,38 @@ export function SimpleOrderCreator() {
 
   const loadWarehousesAndHosts = async () => {
     try {
-      // Load warehouses
-      const { data: warehousesData, error: warehousesError } = await supabase
-        .from("warehouses")
-        .select("*")
-        .order("name")
+      // Load warehouses directly from ShipHero API
+      const { tokenManager } = await import('@/lib/shiphero/token-manager')
+      const accessToken = await tokenManager.getValidAccessToken()
+      
+      if (accessToken) {
+        const response = await fetch('/api/shiphero/warehouses', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        })
 
-      if (warehousesError) throw warehousesError
-      
-      // Filter out hardcoded warehouses without valid ShipHero IDs
-      // Only include warehouses that have a shiphero_warehouse_id (synced from API)
-      const validWarehouses = warehousesData?.filter(w => 
-        w.shiphero_warehouse_id && 
-        w.shiphero_warehouse_id.trim() !== ''
-      ) || []
-      
-      setWarehouses(validWarehouses)
+        if (response.ok) {
+          const result = await response.json()
+          const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
+          
+          // Transform ShipHero warehouses to our format
+          const transformedWarehouses = shipHeroWarehouses.map((warehouse: any) => ({
+            id: warehouse.id,
+            name: warehouse.address?.name || warehouse.identifier,
+            code: warehouse.identifier || '',
+            address: warehouse.address?.address1 || '',
+            city: warehouse.address?.city || '',
+            state: warehouse.address?.state || '',
+            zip: warehouse.address?.zip || '',
+            shiphero_warehouse_id: warehouse.id
+          }))
+          
+          setWarehouses(transformedWarehouses)
+        }
+      }
 
       // Load hosts
       const { data: hostsData, error: hostsError } = await supabase

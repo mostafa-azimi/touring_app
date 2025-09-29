@@ -362,49 +362,19 @@ export function ScheduleTourPage() {
 
   const fetchWarehouses = async () => {
     try {
-      
-      // First, load existing warehouses from remote database
-      const { data: existingWarehouses, error: dbError } = await supabase
-        .from('warehouses')
-        .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
-        .order('name')
-      
-      if (dbError) {
-        console.error('❌ Error fetching warehouses from remote database:', dbError)
-        throw new Error('Failed to fetch warehouses from remote database')
-      }
-      
-      
-      // Filter out hardcoded warehouses without valid ShipHero IDs
-      // Only include warehouses that have a shiphero_warehouse_id (synced from API)
-      const validWarehouses = existingWarehouses?.filter(w => 
-        w.shiphero_warehouse_id && 
-        w.shiphero_warehouse_id.trim() !== ''
-      ) || []
-
-      // If we have existing warehouses, use them but also check for updates from ShipHero
-      if (validWarehouses && validWarehouses.length > 0) {
-        setWarehouses(validWarehouses)
-        
-        // Continue to check ShipHero for any new warehouses (don't return early)
-      }
-      
-      // Sync from ShipHero (either for first time or to check for updates)
-      const hasExistingWarehouses = validWarehouses && validWarehouses.length > 0
+      console.log('🏭 Fetching warehouses directly from ShipHero API...')
       
       const { tokenManager } = await import('@/lib/shiphero/token-manager')
       const accessToken = await tokenManager.getValidAccessToken()
       
       if (!accessToken) {
         console.error('❌ No ShipHero access token available')
-        if (!hasExistingWarehouses) {
-          toast({
-            title: "Error",
-            description: "No ShipHero access token found. Please generate one in Settings.",
-            variant: "destructive",
-          })
-          setWarehouses([])
-        }
+        toast({
+          title: "Error",
+          description: "No ShipHero access token found. Please generate one in Settings.",
+          variant: "destructive",
+        })
+        setWarehouses([])
         return
       }
       
@@ -424,67 +394,37 @@ export function ScheduleTourPage() {
       const result = await response.json()
       const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
       
-      console.log('🏭 ShipHero API response:', {
-        warehouses: shipHeroWarehouses.length,
-        validWarehousesInDB: validWarehouses.length,
-        shipHeroIds: shipHeroWarehouses.map((w: any) => w.id),
-        dbWarehouseIds: validWarehouses.map(w => w.shiphero_warehouse_id)
+      console.log('✅ ShipHero API returned warehouses:', {
+        count: shipHeroWarehouses.length,
+        warehouses: shipHeroWarehouses.map((w: any) => ({
+          id: w.id,
+          name: w.address?.name || w.identifier,
+          code: w.identifier
+        }))
       })
       
       if (shipHeroWarehouses.length === 0) {
-        console.log('⚠️ No warehouses returned from ShipHero API, keeping existing:', validWarehouses.length)
-        if (!hasExistingWarehouses) {
-          setWarehouses([])
-        }
+        console.warn('⚠️ No warehouses returned from ShipHero API')
+        setWarehouses([])
         return
       }
       
-      // Check which warehouses are new (not in local database)
-      const existingShipHeroIds = new Set(existingWarehouses?.map(w => w.shiphero_warehouse_id) || [])
-      const newWarehouses = shipHeroWarehouses.filter(warehouse => !existingShipHeroIds.has(warehouse.id))
+      // Transform ShipHero warehouses to our format (no database storage)
+      const transformedWarehouses = shipHeroWarehouses.map((warehouse: any) => ({
+        id: warehouse.id, // Use ShipHero ID directly
+        name: warehouse.address?.name || warehouse.identifier,
+        code: warehouse.identifier || '',
+        address: warehouse.address?.address1 || '',
+        address2: warehouse.address?.address2 || '',
+        city: warehouse.address?.city || '',
+        state: warehouse.address?.state || '',
+        zip: warehouse.address?.zip || '',
+        country: warehouse.address?.country || 'US',
+        shiphero_warehouse_id: warehouse.id
+      }))
       
-      if (newWarehouses.length > 0) {
-        console.log('➕ Found new warehouses to add:', newWarehouses.length)
-        
-        const warehousesToCreate = newWarehouses.map(warehouse => ({
-          name: warehouse.address?.name || warehouse.identifier,
-          code: warehouse.identifier || '',
-          address: warehouse.address?.address1 || '',
-          address2: warehouse.address?.address2 || '',
-          city: warehouse.address?.city || '',
-          state: warehouse.address?.state || '',
-          zip: warehouse.address?.zip || '',
-          country: warehouse.address?.country || 'US',
-          shiphero_warehouse_id: warehouse.id
-        }))
-        
-        const { data: createdWarehouses, error: createError } = await supabase
-          .from('warehouses')
-          .upsert(warehousesToCreate, {
-            onConflict: 'shiphero_warehouse_id',
-            ignoreDuplicates: false
-          })
-          .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
-        
-        if (createError) {
-          console.error('❌ Error creating new warehouses in remote database:', createError)
-          // Don't throw error, just log it - we still have existing warehouses
-        } else {
-          console.log('✅ Created new warehouses:', createdWarehouses?.length)
-          
-          // Merge valid warehouses and new warehouses
-          const allWarehouses = [...(validWarehouses || []), ...(createdWarehouses || [])]
-          setWarehouses(allWarehouses)
-          
-          toast({
-            title: "Warehouses Updated",
-            description: `Added ${createdWarehouses?.length || 0} new warehouses from ShipHero`,
-            variant: "default",
-          })
-        }
-      } else {
-        console.log('✅ No new warehouses to add. Using existing:', validWarehouses.length)
-      }
+      setWarehouses(transformedWarehouses)
+      console.log('✅ Warehouses loaded successfully:', transformedWarehouses.length)
       
     } catch (error) {
       console.error("❌ Error in fetchWarehouses:", error)
