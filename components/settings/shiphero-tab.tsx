@@ -1046,12 +1046,12 @@ export function ShipHeroTab() {
               <div className="flex-1">
                 <Label className="text-xs text-amber-700 font-medium">DEV ONLY - Quick Copy Token</Label>
                 <div className="text-xs text-amber-600 font-mono break-all mt-1">
-                  hFvnmq8bQGwlbn48SwNqnzFIpOlSizyb1aubxZtB5d42-
+                  qoarIpctSOD4bVxQoYM3pPiZZjlNS--N8gZxVIHjzdBZ9
                 </div>
               </div>
               <Button
                 onClick={() => {
-                  navigator.clipboard.writeText("hFvnmq8bQGwlbn48SwNqnzFIpOlSizyb1aubxZtB5d42-")
+                  navigator.clipboard.writeText("qoarIpctSOD4bVxQoYM3pPiZZjlNS--N8gZxVIHjzdBZ9")
                   toast({
                     title: "📋 Copied!",
                     description: "Dev refresh token copied to clipboard",
