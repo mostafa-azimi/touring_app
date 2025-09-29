@@ -376,10 +376,10 @@ export function ScheduleTourPage() {
       
       
       // Filter out hardcoded warehouses without valid ShipHero IDs
+      // Only include warehouses that have a shiphero_warehouse_id (synced from API)
       const validWarehouses = existingWarehouses?.filter(w => 
         w.shiphero_warehouse_id && 
-        w.shiphero_warehouse_id.trim() !== '' &&
-        w.shiphero_warehouse_id !== 'V2FyZWhvdXNlOjExOTM0Mw==' // Filter out the hardcoded test warehouse
+        w.shiphero_warehouse_id.trim() !== ''
       ) || []
 
       // If we have existing warehouses, use them but also check for updates from ShipHero
@@ -431,6 +431,16 @@ export function ScheduleTourPage() {
         return
       }
       
+      // Get current ShipHero warehouse IDs
+      const currentShipHeroIds = new Set(shipHeroWarehouses.map((w: any) => w.id))
+      
+      // Filter validWarehouses to only include ones that exist in current ShipHero response
+      const currentValidWarehouses = validWarehouses.filter(w => 
+        currentShipHeroIds.has(w.shiphero_warehouse_id)
+      )
+      
+      // Update the warehouses displayed to only show current ones
+      setWarehouses(currentValidWarehouses)
       
       // Check which warehouses are new (not in local database)
       const existingShipHeroIds = new Set(existingWarehouses?.map(w => w.shiphero_warehouse_id) || [])
@@ -460,8 +470,8 @@ export function ScheduleTourPage() {
           // Don't throw error, just log it - we still have existing warehouses
         } else {
           
-          // Merge existing and new warehouses
-          const allWarehouses = [...(existingWarehouses || []), ...(createdWarehouses || [])]
+          // Merge current valid warehouses and new warehouses
+          const allWarehouses = [...(currentValidWarehouses || []), ...(createdWarehouses || [])]
           setWarehouses(allWarehouses)
           
           toast({
@@ -471,11 +481,7 @@ export function ScheduleTourPage() {
           })
         }
       } else {
-        if (hasExistingWarehouses) {
-          // Warehouses already set above, no need to update
-        } else {
-          setWarehouses(existingWarehouses || [])
-        }
+        // No new warehouses to add, currentValidWarehouses already set above
       }
       
     } catch (error) {

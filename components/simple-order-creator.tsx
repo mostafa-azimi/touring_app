@@ -78,10 +78,10 @@ export function SimpleOrderCreator() {
       if (warehousesError) throw warehousesError
       
       // Filter out hardcoded warehouses without valid ShipHero IDs
+      // Only include warehouses that have a shiphero_warehouse_id (synced from API)
       const validWarehouses = warehousesData?.filter(w => 
         w.shiphero_warehouse_id && 
-        w.shiphero_warehouse_id.trim() !== '' &&
-        w.shiphero_warehouse_id !== 'V2FyZWhvdXNlOjExOTM0Mw==' // Filter out the hardcoded test warehouse
+        w.shiphero_warehouse_id.trim() !== ''
       ) || []
       
       setWarehouses(validWarehouses)
