@@ -375,15 +375,22 @@ export function ScheduleTourPage() {
       }
       
       
+      // Filter out hardcoded warehouses without valid ShipHero IDs
+      const validWarehouses = existingWarehouses?.filter(w => 
+        w.shiphero_warehouse_id && 
+        w.shiphero_warehouse_id.trim() !== '' &&
+        w.shiphero_warehouse_id !== 'V2FyZWhvdXNlOjExOTM0Mw==' // Filter out the hardcoded test warehouse
+      ) || []
+
       // If we have existing warehouses, use them but also check for updates from ShipHero
-      if (existingWarehouses && existingWarehouses.length > 0) {
-        setWarehouses(existingWarehouses)
+      if (validWarehouses && validWarehouses.length > 0) {
+        setWarehouses(validWarehouses)
         
         // Continue to check ShipHero for any new warehouses (don't return early)
       }
       
       // Sync from ShipHero (either for first time or to check for updates)
-      const hasExistingWarehouses = existingWarehouses && existingWarehouses.length > 0
+      const hasExistingWarehouses = validWarehouses && validWarehouses.length > 0
       
       const { tokenManager } = await import('@/lib/shiphero/token-manager')
       const accessToken = await tokenManager.getValidAccessToken()

@@ -76,7 +76,15 @@ export function SimpleOrderCreator() {
         .order("name")
 
       if (warehousesError) throw warehousesError
-      setWarehouses(warehousesData || [])
+      
+      // Filter out hardcoded warehouses without valid ShipHero IDs
+      const validWarehouses = warehousesData?.filter(w => 
+        w.shiphero_warehouse_id && 
+        w.shiphero_warehouse_id.trim() !== '' &&
+        w.shiphero_warehouse_id !== 'V2FyZWhvdXNlOjExOTM0Mw==' // Filter out the hardcoded test warehouse
+      ) || []
+      
+      setWarehouses(validWarehouses)
 
       // Load hosts
       const { data: hostsData, error: hostsError } = await supabase
