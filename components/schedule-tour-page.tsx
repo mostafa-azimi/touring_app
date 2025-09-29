@@ -440,7 +440,10 @@ export function ScheduleTourPage() {
       )
       
       // Update the warehouses displayed to only show current ones
-      setWarehouses(currentValidWarehouses)
+      // Only update if we got valid results, otherwise keep existing validWarehouses
+      if (currentValidWarehouses.length > 0) {
+        setWarehouses(currentValidWarehouses)
+      }
       
       // Check which warehouses are new (not in local database)
       const existingShipHeroIds = new Set(existingWarehouses?.map(w => w.shiphero_warehouse_id) || [])
