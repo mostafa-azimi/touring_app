@@ -460,7 +460,10 @@ export function ScheduleTourPage() {
         
         const { data: createdWarehouses, error: createError } = await supabase
           .from('warehouses')
-          .insert(warehousesToCreate)
+          .upsert(warehousesToCreate, {
+            onConflict: 'shiphero_warehouse_id',
+            ignoreDuplicates: false
+          })
           .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
         
         if (createError) {
