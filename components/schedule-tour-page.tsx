@@ -466,9 +466,9 @@ export function ScheduleTourPage() {
       try {
         await supabase.from('warehouses').delete().neq('id', '00000000-0000-0000-0000-000000000000')
         
-        const warehousesToInsert = transformedWarehouses.map(w => ({
+        const warehousesToInsert = transformedWarehouses.map((w, index) => ({
           name: w.name,
-          code: w.code,
+          code: `${w.code}-${Date.now()}-${index}`, // Make code unique with timestamp
           address: w.address,
           address2: w.address2,
           city: w.city,
