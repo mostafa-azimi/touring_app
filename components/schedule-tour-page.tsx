@@ -461,9 +461,11 @@ export function ScheduleTourPage() {
       console.log('✅ Transformed warehouses:', transformedWarehouses)
       setWarehouses(transformedWarehouses)
       
-      // Sync to database in background for tour creation (needs UUID foreign keys)
-      console.log('💾 Background: Syncing to database for tour creation...')
-      supabase.from('warehouses').delete().neq('id', '00000000-0000-0000-0000-000000000000').then(() => {
+      // Sync to database SYNCHRONOUSLY for tour creation (needs UUID foreign keys)
+      console.log('💾 Syncing to database for tour creation...')
+      try {
+        await supabase.from('warehouses').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+        
         const warehousesToInsert = transformedWarehouses.map(w => ({
           name: w.name,
           code: w.code,
@@ -476,16 +478,24 @@ export function ScheduleTourPage() {
           shiphero_warehouse_id: w.shiphero_warehouse_id
         }))
         
-        supabase.from('warehouses').insert(warehousesToInsert).select().then(({ data, error }) => {
-          if (!error && data) {
-            console.log('✅ Background sync complete - warehouses have database UUIDs:', data.length)
-            // Update with database UUIDs
-            setWarehouses(data)
-          } else if (error) {
-            console.error('⚠️ Background sync failed:', error, '- tour creation may have issues')
-          }
-        })
-      })
+        const { data, error } = await supabase.from('warehouses').insert(warehousesToInsert).select()
+        
+        if (!error && data) {
+          console.log('✅ Sync complete - warehouses have database UUIDs:', data.length)
+          console.log('✅ UUID warehouse IDs:', data.map(w => ({ id: w.id, name: w.name })))
+          // Update with database UUIDs
+          setWarehouses(data)
+        } else if (error) {
+          console.error('❌ Sync failed:', error)
+          toast({
+            title: "Warning",
+            description: "Warehouse sync issue - tour creation may fail",
+            variant: "destructive"
+          })
+        }
+      } catch (syncError) {
+        console.error('❌ Warehouse sync error:', syncError)
+      }
       
     } catch (error) {
       console.error("❌ Error in fetchWarehouses:", error)
