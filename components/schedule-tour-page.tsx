@@ -392,7 +392,8 @@ export function ScheduleTourPage() {
     try {
       setIsLoadingWarehouses(true)
       
-      console.log('🏭 Fetching warehouses from ShipHero API and syncing to database...')
+      const { APP_VERSION } = await import('@/lib/version')
+      console.log(`🏭 [v${APP_VERSION}] Fetching warehouses from ShipHero API and syncing to database...`)
       
       // Note: We removed cache check here to ensure we always validate against current ShipHero API
       // This prevents showing stale/deleted warehouses
@@ -458,7 +459,7 @@ export function ScheduleTourPage() {
         shiphero_warehouse_id: warehouse.id
       }))
       
-      console.log('✅ Transformed warehouses:', transformedWarehouses)
+      console.log(`✅ [v${APP_VERSION}] Transformed warehouses:`, transformedWarehouses)
       setWarehouses(transformedWarehouses)
       
       // Sync to database SYNCHRONOUSLY for tour creation (needs UUID foreign keys)
