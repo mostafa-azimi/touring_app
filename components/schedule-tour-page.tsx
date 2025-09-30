@@ -589,13 +589,37 @@ export function ScheduleTourPage() {
       if (configData?.workflow_defaults && Object.keys(configData.workflow_defaults).length > 0) {
         const defaults = configData.workflow_defaults
         
-        // Load workflow configurations
-        console.log('📋 Loading workflow defaults from database:', defaults)
-        setWorkflowConfigs(defaults)
+        // Filter out SKUs that don't exist in current inventory
+        const currentSkuSet = new Set(allSkus.map(sku => sku.sku))
+        const filteredDefaults = {}
         
-        // Load selected workflows from defaults
-        const savedWorkflows = Object.keys(defaults).filter(key => 
-          defaults[key] && typeof defaults[key] === 'object' && Object.keys(defaults[key]).length > 0
+        Object.keys(defaults).forEach(workflowId => {
+          const config = defaults[workflowId]
+          if (config && config.skuQuantities) {
+            // Only keep SKUs that exist in current inventory
+            const filteredSkuQuantities = {}
+            Object.keys(config.skuQuantities).forEach(sku => {
+              if (currentSkuSet.has(sku)) {
+                filteredSkuQuantities[sku] = config.skuQuantities[sku]
+              } else {
+                console.log(`⚠️ Filtering out stale SKU from ${workflowId}: ${sku}`)
+              }
+            })
+            
+            filteredDefaults[workflowId] = {
+              orderCount: config.orderCount,
+              skuQuantities: filteredSkuQuantities
+            }
+          }
+        })
+        
+        // Load workflow configurations
+        console.log('📋 Loading workflow defaults from database (filtered):', filteredDefaults)
+        setWorkflowConfigs(filteredDefaults)
+        
+        // Load selected workflows from filtered defaults
+        const savedWorkflows = Object.keys(filteredDefaults).filter(key => 
+          filteredDefaults[key] && typeof filteredDefaults[key] === 'object' && Object.keys(filteredDefaults[key]).length > 0
         )
         
         console.log('🎯 Found configured workflows:', savedWorkflows)
@@ -608,10 +632,10 @@ export function ScheduleTourPage() {
 
         setDefaultsLoaded(true)
         
-        // Log what was actually loaded for each workflow
+        // Log what was actually loaded for each workflow (after filtering)
         savedWorkflows.forEach(workflow => {
-          const config = defaults[workflow]
-          console.log(`✅ Loaded ${workflow}: ${config.orderCount} orders, ${Object.keys(config.skuQuantities || {}).length} SKUs`)
+          const config = filteredDefaults[workflow]
+          console.log(`✅ Loaded ${workflow}: ${config.orderCount} orders, ${Object.keys(config.skuQuantities || {}).length} SKUs (filtered)`)
         })
         
         toast({
