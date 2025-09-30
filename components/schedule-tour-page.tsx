@@ -443,48 +443,11 @@ export function ScheduleTourPage() {
         return
       }
       
-      // First, try to load existing warehouses from database
-      console.log('💾 Checking for existing warehouses in database...')
-      const { data: existingWarehouses, error: fetchError } = await supabase
-        .from('warehouses')
-        .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
-        .in('shiphero_warehouse_id', shipHeroWarehouses.map((w: any) => w.id))
+      // SIMPLIFIED APPROACH: Delete ALL old warehouses and insert fresh from ShipHero
+      console.log('🗑️ Clearing all warehouses from database...')
+      await supabase.from('warehouses').delete().neq('id', '00000000-0000-0000-0000-000000000000')
       
-      if (!fetchError && existingWarehouses && existingWarehouses.length > 0) {
-        console.log('✅ Found existing warehouses in database:', existingWarehouses.length)
-        console.log('✅ Existing warehouse IDs:', existingWarehouses.map(w => ({ id: w.id, name: w.name })))
-        setWarehouses(existingWarehouses)
-        
-        // Cache warehouses in localStorage
-        localStorage.setItem('cached_warehouses', JSON.stringify(existingWarehouses))
-        localStorage.setItem('cached_warehouses_timestamp', Date.now().toString())
-        console.log('💾 Cached warehouses to localStorage')
-        
-        // Update warehouse details if needed (name, address, etc. might have changed)
-        for (const warehouse of existingWarehouses) {
-          const shipHeroWarehouse = shipHeroWarehouses.find((w: any) => w.id === warehouse.shiphero_warehouse_id)
-          if (shipHeroWarehouse) {
-            await supabase
-              .from('warehouses')
-              .update({
-                name: shipHeroWarehouse.address?.name || shipHeroWarehouse.identifier,
-                code: shipHeroWarehouse.identifier || '',
-                address: shipHeroWarehouse.address?.address1 || '',
-                address2: shipHeroWarehouse.address?.address2 || '',
-                city: shipHeroWarehouse.address?.city || '',
-                state: shipHeroWarehouse.address?.state || '',
-                zip: shipHeroWarehouse.address?.zip || '',
-                country: shipHeroWarehouse.address?.country || 'US'
-              })
-              .eq('id', warehouse.id)
-          }
-        }
-        
-        return
-      }
-      
-      // If no existing warehouses, try to insert new ones
-      console.log('💾 Inserting new warehouses to database...')
+      console.log('💾 Inserting fresh warehouses from ShipHero...')
       const warehousesToInsert = shipHeroWarehouses.map((warehouse: any) => ({
         name: warehouse.address?.name || warehouse.identifier,
         code: warehouse.identifier || '',
@@ -497,6 +460,8 @@ export function ScheduleTourPage() {
         shiphero_warehouse_id: warehouse.id
       }))
       
+      console.log('📦 Warehouses to insert:', warehousesToInsert)
+      
       const { data: insertedWarehouses, error: insertError } = await supabase
         .from('warehouses')
         .insert(warehousesToInsert)
@@ -504,32 +469,12 @@ export function ScheduleTourPage() {
       
       if (insertError) {
         console.error('❌ Error inserting warehouses:', insertError)
-        console.error('❌ This is likely due to duplicate codes. Trying to load any existing warehouses...')
-        
-        // Final fallback: load all warehouses with matching shiphero IDs
-        const { data: fallbackWarehouses } = await supabase
-          .from('warehouses')
-          .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
-          .not('shiphero_warehouse_id', 'is', null)
-        
-        if (fallbackWarehouses && fallbackWarehouses.length > 0) {
-          console.log('✅ Using fallback warehouses:', fallbackWarehouses.length)
-          setWarehouses(fallbackWarehouses)
-          return
-        }
-        
         throw insertError
       }
       
-      console.log('✅ Warehouses inserted to database:', insertedWarehouses?.length)
+      console.log('✅ Fresh warehouses inserted:', insertedWarehouses?.length)
+      console.log('✅ Warehouse details:', insertedWarehouses)
       setWarehouses(insertedWarehouses || [])
-      
-      // Cache newly inserted warehouses
-      if (insertedWarehouses && insertedWarehouses.length > 0) {
-        localStorage.setItem('cached_warehouses', JSON.stringify(insertedWarehouses))
-        localStorage.setItem('cached_warehouses_timestamp', Date.now().toString())
-        console.log('💾 Cached new warehouses to localStorage')
-      }
       
     } catch (error) {
       console.error("❌ Error in fetchWarehouses:", error)
