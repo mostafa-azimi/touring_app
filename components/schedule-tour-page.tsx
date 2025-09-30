@@ -391,6 +391,25 @@ export function ScheduleTourPage() {
   const fetchWarehouses = async () => {
     try {
       setIsLoadingWarehouses(true)
+      
+      // Check localStorage cache first (24 hour TTL)
+      const cachedWarehouses = localStorage.getItem('cached_warehouses')
+      const cacheTimestamp = localStorage.getItem('cached_warehouses_timestamp')
+      const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+      
+      if (cachedWarehouses && cacheTimestamp) {
+        const age = Date.now() - parseInt(cacheTimestamp)
+        if (age < CACHE_TTL) {
+          console.log('✅ Using cached warehouses from localStorage (age: ' + Math.round(age / 1000 / 60) + ' minutes)')
+          const parsed = JSON.parse(cachedWarehouses)
+          setWarehouses(parsed)
+          setIsLoadingWarehouses(false)
+          return
+        } else {
+          console.log('⏰ Cache expired, fetching fresh warehouses...')
+        }
+      }
+      
       console.log('🏭 Fetching warehouses from ShipHero API and syncing to database...')
       
       const { tokenManager } = await import('@/lib/shiphero/token-manager')
@@ -450,6 +469,11 @@ export function ScheduleTourPage() {
         console.log('✅ Found existing warehouses in database:', existingWarehouses.length)
         console.log('✅ Existing warehouse IDs:', existingWarehouses.map(w => ({ id: w.id, name: w.name })))
         setWarehouses(existingWarehouses)
+        
+        // Cache warehouses in localStorage
+        localStorage.setItem('cached_warehouses', JSON.stringify(existingWarehouses))
+        localStorage.setItem('cached_warehouses_timestamp', Date.now().toString())
+        console.log('💾 Cached warehouses to localStorage')
         
         // Update warehouse details if needed (name, address, etc. might have changed)
         for (const warehouse of existingWarehouses) {
@@ -514,6 +538,13 @@ export function ScheduleTourPage() {
       
       console.log('✅ Warehouses inserted to database:', insertedWarehouses?.length)
       setWarehouses(insertedWarehouses || [])
+      
+      // Cache newly inserted warehouses
+      if (insertedWarehouses && insertedWarehouses.length > 0) {
+        localStorage.setItem('cached_warehouses', JSON.stringify(insertedWarehouses))
+        localStorage.setItem('cached_warehouses_timestamp', Date.now().toString())
+        console.log('💾 Cached new warehouses to localStorage')
+      }
       
     } catch (error) {
       console.error("❌ Error in fetchWarehouses:", error)
