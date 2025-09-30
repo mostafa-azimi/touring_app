@@ -389,7 +389,7 @@ export function ScheduleTourPage() {
 
   const fetchWarehouses = async () => {
     try {
-      console.log('🏭 Fetching warehouses directly from ShipHero API...')
+      console.log('🏭 Fetching warehouses from ShipHero API and syncing to database...')
       
       const { tokenManager } = await import('@/lib/shiphero/token-manager')
       const accessToken = await tokenManager.getValidAccessToken()
@@ -436,9 +436,8 @@ export function ScheduleTourPage() {
         return
       }
       
-      // Transform ShipHero warehouses to our format (no database storage)
-      const transformedWarehouses = shipHeroWarehouses.map((warehouse: any) => ({
-        id: warehouse.id, // Use ShipHero ID directly
+      // Sync warehouses to database using upsert (by shiphero_warehouse_id)
+      const warehousesToUpsert = shipHeroWarehouses.map((warehouse: any) => ({
         name: warehouse.address?.name || warehouse.identifier,
         code: warehouse.identifier || '',
         address: warehouse.address?.address1 || '',
@@ -450,8 +449,22 @@ export function ScheduleTourPage() {
         shiphero_warehouse_id: warehouse.id
       }))
       
-      setWarehouses(transformedWarehouses)
-      console.log('✅ Warehouses loaded successfully:', transformedWarehouses.length)
+      console.log('💾 Syncing warehouses to database...')
+      const { data: syncedWarehouses, error: syncError } = await supabase
+        .from('warehouses')
+        .upsert(warehousesToUpsert, {
+          onConflict: 'shiphero_warehouse_id',
+          ignoreDuplicates: false
+        })
+        .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
+      
+      if (syncError) {
+        console.error('❌ Error syncing warehouses to database:', syncError)
+        throw syncError
+      }
+      
+      console.log('✅ Warehouses synced to database:', syncedWarehouses?.length)
+      setWarehouses(syncedWarehouses || [])
       
     } catch (error) {
       console.error("❌ Error in fetchWarehouses:", error)
