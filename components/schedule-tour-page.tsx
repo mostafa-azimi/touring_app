@@ -443,12 +443,10 @@ export function ScheduleTourPage() {
         return
       }
       
-      // SIMPLIFIED APPROACH: Delete ALL old warehouses and insert fresh from ShipHero
-      console.log('🗑️ Clearing all warehouses from database...')
-      await supabase.from('warehouses').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-      
-      console.log('💾 Inserting fresh warehouses from ShipHero...')
-      const warehousesToInsert = shipHeroWarehouses.map((warehouse: any) => ({
+      // USE ShipHero WAREHOUSES DIRECTLY - Same as Settings tab (working approach)
+      console.log('✅ Using ShipHero warehouses directly without database')
+      const transformedWarehouses = shipHeroWarehouses.map((warehouse: any) => ({
+        id: warehouse.id, // Use ShipHero ID directly
         name: warehouse.address?.name || warehouse.identifier,
         code: warehouse.identifier || '',
         address: warehouse.address?.address1 || '',
@@ -460,21 +458,34 @@ export function ScheduleTourPage() {
         shiphero_warehouse_id: warehouse.id
       }))
       
-      console.log('📦 Warehouses to insert:', warehousesToInsert)
+      console.log('✅ Transformed warehouses:', transformedWarehouses)
+      setWarehouses(transformedWarehouses)
       
-      const { data: insertedWarehouses, error: insertError } = await supabase
-        .from('warehouses')
-        .insert(warehousesToInsert)
-        .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
-      
-      if (insertError) {
-        console.error('❌ Error inserting warehouses:', insertError)
-        throw insertError
-      }
-      
-      console.log('✅ Fresh warehouses inserted:', insertedWarehouses?.length)
-      console.log('✅ Warehouse details:', insertedWarehouses)
-      setWarehouses(insertedWarehouses || [])
+      // Sync to database in background for tour creation (needs UUID foreign keys)
+      console.log('💾 Background: Syncing to database for tour creation...')
+      supabase.from('warehouses').delete().neq('id', '00000000-0000-0000-0000-000000000000').then(() => {
+        const warehousesToInsert = transformedWarehouses.map(w => ({
+          name: w.name,
+          code: w.code,
+          address: w.address,
+          address2: w.address2,
+          city: w.city,
+          state: w.state,
+          zip: w.zip,
+          country: w.country,
+          shiphero_warehouse_id: w.shiphero_warehouse_id
+        }))
+        
+        supabase.from('warehouses').insert(warehousesToInsert).select().then(({ data, error }) => {
+          if (!error && data) {
+            console.log('✅ Background sync complete - warehouses have database UUIDs:', data.length)
+            // Update with database UUIDs
+            setWarehouses(data)
+          } else if (error) {
+            console.error('⚠️ Background sync failed:', error, '- tour creation may have issues')
+          }
+        })
+      })
       
     } catch (error) {
       console.error("❌ Error in fetchWarehouses:", error)
