@@ -246,6 +246,7 @@ export function ScheduleTourPage() {
   const [hosts, setHosts] = useState<any[]>([])
   const [participants, setParticipants] = useState<Participant[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingWarehouses, setIsLoadingWarehouses] = useState(true)
   const [formData, setFormData] = useState({
     warehouse_id: "",
     host_id: "",
@@ -389,6 +390,7 @@ export function ScheduleTourPage() {
 
   const fetchWarehouses = async () => {
     try {
+      setIsLoadingWarehouses(true)
       console.log('🏭 Fetching warehouses from ShipHero API and syncing to database...')
       
       const { tokenManager } = await import('@/lib/shiphero/token-manager')
@@ -402,6 +404,7 @@ export function ScheduleTourPage() {
           variant: "destructive",
         })
         setWarehouses([])
+        setIsLoadingWarehouses(false)
         return
       }
       
@@ -492,6 +495,8 @@ export function ScheduleTourPage() {
         variant: "destructive",
       })
       setWarehouses([])
+    } finally {
+      setIsLoadingWarehouses(false)
     }
   }
 
@@ -1003,8 +1008,8 @@ export function ScheduleTourPage() {
                     setFormData({ ...formData, warehouse_id: value })
                   }}
                 >
-                  <SelectTrigger id="warehouse" className="cursor-pointer">
-                    <SelectValue placeholder="Select a warehouse" />
+                  <SelectTrigger id="warehouse" className="cursor-pointer" disabled={isLoadingWarehouses}>
+                    <SelectValue placeholder={isLoadingWarehouses ? "Loading warehouses..." : "Select a warehouse"} />
                   </SelectTrigger>
                   <SelectContent>
                     {warehouses.map((warehouse) => (
