@@ -724,16 +724,9 @@ export function ScheduleTourPage() {
         throw new Error('Time is required')
       }
 
-      // Check if warehouse_id looks like a UUID (should be if from our database)
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-      if (!uuidRegex.test(formData.warehouse_id)) {
-        console.error('❌ Invalid warehouse ID format:', formData.warehouse_id)
-        throw new Error(`Invalid warehouse ID format: ${formData.warehouse_id}. Expected UUID format.`)
-      }
-      if (!uuidRegex.test(formData.host_id)) {
-        console.error('❌ Invalid host ID format:', formData.host_id)
-        throw new Error(`Invalid host ID format: ${formData.host_id}. Expected UUID format.`)
-      }
+      // TEMPORARILY REMOVED UUID CHECK - Let database return the real error
+      console.log('🔍 Warehouse ID being used:', formData.warehouse_id)
+      console.log('🔍 Host ID being used:', formData.host_id)
 
 
       // Optimized: Create tour and get related data in one query with joins
