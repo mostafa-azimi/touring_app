@@ -69,7 +69,7 @@ export function SimpleOrderCreator() {
 
   const loadWarehousesAndHosts = async () => {
     try {
-      // Load warehouses directly from ShipHero API
+      // Load warehouses from ShipHero API and sync to database
       const { tokenManager } = await import('@/lib/shiphero/token-manager')
       const accessToken = await tokenManager.getValidAccessToken()
       
@@ -86,19 +86,30 @@ export function SimpleOrderCreator() {
           const result = await response.json()
           const shipHeroWarehouses = result.data?.account?.data?.warehouses || []
           
-          // Transform ShipHero warehouses to our format
-          const transformedWarehouses = shipHeroWarehouses.map((warehouse: any) => ({
-            id: warehouse.id,
+          // Sync warehouses to database using upsert
+          const warehousesToUpsert = shipHeroWarehouses.map((warehouse: any) => ({
             name: warehouse.address?.name || warehouse.identifier,
             code: warehouse.identifier || '',
             address: warehouse.address?.address1 || '',
+            address2: warehouse.address?.address2 || '',
             city: warehouse.address?.city || '',
             state: warehouse.address?.state || '',
             zip: warehouse.address?.zip || '',
+            country: warehouse.address?.country || 'US',
             shiphero_warehouse_id: warehouse.id
           }))
           
-          setWarehouses(transformedWarehouses)
+          const { data: syncedWarehouses, error: syncError } = await supabase
+            .from('warehouses')
+            .upsert(warehousesToUpsert, {
+              onConflict: 'shiphero_warehouse_id',
+              ignoreDuplicates: false
+            })
+            .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
+          
+          if (!syncError) {
+            setWarehouses(syncedWarehouses || [])
+          }
         }
       }
 
