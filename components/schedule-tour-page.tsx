@@ -450,6 +450,8 @@ export function ScheduleTourPage() {
       }))
       
       console.log('💾 Syncing warehouses to database...')
+      console.log('📦 Warehouses to upsert:', warehousesToUpsert)
+      
       const { data: syncedWarehouses, error: syncError } = await supabase
         .from('warehouses')
         .upsert(warehousesToUpsert, {
@@ -460,10 +462,26 @@ export function ScheduleTourPage() {
       
       if (syncError) {
         console.error('❌ Error syncing warehouses to database:', syncError)
+        console.error('❌ Error details:', JSON.stringify(syncError, null, 2))
+        
+        // Try to continue with existing warehouses from database
+        console.log('⚠️ Attempting to load existing warehouses from database...')
+        const { data: existingWarehouses, error: fetchError } = await supabase
+          .from('warehouses')
+          .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
+          .in('shiphero_warehouse_id', shipHeroWarehouses.map((w: any) => w.id))
+        
+        if (!fetchError && existingWarehouses && existingWarehouses.length > 0) {
+          console.log('✅ Using existing warehouses from database:', existingWarehouses.length)
+          setWarehouses(existingWarehouses)
+          return
+        }
+        
         throw syncError
       }
       
       console.log('✅ Warehouses synced to database:', syncedWarehouses?.length)
+      console.log('✅ Synced warehouse IDs:', syncedWarehouses?.map(w => ({ id: w.id, name: w.name })))
       setWarehouses(syncedWarehouses || [])
       
     } catch (error) {
