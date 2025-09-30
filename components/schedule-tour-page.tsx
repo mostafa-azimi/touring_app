@@ -87,8 +87,8 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
           const availableQty = product.inventory?.available || product.available || 0
           const isSelected = currentQuantity > 0
           
-          // For Single Item Batch, disable products if one is already selected and this isn't it
-          const isDisabled = isSingleItemBatch && selectedSkuCount >= 1 && currentQuantity === 0
+          // No restrictions for checkbox selection (pool-based workflows)
+          const isDisabled = false
           
           return (
             <div 
