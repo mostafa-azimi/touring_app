@@ -392,25 +392,10 @@ export function ScheduleTourPage() {
     try {
       setIsLoadingWarehouses(true)
       
-      // Check localStorage cache first (24 hour TTL)
-      const cachedWarehouses = localStorage.getItem('cached_warehouses')
-      const cacheTimestamp = localStorage.getItem('cached_warehouses_timestamp')
-      const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
-      
-      if (cachedWarehouses && cacheTimestamp) {
-        const age = Date.now() - parseInt(cacheTimestamp)
-        if (age < CACHE_TTL) {
-          console.log('✅ Using cached warehouses from localStorage (age: ' + Math.round(age / 1000 / 60) + ' minutes)')
-          const parsed = JSON.parse(cachedWarehouses)
-          setWarehouses(parsed)
-          setIsLoadingWarehouses(false)
-          return
-        } else {
-          console.log('⏰ Cache expired, fetching fresh warehouses...')
-        }
-      }
-      
       console.log('🏭 Fetching warehouses from ShipHero API and syncing to database...')
+      
+      // Note: We removed cache check here to ensure we always validate against current ShipHero API
+      // This prevents showing stale/deleted warehouses
       
       const { tokenManager } = await import('@/lib/shiphero/token-manager')
       const accessToken = await tokenManager.getValidAccessToken()
