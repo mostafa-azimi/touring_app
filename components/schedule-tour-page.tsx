@@ -486,10 +486,19 @@ export function ScheduleTourPage() {
           // Update with database UUIDs
           setWarehouses(data)
         } else if (error) {
-          console.error('❌ Sync failed:', error)
+          console.error('❌ Sync failed - FULL ERROR:', error)
+          console.error('❌ Error code:', error.code)
+          console.error('❌ Error message:', error.message)
+          console.error('❌ Error details:', error.details)
+          console.error('❌ Warehouses that failed to insert:', JSON.stringify(warehousesToInsert, null, 2))
+          
+          // Try to load whatever is in the database
+          const { data: anyWarehouses } = await supabase.from('warehouses').select('*')
+          console.log('📦 Current warehouses in database:', anyWarehouses)
+          
           toast({
             title: "Warning",
-            description: "Warehouse sync issue - tour creation may fail",
+            description: `Warehouse sync failed: ${error.message}`,
             variant: "destructive"
           })
         }
