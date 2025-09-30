@@ -439,8 +439,44 @@ export function ScheduleTourPage() {
         return
       }
       
-      // Sync warehouses to database using upsert (by shiphero_warehouse_id)
-      const warehousesToUpsert = shipHeroWarehouses.map((warehouse: any) => ({
+      // First, try to load existing warehouses from database
+      console.log('💾 Checking for existing warehouses in database...')
+      const { data: existingWarehouses, error: fetchError } = await supabase
+        .from('warehouses')
+        .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
+        .in('shiphero_warehouse_id', shipHeroWarehouses.map((w: any) => w.id))
+      
+      if (!fetchError && existingWarehouses && existingWarehouses.length > 0) {
+        console.log('✅ Found existing warehouses in database:', existingWarehouses.length)
+        console.log('✅ Existing warehouse IDs:', existingWarehouses.map(w => ({ id: w.id, name: w.name })))
+        setWarehouses(existingWarehouses)
+        
+        // Update warehouse details if needed (name, address, etc. might have changed)
+        for (const warehouse of existingWarehouses) {
+          const shipHeroWarehouse = shipHeroWarehouses.find((w: any) => w.id === warehouse.shiphero_warehouse_id)
+          if (shipHeroWarehouse) {
+            await supabase
+              .from('warehouses')
+              .update({
+                name: shipHeroWarehouse.address?.name || shipHeroWarehouse.identifier,
+                code: shipHeroWarehouse.identifier || '',
+                address: shipHeroWarehouse.address?.address1 || '',
+                address2: shipHeroWarehouse.address?.address2 || '',
+                city: shipHeroWarehouse.address?.city || '',
+                state: shipHeroWarehouse.address?.state || '',
+                zip: shipHeroWarehouse.address?.zip || '',
+                country: shipHeroWarehouse.address?.country || 'US'
+              })
+              .eq('id', warehouse.id)
+          }
+        }
+        
+        return
+      }
+      
+      // If no existing warehouses, try to insert new ones
+      console.log('💾 Inserting new warehouses to database...')
+      const warehousesToInsert = shipHeroWarehouses.map((warehouse: any) => ({
         name: warehouse.address?.name || warehouse.identifier,
         code: warehouse.identifier || '',
         address: warehouse.address?.address1 || '',
@@ -452,40 +488,32 @@ export function ScheduleTourPage() {
         shiphero_warehouse_id: warehouse.id
       }))
       
-      console.log('💾 Syncing warehouses to database...')
-      console.log('📦 Warehouses to upsert:', warehousesToUpsert)
-      
-      const { data: syncedWarehouses, error: syncError } = await supabase
+      const { data: insertedWarehouses, error: insertError } = await supabase
         .from('warehouses')
-        .upsert(warehousesToUpsert, {
-          onConflict: 'shiphero_warehouse_id',
-          ignoreDuplicates: false
-        })
+        .insert(warehousesToInsert)
         .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
       
-      if (syncError) {
-        console.error('❌ Error syncing warehouses to database:', syncError)
-        console.error('❌ Error details:', JSON.stringify(syncError, null, 2))
+      if (insertError) {
+        console.error('❌ Error inserting warehouses:', insertError)
+        console.error('❌ This is likely due to duplicate codes. Trying to load any existing warehouses...')
         
-        // Try to continue with existing warehouses from database
-        console.log('⚠️ Attempting to load existing warehouses from database...')
-        const { data: existingWarehouses, error: fetchError } = await supabase
+        // Final fallback: load all warehouses with matching shiphero IDs
+        const { data: fallbackWarehouses } = await supabase
           .from('warehouses')
           .select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id')
-          .in('shiphero_warehouse_id', shipHeroWarehouses.map((w: any) => w.id))
+          .not('shiphero_warehouse_id', 'is', null)
         
-        if (!fetchError && existingWarehouses && existingWarehouses.length > 0) {
-          console.log('✅ Using existing warehouses from database:', existingWarehouses.length)
-          setWarehouses(existingWarehouses)
+        if (fallbackWarehouses && fallbackWarehouses.length > 0) {
+          console.log('✅ Using fallback warehouses:', fallbackWarehouses.length)
+          setWarehouses(fallbackWarehouses)
           return
         }
         
-        throw syncError
+        throw insertError
       }
       
-      console.log('✅ Warehouses synced to database:', syncedWarehouses?.length)
-      console.log('✅ Synced warehouse IDs:', syncedWarehouses?.map(w => ({ id: w.id, name: w.name })))
-      setWarehouses(syncedWarehouses || [])
+      console.log('✅ Warehouses inserted to database:', insertedWarehouses?.length)
+      setWarehouses(insertedWarehouses || [])
       
     } catch (error) {
       console.error("❌ Error in fetchWarehouses:", error)
