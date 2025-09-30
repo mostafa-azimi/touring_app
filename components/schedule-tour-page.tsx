@@ -35,7 +35,8 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
     )
   }
 
-  // Check if this is Single Item Batch workflow (limit to 1 SKU)
+  // Workflows that use checkbox selection instead of quantity inputs
+  const useCheckboxSelection = ['single_item_batch', 'multi_item_batch', 'pack_to_light'].includes(workflowId || '')
   const isSingleItemBatch = workflowId === 'single_item_batch'
   const selectedSkuCount = Object.keys(workflowConfig?.skuQuantities || {}).filter(sku => 
     (workflowConfig?.skuQuantities?.[sku] || 0) > 0
@@ -61,10 +62,22 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        <Label className="text-sm font-medium">📦 Select products and quantities for {workflowName} at {selectedWarehouse?.name}:</Label>
-        {isSingleItemBatch && (
-          <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-            <strong>Single Item Batch:</strong> You can only select 1 SKU for this workflow. {selectedSkuCount > 0 && `Currently selected: ${selectedSkuCount}/1`}
+        <Label className="text-sm font-medium">
+          📦 {useCheckboxSelection ? 'Select eligible products' : 'Select products and quantities'} for {workflowName} at {selectedWarehouse?.name}:
+        </Label>
+        {workflowId === 'single_item_batch' && (
+          <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
+            <strong>Single Item Batch:</strong> Each order will contain 1 unit of 1 randomly selected SKU from your selected pool.
+          </p>
+        )}
+        {workflowId === 'multi_item_batch' && (
+          <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
+            <strong>Multi-Item Batch:</strong> Each order will contain 2-5 randomly selected SKUs (1-2 units each) from your selected pool.
+          </p>
+        )}
+        {workflowId === 'pack_to_light' && (
+          <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
+            <strong>Pack to Light:</strong> Each order will contain 1 unit per SKU from your selected pool.
           </p>
         )}
       </div>
@@ -72,6 +85,7 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
         {filteredProducts.map(product => {
           const currentQuantity = workflowConfig?.skuQuantities?.[product.sku] || 0
           const availableQty = product.inventory?.available || product.available || 0
+          const isSelected = currentQuantity > 0
           
           // For Single Item Batch, disable products if one is already selected and this isn't it
           const isDisabled = isSingleItemBatch && selectedSkuCount >= 1 && currentQuantity === 0
@@ -82,7 +96,9 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
               className={`relative flex flex-col space-y-3 p-4 rounded-lg border transition-all duration-200 ${
                 isDisabled 
                   ? 'border-slate-100 bg-slate-50 opacity-50' 
-                  : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25'
+                  : isSelected && useCheckboxSelection
+                  ? 'border-blue-300 bg-blue-50'
+                  : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-50'
               }`}
             >
               <div className="flex-1 min-w-0">
@@ -102,37 +118,48 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor={`qty-${product.sku}`} className="text-xs">Qty:</Label>
-                <Input
-                  id={`qty-${product.sku}`}
-                  type="number"
-                  min="0"
-                  value={currentQuantity}
-                  onChange={(e) => {
-                    const newQuantity = parseInt(e.target.value) || 0
-                    // For Single Item Batch, clear other SKUs when selecting a new one
-                    if (isSingleItemBatch && newQuantity > 0) {
-                      // Clear all other SKUs first
-                      Object.keys(workflowConfig?.skuQuantities || {}).forEach(sku => {
-                        if (sku !== product.sku) {
-                          onSkuQuantityChange(sku, 0)
-                        }
-                      })
-                    }
-                    onSkuQuantityChange(product.sku, newQuantity)
-                  }}
-                  disabled={isDisabled}
-                  className="w-20 h-8 text-sm"
-                  placeholder="0"
-                />
-              </div>
+              
+              {useCheckboxSelection ? (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`select-${product.sku}`}
+                    checked={isSelected}
+                    onCheckedChange={(checked) => {
+                      // Use 1 as the quantity marker for selected items (actual quantities determined at finalization)
+                      onSkuQuantityChange(product.sku, checked ? 1 : 0)
+                    }}
+                    disabled={isDisabled}
+                  />
+                  <Label htmlFor={`select-${product.sku}`} className="text-xs cursor-pointer">
+                    Include in pool
+                  </Label>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`qty-${product.sku}`} className="text-xs">Qty:</Label>
+                  <Input
+                    id={`qty-${product.sku}`}
+                    type="number"
+                    min="0"
+                    value={currentQuantity}
+                    onChange={(e) => {
+                      const newQuantity = parseInt(e.target.value) || 0
+                      onSkuQuantityChange(product.sku, newQuantity)
+                    }}
+                    disabled={isDisabled}
+                    className="w-20 h-8 text-sm"
+                    placeholder="0"
+                  />
+                </div>
+              )}
             </div>
           )
         })}
       </div>
       <p className="text-xs text-muted-foreground">
-        Enter quantities for products you want to include in the purchase order. Set to 0 to exclude.
+        {useCheckboxSelection 
+          ? 'Select products to include in the randomization pool. Actual quantities will be determined automatically at finalization.'
+          : 'Enter quantities for products you want to include. Set to 0 to exclude.'}
       </p>
     </div>
   )

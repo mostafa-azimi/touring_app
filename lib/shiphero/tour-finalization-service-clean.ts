@@ -45,6 +45,7 @@ export type WorkflowOption =
   | "bulk_shipping" 
   | "single_item_batch" 
   | "multi_item_batch"
+  | "pack_to_light"
 
 export class TourFinalizationService {
   private supabase
@@ -87,9 +88,10 @@ export class TourFinalizationService {
     const bulkCount = workflowConfigs['bulk_shipping']?.orderCount || 0
     const singleCount = workflowConfigs['single_item_batch']?.orderCount || 0  
     const multiCount = workflowConfigs['multi_item_batch']?.orderCount || 0
+    const packCount = workflowConfigs['pack_to_light']?.orderCount || 0
     
-    const total = bulkCount + singleCount + multiCount
-    console.log(`📊 Total orders needed: ${total} (bulk: ${bulkCount}, single: ${singleCount}, multi: ${multiCount})`)
+    const total = bulkCount + singleCount + multiCount + packCount
+    console.log(`📊 Total orders needed: ${total} (bulk: ${bulkCount}, single: ${singleCount}, multi: ${multiCount}, pack: ${packCount})`)
     
     return total
   }
@@ -352,6 +354,11 @@ export class TourFinalizationService {
             await this.createMultiItemBatchSOs(tourData)
             break
             
+          case "pack_to_light":
+            console.log("Executing: Pack to Light Workflow")
+            await this.createPackToLightSOs(tourData)
+            break
+            
           default:
             console.warn(`⚠️ Unknown workflow option: ${option}`)
         }
@@ -516,6 +523,26 @@ export class TourFinalizationService {
   }
 
   /**
+   * MODULE 5: Creates Sales Orders for "Pack to Light"
+   * Creates orders with all selected SKUs (1 unit each)
+   */
+  private async createPackToLightSOs(tourData: TourData): Promise<void> {
+    const workflowConfig = tourData.workflow_configs?.['pack_to_light']
+    const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
+    const workflowSkus = workflowConfig?.skuQuantities 
+      ? Object.keys(workflowConfig.skuQuantities).filter(sku => workflowConfig.skuQuantities[sku] > 0)
+      : tourData.selected_skus // Fallback to legacy
+    
+    console.log(`Creating ${orderCount} pack-to-light orders...`)
+    console.log(`🎯 Using SKUs for Pack to Light:`, workflowSkus)
+    
+    // Create all orders using the new recipient system with all SKUs (1 unit each)
+    const allOrders = await this.createPackToLightOrdersForWorkflow(tourData, "PACK", orderCount, workflowSkus)
+    
+    console.log(`✅ Pack to Light completed: ${allOrders.length} orders`)
+  }
+
+  /**
    * Helper method to create orders using the new recipient system (participants + host + extras)
    */
   private async createOrdersForWorkflow(tourData: TourData, orderPrefix: string, orderCount: number, workflowSkus: string[]): Promise<any[]> {
@@ -531,10 +558,10 @@ export class TourFinalizationService {
     for (let i = 0; i < Math.min(orderCount, allRecipients.length); i++) {
       const recipient = allRecipients[i]
       
-      // Create line items using the same format as adhoc sales orders
-      const skuIndex = i % workflowSkus.length
+      // Create line items - for single-item batch, randomly select one SKU from pool
+      const randomSkuIndex = Math.floor(Math.random() * workflowSkus.length)
       const lineItems = [{
-        sku: workflowSkus[skuIndex],
+        sku: workflowSkus[randomSkuIndex],
         quantity: "1"
       }]
 
@@ -589,6 +616,189 @@ export class TourFinalizationService {
       }
 
       console.log(`📦 Creating order ${i + 1}/${orderCount} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name}`)
+      orderPromises.push(this.createSalesOrderViaAPI(orderData))
+    }
+
+    const results = await Promise.allSettled(orderPromises)
+    const successfulOrders = results.filter(result => result.status === 'fulfilled').length
+    
+    console.log(`✅ ${orderPrefix} orders created: ${successfulOrders}/${orderCount}`)
+    
+    if (successfulOrders < orderCount) {
+      const failedCount = orderCount - successfulOrders
+      console.warn(`⚠️ ${failedCount} ${orderPrefix} orders failed to create`)
+    }
+    
+    return results.map(result => result.status === 'fulfilled' ? result.value : null).filter(Boolean)
+  }
+
+  /**
+   * Helper method to create orders with randomized SKU selection (for multi-item batch)
+   */
+  private async createRandomizedOrdersForWorkflow(tourData: TourData, orderPrefix: string, orderCount: number, availableSkus: string[]): Promise<any[]> {
+    console.log(`Creating ${orderCount} randomized orders from ${availableSkus.length} available SKUs...`)
+    
+    if (availableSkus.length === 0) {
+      throw new Error(`No SKUs selected for ${orderPrefix}. Please select SKUs when creating the tour.`)
+    }
+
+    const allRecipients = await this.getAllOrderRecipients(tourData)
+    const orderPromises = []
+
+    for (let i = 0; i < Math.min(orderCount, allRecipients.length); i++) {
+      const recipient = allRecipients[i]
+      
+      // Randomly select 2-5 SKUs for this order
+      const numSkus = Math.floor(Math.random() * 4) + 2 // Random between 2-5
+      const shuffled = [...availableSkus].sort(() => Math.random() - 0.5)
+      const selectedSkus = shuffled.slice(0, Math.min(numSkus, availableSkus.length))
+      
+      // Create line items with random quantities (1-2 units each)
+      const lineItems = selectedSkus.map(sku => ({
+        sku: sku,
+        quantity: String(Math.floor(Math.random() * 2) + 1) // Random 1 or 2
+      }))
+
+      const orderData = {
+        order_number: `${orderPrefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`,
+        shop_name: "ShipHero Tour Demo",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString(),
+        total_tax: "0.00",
+        subtotal: "10.00", 
+        total_discounts: "0.00",
+        total_price: "10.00",
+        auto_print_return_label: false,
+        
+        shipping_address: {
+          first_name: recipient.first_name,
+          last_name: recipient.last_name,
+          company: recipient.company,
+          address1: tourData.warehouse.address,
+          address2: tourData.warehouse.address2 || "",
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: "US",
+          email: recipient.email,
+          phone: "555-0123"
+        },
+        
+        billing_address: {
+          first_name: recipient.first_name,
+          last_name: recipient.last_name,
+          company: recipient.company,
+          address1: tourData.warehouse.address,
+          address2: tourData.warehouse.address2 || "",
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: "US",
+          email: recipient.email,
+          phone: "555-0123"
+        },
+        
+        line_items: lineItems,
+        
+        shipping_lines: [{
+          title: "Tour Demo Shipping",
+          price: "0.00"
+        }],
+        
+        required_ship_date: tourData.date,
+        tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`, tourData.warehouse.code].filter(Boolean)
+      }
+
+      console.log(`📦 Creating randomized order ${i + 1}/${orderCount} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name} (${lineItems.length} SKUs)`)
+      orderPromises.push(this.createSalesOrderViaAPI(orderData))
+    }
+
+    const results = await Promise.allSettled(orderPromises)
+    const successfulOrders = results.filter(result => result.status === 'fulfilled').length
+    
+    console.log(`✅ ${orderPrefix} randomized orders created: ${successfulOrders}/${orderCount}`)
+    
+    if (successfulOrders < orderCount) {
+      const failedCount = orderCount - successfulOrders
+      console.warn(`⚠️ ${failedCount} ${orderPrefix} orders failed to create`)
+    }
+    
+    return results.map(result => result.status === 'fulfilled' ? result.value : null).filter(Boolean)
+  }
+
+  /**
+   * Helper method to create pack-to-light orders with all selected SKUs (1 unit each)
+   */
+  private async createPackToLightOrdersForWorkflow(tourData: TourData, orderPrefix: string, orderCount: number, workflowSkus: string[]): Promise<any[]> {
+    console.log(`Creating ${orderCount} pack-to-light orders with ${workflowSkus.length} SKUs each...`)
+    
+    if (workflowSkus.length === 0) {
+      throw new Error(`No SKUs selected for ${orderPrefix}. Please select SKUs when creating the tour.`)
+    }
+
+    const allRecipients = await this.getAllOrderRecipients(tourData)
+    const orderPromises = []
+
+    for (let i = 0; i < Math.min(orderCount, allRecipients.length); i++) {
+      const recipient = allRecipients[i]
+      
+      // Pack to light: Include all selected SKUs with 1 unit each
+      const lineItems = workflowSkus.map(sku => ({
+        sku: sku,
+        quantity: "1"
+      }))
+
+      const orderData = {
+        order_number: `${orderPrefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`,
+        shop_name: "ShipHero Tour Demo",
+        fulfillment_status: "pending",
+        order_date: new Date().toISOString(),
+        total_tax: "0.00",
+        subtotal: "10.00", 
+        total_discounts: "0.00",
+        total_price: "10.00",
+        auto_print_return_label: false,
+        
+        shipping_address: {
+          first_name: recipient.first_name,
+          last_name: recipient.last_name,
+          company: recipient.company,
+          address1: tourData.warehouse.address,
+          address2: tourData.warehouse.address2 || "",
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: "US",
+          email: recipient.email,
+          phone: "555-0123"
+        },
+        
+        billing_address: {
+          first_name: recipient.first_name,
+          last_name: recipient.last_name,
+          company: recipient.company,
+          address1: tourData.warehouse.address,
+          address2: tourData.warehouse.address2 || "",
+          city: tourData.warehouse.city,
+          state: tourData.warehouse.state,
+          zip: tourData.warehouse.zip,
+          country: "US",
+          email: recipient.email,
+          phone: "555-0123"
+        },
+        
+        line_items: lineItems,
+        
+        shipping_lines: [{
+          title: "Tour Demo Shipping",
+          price: "0.00"
+        }],
+        
+        required_ship_date: tourData.date,
+        tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`, tourData.warehouse.code].filter(Boolean)
+      }
+
+      console.log(`📦 Creating pack-to-light order ${i + 1}/${orderCount} for ${recipient.type}: ${recipient.first_name} ${recipient.last_name} (${lineItems.length} SKUs)`)
       orderPromises.push(this.createSalesOrderViaAPI(orderData))
     }
 
