@@ -697,6 +697,9 @@ export function ScheduleTourPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    const { APP_VERSION } = await import('@/lib/version')
+    console.log(`🚀 [v${APP_VERSION}] Tour creation starting...`)
+
     if (!formData.warehouse_id || !formData.host_id || !formData.date || !formData.time) {
       toast({
         title: "Error",
@@ -708,11 +711,18 @@ export function ScheduleTourPage() {
 
     // Allow tours without participants for testing
     if (participants.length === 0) {
+      console.log(`⚠️ [v${APP_VERSION}] Creating tour without participants`)
     }
 
     setIsLoading(true)
 
     try {
+      console.log(`📊 [v${APP_VERSION}] Validating tour data...`)
+      console.log(`📦 [v${APP_VERSION}] Warehouse ID: ${formData.warehouse_id}`)
+      console.log(`👤 [v${APP_VERSION}] Host ID: ${formData.host_id}`)
+      console.log(`📅 [v${APP_VERSION}] Date/Time: ${formData.date} ${formData.time}`)
+      console.log(`🔧 [v${APP_VERSION}] Selected workflows:`, selectedWorkflows)
+      
       // Debug: Log the data being sent
       // Aggregate all SKUs from all workflows for backward compatibility
       const allSelectedSkus = Array.from(new Set(
