@@ -72,7 +72,7 @@ function WorkflowProductSelection({ allSkus, workflowConfig, onSkuQuantityChange
         )}
         {workflowId === 'multi_item_batch' && (
           <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
-            <strong>Multi-Item Batch:</strong> Each order will contain 2-5 randomly selected SKUs (1-2 units each) from your selected pool.
+            <strong>Multi-Item Batch:</strong> Each order will contain 2 randomly selected SKUs (1-2 units each) from your selected pool.
           </p>
         )}
         {workflowId === 'pack_to_light' && (

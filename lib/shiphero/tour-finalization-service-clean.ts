@@ -584,7 +584,7 @@ export class TourFinalizationService {
   /**
    * MODULE 4: Creates Sales Orders for "Multi-Item Batch Picking"
    * Uses randomized subset of SKUs with weighted random quantities for variety
-   * Each order gets 2-5 randomly selected SKUs with 1-2 units each
+   * Each order gets exactly 2 randomly selected SKUs with 1-2 units each
    */
   private async createMultiItemBatchSOs(tourData: TourData): Promise<any[]> {
     console.log('🎯 === MULTI-ITEM BATCH WORKFLOW STARTING ===')
@@ -605,7 +605,7 @@ export class TourFinalizationService {
     }
     
     console.log(`📦 Creating ${orderCount} MULTI-item batch orders from ${availableSkus.length} available SKUs:`, availableSkus)
-    console.log(`⚠️ IMPORTANT: Each order should get 2-5 randomly selected SKUs with 1-2 units each`)
+    console.log(`⚠️ IMPORTANT: Each order should get exactly 2 randomly selected SKUs with 1-2 units each`)
     
     // Create randomized orders using new recipient system
     const allOrders = await this.createRandomizedOrdersForWorkflow(tourData, "MULTI", orderCount, availableSkus)
@@ -758,15 +758,8 @@ export class TourFinalizationService {
     for (let i = 0; i < Math.min(orderCount, allRecipients.length); i++) {
       const recipient = allRecipients[i]
       
-      // Use a unique seed per order for better randomization
-      const seed = Date.now() + i * 1000 + Math.random() * 1000
-      const seededRandom = () => {
-        const x = Math.sin(seed + Math.random() * 9999) * 10000
-        return x - Math.floor(x)
-      }
-      
-      // Randomly select 2-5 SKUs for this order (Fisher-Yates shuffle with seeded random)
-      const numSkus = Math.floor(seededRandom() * 4) + 2 // Random between 2-5
+      // Multi-item batch: Always use exactly 2 SKUs per order
+      const numSkus = 2
       const shuffled = [...availableSkus]
       
       // Fisher-Yates shuffle with better randomization
