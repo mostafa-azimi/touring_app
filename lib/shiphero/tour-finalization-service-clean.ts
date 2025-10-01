@@ -372,7 +372,7 @@ export class TourFinalizationService {
               
             case "bulk_shipping":
               console.log("Executing: Bulk Shipping Workflow")
-              await this.createBulkShippingSOs(tourData)
+              workflowOrders = await this.createBulkShippingSOs(tourData)
               break
               
             case "single_item_batch":
@@ -537,7 +537,7 @@ export class TourFinalizationService {
   /**
    * MODULE 2: Creates Sales Orders for "Bulk Shipping"
    */
-  private async createBulkShippingSOs(tourData: TourData): Promise<void> {
+  private async createBulkShippingSOs(tourData: TourData): Promise<any[]> {
     const workflowConfig = tourData.workflow_configs?.['bulk_shipping']
     const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
     const skuQuantities = workflowConfig?.skuQuantities || {}
@@ -555,6 +555,7 @@ export class TourFinalizationService {
     const allOrders = await this.createOrdersForWorkflow(tourData, "BULK", orderCount, workflowSkus)
     
     console.log(`✅ Bulk Shipping completed: ${allOrders.length} orders using new recipient system`)
+    return allOrders
   }
 
   /**
