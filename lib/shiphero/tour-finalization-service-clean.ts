@@ -618,9 +618,17 @@ export class TourFinalizationService {
       // Create line items - for single-item batch, randomly select one SKU from pool
       const randomSkuIndex = Math.floor(Math.random() * workflowSkus.length)
       const selectedSku = workflowSkus[randomSkuIndex]
+      const orderNumber = `${orderPrefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
+      
       const lineItems = [{
         sku: selectedSku,
-        quantity: "1"
+        partner_line_item_id: `${orderNumber}-1`,
+        quantity: 1,
+        price: "0.00",
+        product_name: selectedSku,
+        fulfillment_status: "pending",
+        quantity_pending_fulfillment: 1,
+        warehouse_id: tourData.warehouse.shiphero_warehouse_id
       }]
       
       console.log(`   📦 SINGLE Order ${i + 1}: 1 SKU - ${selectedSku} (qty: 1)`)
@@ -728,12 +736,22 @@ export class TourFinalizationService {
       }
       
       const selectedSkus = shuffled.slice(0, Math.min(numSkus, availableSkus.length))
+      const orderNumber = `${orderPrefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
       
-      // Create line items with random quantities (1-2 units each)
-      const lineItems = selectedSkus.map(sku => ({
-        sku: sku,
-        quantity: String(Math.floor(Math.random() * 2) + 1) // Random 1 or 2
-      }))
+      // Create line items with random quantities (1-2 units each) and all required fields
+      const lineItems = selectedSkus.map((sku, index) => {
+        const quantity = Math.floor(Math.random() * 2) + 1 // Random 1 or 2
+        return {
+          sku: sku,
+          partner_line_item_id: `${orderNumber}-${index + 1}`,
+          quantity: quantity,
+          price: "0.00",
+          product_name: sku,
+          fulfillment_status: "pending",
+          quantity_pending_fulfillment: quantity,
+          warehouse_id: tourData.warehouse.shiphero_warehouse_id
+        }
+      })
       
       console.log(`🎲 Order ${i + 1}/${orderCount}: ${selectedSkus.length} SKUs selected - [${selectedSkus.join(', ')}]`)
       console.log(`   Quantities: ${lineItems.map(li => `${li.sku}:${li.quantity}`).join(', ')}`)
