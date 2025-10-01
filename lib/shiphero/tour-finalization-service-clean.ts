@@ -222,7 +222,13 @@ export class TourFinalizationService {
       throw new Error(`API request failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`)
     }
 
-    return await response.json()
+    const result = await response.json()
+    console.log('✅ Order created successfully:', {
+      orderNumber: result?.order_number || orderData.order_number,
+      shipheroId: result?.id,
+      status: result?.status
+    })
+    return result
   }
 
   /**
@@ -404,23 +410,6 @@ export class TourFinalizationService {
       // Return separate arrays for sales and purchase orders
       const sales_orders = createdOrders.filter(order => order.type === 'sales_order')
       const purchase_orders = createdOrders.filter(order => order.type === 'purchase_order')
-      
-      console.log(`📊 Final counts: ${sales_orders.length} sales orders, ${purchase_orders.length} purchase orders`)
-
-      // Update tour status to finalized
-      console.log('🔄 Updating tour status to finalized...')
-      const { error: statusError } = await this.supabase
-        .from('tours')
-        .update({ 
-          status: 'finalized'
-        })
-        .eq('id', tourId)
-
-      if (statusError) {
-        console.error('⚠️ Failed to update tour status:', statusError)
-      } else {
-        console.log('✅ Tour status updated to finalized')
-      }
 
       return {
         success: true,
