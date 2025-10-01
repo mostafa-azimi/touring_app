@@ -476,28 +476,34 @@ export class TourFinalizationService {
 
   /**
    * MODULE 3: Creates Sales Orders for "Single-Item Batch Picking"
+   * Each order gets 1 unit of 1 randomly selected SKU from the pool
    */
   private async createSingleItemBatchSOs(tourData: TourData): Promise<void> {
+    console.log('🎯 === SINGLE-ITEM BATCH WORKFLOW STARTING ===')
     const workflowConfig = tourData.workflow_configs?.['single_item_batch']
     const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
     const workflowSkus = workflowConfig?.skuQuantities 
-      ? Object.keys(workflowConfig.skuQuantities)
+      ? Object.keys(workflowConfig.skuQuantities).filter(sku => workflowConfig.skuQuantities[sku] > 0)
       : tourData.selected_skus // Fallback to legacy
     
-    console.log(`Creating ${orderCount} single-item batch orders...`)
-    console.log(`🎯 Using SKUs for Single-Item Batch:`, workflowSkus)
+    console.log(`📦 Creating ${orderCount} SINGLE-item batch orders...`)
+    console.log(`🎯 SKU Pool for Single-Item Batch (${workflowSkus.length} SKUs):`, workflowSkus)
+    console.log(`⚠️ IMPORTANT: Each order should get 1 unit of 1 randomly selected SKU`)
     
     // Create all orders using the new recipient system (participants + host + extras as needed)
     const allOrders = await this.createOrdersForWorkflow(tourData, "SINGLE", orderCount, workflowSkus)
     
-    console.log(`✅ Single-Item Batch completed: ${allOrders.length} orders using new recipient system`)
+    console.log(`✅ Single-Item Batch completed: ${allOrders.length} orders created`)
+    console.log('🎯 === SINGLE-ITEM BATCH WORKFLOW COMPLETE ===')
   }
 
   /**
    * MODULE 4: Creates Sales Orders for "Multi-Item Batch Picking"
    * Uses randomized subset of SKUs with weighted random quantities for variety
+   * Each order gets 2-5 randomly selected SKUs with 1-2 units each
    */
   private async createMultiItemBatchSOs(tourData: TourData): Promise<void> {
+    console.log('🎯 === MULTI-ITEM BATCH WORKFLOW STARTING ===')
     const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
     const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
     const availableSkus = workflowConfig?.skuQuantities 
@@ -514,12 +520,14 @@ export class TourFinalizationService {
       return
     }
     
-    console.log(`Creating ${orderCount} randomized multi-item batch orders from ${availableSkus.length} available SKUs:`, availableSkus)
+    console.log(`📦 Creating ${orderCount} MULTI-item batch orders from ${availableSkus.length} available SKUs:`, availableSkus)
+    console.log(`⚠️ IMPORTANT: Each order should get 2-5 randomly selected SKUs with 1-2 units each`)
     
     // Create randomized orders using new recipient system
     const allOrders = await this.createRandomizedOrdersForWorkflow(tourData, "MULTI", orderCount, availableSkus)
     
     console.log(`✅ Multi-Item Batch completed: ${allOrders.length} randomized orders created`)
+    console.log('🎯 === MULTI-ITEM BATCH WORKFLOW COMPLETE ===')
   }
 
   /**
@@ -560,10 +568,13 @@ export class TourFinalizationService {
       
       // Create line items - for single-item batch, randomly select one SKU from pool
       const randomSkuIndex = Math.floor(Math.random() * workflowSkus.length)
+      const selectedSku = workflowSkus[randomSkuIndex]
       const lineItems = [{
-        sku: workflowSkus[randomSkuIndex],
+        sku: selectedSku,
         quantity: "1"
       }]
+      
+      console.log(`   📦 SINGLE Order ${i + 1}: 1 SKU - ${selectedSku} (qty: 1)`)
 
       const orderData = {
         order_number: `${orderPrefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`,
