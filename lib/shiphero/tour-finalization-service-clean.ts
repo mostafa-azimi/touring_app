@@ -336,6 +336,9 @@ export class TourFinalizationService {
         customer_name?: string
         items: Array<{ sku: string; quantity: number }>
       }> = []
+      
+      // Define instruction_guide early to avoid scoping issues
+      let instruction_guide = "Instruction guide generation temporarily disabled."
 
       // Execute each selected workflow and collect created orders
       for (const option of selectedOptions) {
@@ -394,11 +397,7 @@ export class TourFinalizationService {
         }
       }
 
-      // Generate instruction guide (disabled for now)
-      // const instructionGuide = await this.generateInstructionGuide(tourId, createdOrders)
-      // await this.saveInstructionGuide(tourId, instructionGuide)
-      const instructionGuide = "Instruction guide generation temporarily disabled."
-
+      // instruction_guide already defined at the top of function
       console.log('✅ Tour finalization completed successfully!')
       console.log(`📊 Total participants: ${tourData.participants?.length || 0}`)
 
