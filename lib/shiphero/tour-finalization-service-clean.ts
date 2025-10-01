@@ -648,9 +648,16 @@ export class TourFinalizationService {
     for (let i = 0; i < Math.min(orderCount, allRecipients.length); i++) {
       const recipient = allRecipients[i]
       
-      // Randomly select 2-5 SKUs for this order
+      // Randomly select 2-5 SKUs for this order (Fisher-Yates shuffle for better randomization)
       const numSkus = Math.floor(Math.random() * 4) + 2 // Random between 2-5
-      const shuffled = [...availableSkus].sort(() => Math.random() - 0.5)
+      const shuffled = [...availableSkus]
+      
+      // Fisher-Yates shuffle for true randomness
+      for (let j = shuffled.length - 1; j > 0; j--) {
+        const k = Math.floor(Math.random() * (j + 1));
+        [shuffled[j], shuffled[k]] = [shuffled[k], shuffled[j]]
+      }
+      
       const selectedSkus = shuffled.slice(0, Math.min(numSkus, availableSkus.length))
       
       // Create line items with random quantities (1-2 units each)
@@ -658,6 +665,8 @@ export class TourFinalizationService {
         sku: sku,
         quantity: String(Math.floor(Math.random() * 2) + 1) // Random 1 or 2
       }))
+      
+      console.log(`🎲 Order ${i + 1}: ${selectedSkus.length} SKUs - ${selectedSkus.join(', ')} (${lineItems.map(li => `${li.sku}:${li.quantity}`).join(', ')})`)
 
       const orderData = {
         order_number: `${orderPrefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`,
