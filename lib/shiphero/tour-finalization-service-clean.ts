@@ -390,7 +390,8 @@ export class TourFinalizationService {
         success: false,
         message: `Tour finalization failed: ${error.message}`,
         sales_orders: [],
-        purchase_orders: []
+        purchase_orders: [],
+        instruction_guide: "Finalization failed"
       }
     }
   }
