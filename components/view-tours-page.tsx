@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service"
+import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service-clean"
 import { TourSummaryDialog } from "@/components/tour-summary-dialog"
 
 interface Tour {
