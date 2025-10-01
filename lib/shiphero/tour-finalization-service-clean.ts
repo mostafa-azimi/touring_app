@@ -424,15 +424,33 @@ export class TourFinalizationService {
       
       console.log(`📊 Final counts: ${sales_orders.length} sales orders, ${purchase_orders.length} purchase orders`)
 
-      // Update tour status to finalized
+      // Update tour status to finalized and save order summary
       console.log('🔄 Updating tour status to finalized for tour:', tourId)
+      
+      const orderSummary = {
+        sales_orders: sales_orders.map(order => ({
+          workflow: order.workflow,
+          order_number: order.order_number,
+          shiphero_id: order.shiphero_id,
+          customer_name: order.customer_name
+        })),
+        purchase_orders: purchase_orders.map(order => ({
+          workflow: order.workflow,
+          order_number: order.order_number,
+          shiphero_id: order.shiphero_id
+        })),
+        total_orders: sales_orders.length + purchase_orders.length,
+        created_at: new Date().toISOString()
+      }
+      
       const { data: updatedTour, error: statusError } = await this.supabase
         .from('tours')
         .update({ 
-          status: 'finalized'
+          status: 'finalized',
+          order_summary: orderSummary
         })
         .eq('id', tourId)
-        .select('id, status')
+        .select('id, status, order_summary')
 
       if (statusError) {
         console.error('⚠️ Failed to update tour status:', statusError)
