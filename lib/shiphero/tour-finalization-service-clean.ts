@@ -347,12 +347,12 @@ export class TourFinalizationService {
           switch (option) {
             case "standard_receiving":
               console.log("Executing: Standard Receiving Workflow")
-              workflowOrders = await this.createStandardReceivingWorkflow(tourData)
+              await this.createStandardReceivingWorkflow(tourData)
               break
               
             case "bulk_shipping":
               console.log("Executing: Bulk Shipping Workflow")
-              workflowOrders = await this.createBulkShippingSOs(tourData)
+              await this.createBulkShippingSOs(tourData)
               break
               
             case "single_item_batch":
@@ -367,7 +367,7 @@ export class TourFinalizationService {
               
             case "pack_to_light":
               console.log("Executing: Pack to Light Workflow")
-              workflowOrders = await this.createPackToLightSOs(tourData)
+              await this.createPackToLightSOs(tourData)
               break
               
             default:
