@@ -867,10 +867,17 @@ export class TourFinalizationService {
     for (let i = 0; i < Math.min(orderCount, allRecipients.length); i++) {
       const recipient = allRecipients[i]
       
-      // Pack to light: Include all selected SKUs with 1 unit each
-      const lineItems = workflowSkus.map(sku => ({
+      // Pack to light: Include all selected SKUs with 1 unit each and all required fields
+      const orderNumber = `${orderPrefix}-${tourData.tour_numeric_id}-${String(i + 1).padStart(3, '0')}`
+      const lineItems = workflowSkus.map((sku, index) => ({
         sku: sku,
-        quantity: "1"
+        partner_line_item_id: `${orderNumber}-${index + 1}`,
+        quantity: 1,
+        price: "0.00",
+        product_name: sku,
+        fulfillment_status: "pending",
+        quantity_pending_fulfillment: 1,
+        warehouse_id: tourData.warehouse.shiphero_warehouse_id
       }))
 
       const orderData = {
