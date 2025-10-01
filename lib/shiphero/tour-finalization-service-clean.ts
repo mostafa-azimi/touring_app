@@ -211,7 +211,15 @@ export class TourFinalizationService {
     })
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      const errorBody = await response.json().catch(() => ({ error: 'Unknown error' }))
+      console.error('❌ ShipHero API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorBody,
+        orderNumber: orderData.order_number,
+        lineItems: orderData.line_items
+      })
+      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`)
     }
 
     return await response.json()
