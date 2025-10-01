@@ -223,12 +223,23 @@ export class TourFinalizationService {
     }
 
     const result = await response.json()
+    
+    // Extract order from GraphQL response structure
+    const createdOrder = result?.data?.order_create?.order
+    
+    if (!createdOrder) {
+      console.error('⚠️ Order API returned 200 but no order data:', result)
+      console.error('⚠️ Check for GraphQL errors:', result?.errors)
+    }
+    
     console.log('✅ Order created successfully:', {
-      orderNumber: result?.order_number || orderData.order_number,
-      shipheroId: result?.id,
-      status: result?.status
+      orderNumber: createdOrder?.order_number || orderData.order_number,
+      shipheroId: createdOrder?.id,
+      legacyId: createdOrder?.legacy_id,
+      status: createdOrder?.fulfillment_status
     })
-    return result
+    
+    return createdOrder || result
   }
 
   /**
