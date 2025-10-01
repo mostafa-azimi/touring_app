@@ -626,10 +626,12 @@ export class TourFinalizationService {
         
         line_items: lineItems,
         
-        shipping_lines: [{
+        shipping_lines: {
           title: "Tour Demo Shipping",
-          price: "0.00"
-        }],
+          price: "0.00",
+          carrier: "Generic Carrier",
+          method: "Generic Label"
+        },
         
         required_ship_date: tourData.date,
         tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`, tourData.warehouse.code].filter(Boolean)
@@ -737,10 +739,12 @@ export class TourFinalizationService {
         
         line_items: lineItems,
         
-        shipping_lines: [{
+        shipping_lines: {
           title: "Tour Demo Shipping",
-          price: "0.00"
-        }],
+          price: "0.00",
+          carrier: "Generic Carrier",
+          method: "Generic Label"
+        },
         
         required_ship_date: tourData.date,
         tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`, tourData.warehouse.code].filter(Boolean)
@@ -826,10 +830,12 @@ export class TourFinalizationService {
         
         line_items: lineItems,
         
-        shipping_lines: [{
+        shipping_lines: {
           title: "Tour Demo Shipping",
-          price: "0.00"
-        }],
+          price: "0.00",
+          carrier: "Generic Carrier",
+          method: "Generic Label"
+        },
         
         required_ship_date: tourData.date,
         tags: [`tour-${tourData.tour_numeric_id}`, `workflow-${orderPrefix.toLowerCase()}`, `recipient-${recipient.type}`, tourData.warehouse.code].filter(Boolean)
