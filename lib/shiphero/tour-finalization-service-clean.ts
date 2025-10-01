@@ -337,38 +337,60 @@ export class TourFinalizationService {
         items: Array<{ sku: string; quantity: number }>
       }> = []
 
-      // Execute each selected workflow
+      // Execute each selected workflow and collect created orders
       for (const option of selectedOptions) {
         console.log(`\n🔄 Executing workflow: ${option}`)
         
-        switch (option) {
-          case "standard_receiving":
-            console.log("Executing: Standard Receiving Workflow")
-            await this.createStandardReceivingWorkflow(tourData)
-            break
-            
-          case "bulk_shipping":
-            console.log("Executing: Bulk Shipping Workflow")
-            await this.createBulkShippingSOs(tourData)
-            break
-            
-          case "single_item_batch":
-            console.log("Executing: Single-Item Batch Workflow")
-            await this.createSingleItemBatchSOs(tourData)
-            break
-            
-          case "multi_item_batch":
-            console.log("Executing: Multi-Item Batch Workflow")
-            await this.createMultiItemBatchSOs(tourData)
-            break
-            
-          case "pack_to_light":
-            console.log("Executing: Pack to Light Workflow")
-            await this.createPackToLightSOs(tourData)
-            break
-            
-          default:
-            console.warn(`⚠️ Unknown workflow option: ${option}`)
+        try {
+          let workflowOrders: any[] = []
+          
+          switch (option) {
+            case "standard_receiving":
+              console.log("Executing: Standard Receiving Workflow")
+              workflowOrders = await this.createStandardReceivingWorkflow(tourData)
+              break
+              
+            case "bulk_shipping":
+              console.log("Executing: Bulk Shipping Workflow")
+              workflowOrders = await this.createBulkShippingSOs(tourData)
+              break
+              
+            case "single_item_batch":
+              console.log("Executing: Single-Item Batch Workflow")
+              workflowOrders = await this.createSingleItemBatchSOs(tourData)
+              break
+              
+            case "multi_item_batch":
+              console.log("Executing: Multi-Item Batch Workflow")
+              workflowOrders = await this.createMultiItemBatchSOs(tourData)
+              break
+              
+            case "pack_to_light":
+              console.log("Executing: Pack to Light Workflow")
+              workflowOrders = await this.createPackToLightSOs(tourData)
+              break
+              
+            default:
+              console.warn(`⚠️ Unknown workflow option: ${option}`)
+          }
+          
+          // Add workflow orders to createdOrders array
+          if (workflowOrders && workflowOrders.length > 0) {
+            workflowOrders.forEach(order => {
+              createdOrders.push({
+                type: 'sales_order',
+                workflow: option,
+                shiphero_id: order?.id || 'unknown',
+                order_number: order?.order_number || 'unknown',
+                customer_name: order?.shipping_address?.first_name + ' ' + order?.shipping_address?.last_name,
+                items: order?.line_items || []
+              })
+            })
+            console.log(`✅ Added ${workflowOrders.length} orders from ${option} to tracking`)
+          }
+        } catch (workflowError: any) {
+          console.error(`❌ Workflow ${option} failed:`, workflowError)
+          // Continue with other workflows
         }
       }
 
@@ -487,7 +509,7 @@ export class TourFinalizationService {
    * MODULE 3: Creates Sales Orders for "Single-Item Batch Picking"
    * Each order gets 1 unit of 1 randomly selected SKU from the pool
    */
-  private async createSingleItemBatchSOs(tourData: TourData): Promise<void> {
+  private async createSingleItemBatchSOs(tourData: TourData): Promise<any[]> {
     console.log('🎯 === SINGLE-ITEM BATCH WORKFLOW STARTING ===')
     const workflowConfig = tourData.workflow_configs?.['single_item_batch']
     const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
@@ -504,6 +526,7 @@ export class TourFinalizationService {
     
     console.log(`✅ Single-Item Batch completed: ${allOrders.length} orders created`)
     console.log('🎯 === SINGLE-ITEM BATCH WORKFLOW COMPLETE ===')
+    return allOrders
   }
 
   /**
@@ -511,7 +534,7 @@ export class TourFinalizationService {
    * Uses randomized subset of SKUs with weighted random quantities for variety
    * Each order gets 2-5 randomly selected SKUs with 1-2 units each
    */
-  private async createMultiItemBatchSOs(tourData: TourData): Promise<void> {
+  private async createMultiItemBatchSOs(tourData: TourData): Promise<any[]> {
     console.log('🎯 === MULTI-ITEM BATCH WORKFLOW STARTING ===')
     const workflowConfig = tourData.workflow_configs?.['multi_item_batch']
     const orderCount = workflowConfig?.orderCount || 5 // Default to 5 if no config
@@ -537,6 +560,7 @@ export class TourFinalizationService {
     
     console.log(`✅ Multi-Item Batch completed: ${allOrders.length} randomized orders created`)
     console.log('🎯 === MULTI-ITEM BATCH WORKFLOW COMPLETE ===')
+    return allOrders
   }
 
   /**
