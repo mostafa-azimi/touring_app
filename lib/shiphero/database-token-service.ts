@@ -65,6 +65,12 @@ export class DatabaseTokenService {
       // Delete old tokens first
       await this.supabase.from('shiphero_tokens').delete().neq('id', 0)
 
+      // CRITICAL: Delete all warehouses when storing new tokens
+      // This ensures warehouses from previous ShipHero accounts don't persist
+      console.log('🗑️ Clearing old warehouses from previous ShipHero account...')
+      await this.supabase.from('warehouses').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+      console.log('✅ Old warehouses cleared')
+
       // Insert new token
       const { error } = await this.supabase
         .from('shiphero_tokens')
