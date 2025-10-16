@@ -8,6 +8,11 @@ interface TokenData {
 
 export class DatabaseTokenService {
   private supabase = createClient()
+  private userId: string | null = null
+
+  setUserId(userId: string) {
+    this.userId = userId
+  }
 
   /**
    * Get valid access token from database, refreshing if necessary
