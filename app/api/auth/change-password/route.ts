@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createServiceClient()
 
     // Hash new password
     const passwordHash = await bcrypt.hash(newPassword, 12)

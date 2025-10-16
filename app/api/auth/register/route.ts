@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, password, firstName, lastName, companyName } = registerSchema.parse(body)
 
-    const supabase = await createClient()
+    // Use service client to bypass RLS for user creation
+    const supabase = createServiceClient()
 
     // Check if user already exists
     const { data: existingUser } = await supabase
