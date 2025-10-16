@@ -3,10 +3,8 @@
 -- Enable RLS on all tables
 ALTER TABLE public.warehouses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.swag_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tours ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tour_participants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tour_swag_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tenant_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shiphero_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.extras ENABLE ROW LEVEL SECURITY;
@@ -35,19 +33,6 @@ CREATE POLICY "Users can update own hosts" ON public.team_members
   FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own hosts" ON public.team_members
-  FOR DELETE USING (auth.uid() = user_id);
-
--- Swag items policies
-CREATE POLICY "Users can view own swag items" ON public.swag_items
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own swag items" ON public.swag_items
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own swag items" ON public.swag_items
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own swag items" ON public.swag_items
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Tours policies
@@ -96,43 +81,6 @@ CREATE POLICY "Users can delete participants of own tours" ON public.tour_partic
     EXISTS (
       SELECT 1 FROM public.tours 
       WHERE tours.id = tour_participants.tour_id 
-      AND tours.user_id = auth.uid()
-    )
-  );
-
--- Tour swag allocations policies (through tour ownership)
-CREATE POLICY "Users can view allocations of own tours" ON public.tour_swag_allocations
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.tours 
-      WHERE tours.id = tour_swag_allocations.tour_id 
-      AND tours.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can insert allocations to own tours" ON public.tour_swag_allocations
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.tours 
-      WHERE tours.id = tour_swag_allocations.tour_id 
-      AND tours.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can update allocations of own tours" ON public.tour_swag_allocations
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM public.tours 
-      WHERE tours.id = tour_swag_allocations.tour_id 
-      AND tours.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can delete allocations of own tours" ON public.tour_swag_allocations
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM public.tours 
-      WHERE tours.id = tour_swag_allocations.tour_id 
       AND tours.user_id = auth.uid()
     )
   );
