@@ -1062,29 +1062,6 @@ export function ShipHeroTab() {
             </Button>
           </div>
           
-          {/* Clear Token Button - Danger Zone */}
-          {refreshToken && (
-            <div className="pt-4 border-t border-red-200">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium text-red-800">Danger Zone</h4>
-                    <p className="text-xs text-red-600 mt-1">Clear all ShipHero tokens and disable API access</p>
-                  </div>
-                  <Button
-                    onClick={handleClearTokens}
-                    variant="destructive"
-                    size="sm"
-                    disabled={isRefreshing || isTesting}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Clear Tokens
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-          
           {refreshToken && (
             <div className="text-sm bg-muted p-4 rounded-lg space-y-2">
               <p className="flex items-center gap-2">
@@ -1827,6 +1804,29 @@ export function ShipHeroTab() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Danger Zone - Moved to bottom */}
+      {refreshToken && (
+        <div className="pt-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-red-800">⚠️ Danger Zone</h4>
+                <p className="text-xs text-red-600 mt-1">Clear all ShipHero tokens and disable API access</p>
+              </div>
+              <Button
+                onClick={handleClearTokens}
+                variant="destructive"
+                size="sm"
+                disabled={isRefreshing || isTesting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All Tokens
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
