@@ -950,7 +950,7 @@ export function TourSummaryDialog({ isOpen, onClose, data }: TourSummaryDialogPr
                                 {isCanceled && <Badge variant="destructive" className="text-xs">CANCELED</Badge>}
                               </div>
                               <div className={`text-sm ${isCanceled ? 'text-red-500 line-through' : 'text-gray-600'}`}>
-                                {order.recipient.replace(' (extra)', '')}
+                                {order.recipient ? order.recipient.replace(' (extra)', '') : 'N/A'}
                               </div>
                             </div>
                           )
