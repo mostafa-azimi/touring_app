@@ -1040,32 +1040,6 @@ export function ShipHeroTab() {
             </div>
           </div>
 
-          {/* DEV ONLY: Quick copy refresh token */}
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1">
-                <Label className="text-xs text-amber-700 font-medium">DEV ONLY - Quick Copy Token</Label>
-                <div className="text-xs text-amber-600 font-mono break-all mt-1">
-                  qoarIpctSOD4bVxQoYM3pPiZZjlNS--N8gZxVIHjzdBZ9
-                </div>
-              </div>
-              <Button
-                onClick={() => {
-                  navigator.clipboard.writeText("qoarIpctSOD4bVxQoYM3pPiZZjlNS--N8gZxVIHjzdBZ9")
-                  toast({
-                    title: "📋 Copied!",
-                    description: "Dev refresh token copied to clipboard",
-                  })
-                }}
-                variant="outline"
-                size="sm"
-                className="text-amber-700 border-amber-300 hover:bg-amber-100"
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-
           <div className="flex items-center gap-2">
             <Button
               onClick={handleRefreshToken}
