@@ -117,7 +117,7 @@ export function ShipHeroTab() {
         const oneDayInMinutes = 24 * 60
         if (minutesUntilExpiry < oneDayInMinutes) {
           try {
-            await handleGenerateAccessToken()
+            await handleRefreshToken()
           } catch (error) {
             console.error('Failed to auto-refresh access token:', error)
           }
@@ -1424,7 +1424,7 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {lastOrderResponse.request?.graphqlQuery || 'Query not available'}
+                          {lastOrderResponse?.request?.graphqlQuery || 'Query not available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1437,7 +1437,9 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(lastOrderResponse.request?.originalData, null, 2)}
+                          {lastOrderResponse?.request?.originalData 
+                            ? JSON.stringify(lastOrderResponse.request.originalData, null, 2)
+                            : 'No request data available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1450,7 +1452,9 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(lastOrderResponse.response, null, 2)}
+                          {lastOrderResponse?.response 
+                            ? JSON.stringify(lastOrderResponse.response, null, 2)
+                            : 'No response data available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1697,7 +1701,7 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {lastPOResponse.request?.graphqlQuery || 'Query not available'}
+                          {lastPOResponse?.request?.graphqlQuery || 'Query not available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1710,7 +1714,9 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(lastPOResponse.request?.originalData, null, 2)}
+                          {lastPOResponse?.request?.originalData 
+                            ? JSON.stringify(lastPOResponse.request.originalData, null, 2)
+                            : 'No request data available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1723,7 +1729,9 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(lastPOResponse.response, null, 2)}
+                          {lastPOResponse?.response 
+                            ? JSON.stringify(lastPOResponse.response, null, 2)
+                            : 'No response data available'}
                         </pre>
                       </div>
                     </CardContent>
