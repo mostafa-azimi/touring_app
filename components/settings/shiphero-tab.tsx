@@ -852,7 +852,8 @@ export function ShipHeroTab() {
         line_items: lineItems,
         fulfillment_status: "pending",
         discount: "0.00",
-        vendor_id: "1076735"
+        vendor_id: "1076735",
+        tags: [warehouse.code || ""].filter(Boolean) // Add airport code as tag
       }
 
       console.log('Creating adhoc PO with data:', JSON.stringify(poData, null, 2))
