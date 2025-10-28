@@ -452,24 +452,72 @@ export function ShipHeroTab() {
       const success = await tokenService.clearAllTokens()
       
       if (success) {
-        // Clear local storage as well
+        // Clear ALL local storage items related to ShipHero
         localStorage.removeItem('shiphero_refresh_token')
         localStorage.removeItem('shiphero_access_token')
         localStorage.removeItem('shiphero_token_expires_at')
+        localStorage.removeItem('shiphero_tokens') // Consolidated storage key
         
-        // Reset component state
+        // Clear cookies
+        try {
+          document.cookie = 'shiphero_refresh=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+        } catch (e) {
+          console.warn('Could not clear cookies:', e)
+        }
+        
+        // Clear IndexedDB
+        try {
+          if (typeof window !== 'undefined' && window.indexedDB) {
+            indexedDB.deleteDatabase('ShipHeroTokens')
+          }
+        } catch (e) {
+          console.warn('Could not clear IndexedDB:', e)
+        }
+        
+        // Reset ALL component state to initial values
         setRefreshToken("")
         setTokenExpiresAt(null)
         setDaysRemaining(null)
         setCountdown(null)
         setTokenSaved(false)
         
+        // Clear test results and loaded data
+        setTestResults(null)
+        setWarehouses([])
+        setHosts([])
+        setProducts([])
+        setAllProducts([])
+        
+        // Clear order/PO data and responses
+        setAdhocOrderData({
+          warehouseId: '',
+          hostId: '',
+          productIds: [],
+          notes: '',
+          orderDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]
+        })
+        setAdhocPOData({
+          warehouseId: '',
+          hostId: '',
+          productIds: [],
+          productQuantities: {},
+          notes: '',
+          poDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]
+        })
+        setLastError(null)
+        setLastOrderResponse(null)
+        setLastPOResponse(null)
+        
+        // Close any open dialogs
+        setShowAdhocOrder(false)
+        setShowAdhocPO(false)
+        
         toast({
           title: "🗑️ Tokens Cleared",
-          description: "All ShipHero tokens have been cleared. API access is now disabled.",
+          description: "All ShipHero tokens and data have been cleared. You can now connect with a different account.",
         })
         
-        console.log('✅ All ShipHero tokens cleared successfully')
+        console.log('✅ All ShipHero tokens and data cleared successfully')
       } else {
         throw new Error('Failed to clear tokens from database')
       }
