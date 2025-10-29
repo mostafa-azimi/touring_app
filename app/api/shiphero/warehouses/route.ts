@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Simple in-memory cache for warehouse data
+interface CacheEntry {
+  data: any
+  timestamp: number
+  accessToken: string
+}
+
+const warehouseCache = new Map<string, CacheEntry>()
+const CACHE_DURATION = 10 * 60 * 1000 // 10 minutes (warehouses change less frequently)
+
 export async function GET(request: NextRequest) {
   try {
     console.log('ShipHero warehouses API route called')
@@ -9,6 +19,24 @@ export async function GET(request: NextRequest) {
     if (!accessToken) {
       console.log('No access token provided')
       return NextResponse.json({ error: 'Access token required' }, { status: 401 })
+    }
+
+    // Check cache first for faster loading
+    const cacheKey = `warehouses_${accessToken.substring(0, 10)}`
+    const cachedEntry = warehouseCache.get(cacheKey)
+    const now = Date.now()
+    
+    if (cachedEntry && (now - cachedEntry.timestamp) < CACHE_DURATION && cachedEntry.accessToken === accessToken) {
+      console.log('🚀 Returning cached warehouse data (faster loading)')
+      return NextResponse.json({
+        ...cachedEntry.data,
+        cached: true,
+        cacheAge: Math.round((now - cachedEntry.timestamp) / 1000)
+      }, {
+        headers: {
+          'Cache-Control': 'public, max-age=600', // 10 minutes client-side cache
+        }
+      })
     }
 
     // Use the correct GraphQL query structure from the documentation
@@ -75,7 +103,30 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
-    return NextResponse.json(data)
+    
+    // Cache the result for faster subsequent loads
+    warehouseCache.set(cacheKey, {
+      data: { ...data, cached: false, cacheAge: 0 },
+      timestamp: now,
+      accessToken
+    })
+
+    // Clean up old cache entries
+    for (const [key, entry] of warehouseCache.entries()) {
+      if ((now - entry.timestamp) > CACHE_DURATION * 2) {
+        warehouseCache.delete(key)
+      }
+    }
+
+    return NextResponse.json({
+      ...data,
+      cached: false,
+      cacheAge: 0
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=600', // 10 minutes client-side cache
+      }
+    })
 
   } catch (error: any) {
     console.error('ShipHero warehouses API error:', error)

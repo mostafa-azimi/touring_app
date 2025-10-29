@@ -16,6 +16,30 @@ export async function POST(request: NextRequest) {
       data: JSON.stringify(data, null, 2)
     })
 
+    // Validate required fields for sales order
+    if (type === 'sales_order') {
+      const requiredFields = ['order_number', 'shop_name', 'shipping_lines', 'shipping_address', 'billing_address', 'line_items']
+      for (const field of requiredFields) {
+        if (!data[field]) {
+          console.error(`❌ Missing required field: ${field}`)
+          return NextResponse.json(
+            { error: `Missing required field: ${field}`, details: `Field '${field}' is required for sales orders` },
+            { status: 400 }
+          )
+        }
+      }
+      
+      // Validate shipping_lines structure
+      if (!data.shipping_lines.title) {
+        console.error(`❌ Missing shipping_lines.title`)
+        console.error(`❌ shipping_lines data:`, data.shipping_lines)
+        return NextResponse.json(
+          { error: 'Missing shipping_lines.title', details: 'shipping_lines must have a title field' },
+          { status: 400 }
+        )
+      }
+    }
+
     let query: string
     let variables: any
 
@@ -81,6 +105,7 @@ export async function POST(request: NextRequest) {
                 }`).join(',')}
               ]
               required_ship_date: "${data.required_ship_date}"
+              ${data.hold_until_date ? `hold_until_date: "${data.hold_until_date}"` : ''}
               tags: [${data.tags ? data.tags.map((tag: string) => `"${tag}"`).join(',') : ''}]
             }
           ) {
@@ -109,6 +134,7 @@ export async function POST(request: NextRequest) {
               po_date: "${data.po_date}"
               po_number: "${data.po_number}"
               subtotal: "${data.subtotal}"
+              tax: "${data.tax || '0.00'}"
               shipping_price: "${data.shipping_price}"
               total_price: "${data.total_price}"
               warehouse_id: "${data.warehouse_id}"

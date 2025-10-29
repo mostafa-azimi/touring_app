@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+// Sheet imports removed - no longer using view details functionality
 import { Badge } from "@/components/ui/badge"
-import { Eye, Search, Calendar, MapPin, Users, Package, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Search, Calendar, MapPin, Users, ChevronLeft, ChevronRight, ShoppingCart, FileText, X, ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { ShipHeroOrderService } from "@/lib/shiphero/order-service"
+import { TourFinalizationService, WorkflowOption } from "@/lib/shiphero/tour-finalization-service-clean"
+import { TourSummaryDialog } from "@/components/tour-summary-dialog"
 
 interface Tour {
   id: string
@@ -19,9 +20,13 @@ interface Tour {
 
   status?: string
   created_at: string
+  tour_numeric_id?: number
   shiphero_purchase_order_id?: string
   shiphero_purchase_order_number?: string
   shiphero_purchase_order_url?: string
+  host_shiphero_sales_order_id?: string
+  host_shiphero_sales_order_number?: string
+  host_shiphero_sales_order_url?: string
   warehouse: {
     id: string
     name: string
@@ -50,7 +55,7 @@ interface Tour {
     shiphero_sales_order_number?: string
     shiphero_sales_order_url?: string
   }>
-  // Removed swag_allocations - swag items will be added manually
+  // Products are managed through ShipHero inventory API
 }
 
 const ITEMS_PER_PAGE = 10
@@ -60,20 +65,47 @@ export function ViewToursPage() {
   const [filteredTours, setFilteredTours] = useState<Tour[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedTour, setSelectedTour] = useState<Tour | null>(null)
+  // selectedTour state removed - no longer using view details functionality
   const [currentPage, setCurrentPage] = useState(1)
   const [isFinalizingTour, setIsFinalizingTour] = useState(false)
   const [finalizingTourId, setFinalizingTourId] = useState<string | null>(null)
-  const [cancellingTourId, setCancellingTourId] = useState<string | null>(null)
-  const [showCancelled, setShowCancelled] = useState(false)
+  const [tourSummaryData, setTourSummaryData] = useState<any>(null)
+  const [showTourSummary, setShowTourSummary] = useState(false)
+
   const [sortField, setSortField] = useState<string>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const { toast } = useToast()
   const supabase = createClient()
 
+  // Generate ShipHero URL with tour tag filter and date range
+  const generateShipHeroFilterUrl = (tourNumericId: number): string => {
+    const tourTag = `tour-${tourNumericId}`
+    
+    // Use current date for order date range (since orders are created "today")
+    const today = new Date()
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - 1) // Day before order creation
+    
+    const endDate = new Date(today)
+    endDate.setDate(today.getDate() + 7) // Week after order creation for buffer
+    
+    // Format dates as MM%2FDD%2FYYYY (URL encoded MM/DD/YYYY)
+    const formatDateForUrl = (date: Date): string => {
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const day = date.getDate().toString().padStart(2, '0')
+      const year = date.getFullYear()
+      return `${month}%2F${day}%2F${year}`
+    }
+    
+    const startDateStr = formatDateForUrl(startDate)
+    const endDateStr = formatDateForUrl(endDate)
+    
+    return `https://app.shiphero.com/dashboard/orders/v2/manage?tags=${tourTag}&start_date=${startDateStr}&preselectedDate=custom&end_date=${endDateStr}&fulfillment_status=unfulfilled`
+  }
+
   useEffect(() => {
     fetchTours()
-  }, [showCancelled])
+  }, [])
 
   useEffect(() => {
     // Filter tours based on search term
@@ -153,19 +185,19 @@ export function ViewToursPage() {
           time,
           status,
           created_at,
+          tour_numeric_id,
           shiphero_purchase_order_id,
           shiphero_purchase_order_number,
           shiphero_purchase_order_url,
+          host_shiphero_sales_order_id,
+          host_shiphero_sales_order_number,
+          host_shiphero_sales_order_url,
           warehouse:warehouses(id, name, code, address, address2, city, state, zip, country),
           host:team_members(id, first_name, last_name, email),
           participants:tour_participants(id, first_name, last_name, email, company, title, shiphero_sales_order_id, shiphero_sales_order_number, shiphero_sales_order_url)
         `,
         )
 
-      // Conditionally filter out cancelled tours (scheduled and finalized always shown)
-      if (!showCancelled) {
-        query = query.neq('status', 'cancelled')
-      }
 
       const { data, error } = await query
         .order("date", { ascending: false })
@@ -194,115 +226,270 @@ export function ViewToursPage() {
 
   // REMOVED: handleValidateTour function - tours now go directly to finalize
 
-  const handleCancelTour = async (tourId: string) => {
-    if (cancellingTourId === tourId) return // Prevent double-clicks
+
+  const handleFinalizeTour = async (tourId: string) => {
+    console.log('🚀 DEPLOYMENT MARKER V8 - Finalize button clicked - TIMESTAMP:', new Date().toISOString())
+    console.log('🚀 FINALIZE TOUR CLICKED - tourId:', tourId)
+    setIsFinalizingTour(true)
+    setFinalizingTourId(tourId)
     
-    if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
-      return
-    }
-
-    setCancellingTourId(tourId)
-
-    // Optimistically update UI first for immediate feedback
-    setTours(prevTours => 
-      prevTours.map(tour => 
-        tour.id === tourId 
-          ? { ...tour, status: 'cancelled' } 
-          : tour
-      )
-    )
-
     try {
-      // Update tour status to cancelled
-      const { error: updateError } = await supabase
+      console.log('📋 Fetching tour data for workflows...')
+      // Get the tour to check for pre-selected workflows
+      const { data: tourData, error: tourError } = await supabase
         .from('tours')
-        .update({ status: 'cancelled' })
+        .select('selected_workflows')
         .eq('id', tourId)
+        .single()
 
-      if (updateError) {
-        throw updateError
+      console.log('📊 Tour data response:', { tourData, tourError })
+
+      if (tourError) throw new Error(`Failed to fetch tour: ${tourError.message}`)
+
+      const selectedWorkflows = tourData.selected_workflows || []
+      console.log('🎯 Selected workflows from tour:', selectedWorkflows)
+      
+      if (selectedWorkflows.length === 0) {
+        console.log('⚠️ No workflows selected, showing toast')
+      toast({
+          title: "No Workflows Selected",
+          description: "This tour has no workflows selected. Please edit the tour to add training workflows before finalizing.",
+          variant: "destructive",
+        })
+        return
       }
 
-      toast({
-        title: "Tour Cancelled",
-        description: "The tour has been cancelled successfully",
-      })
-    } catch (error) {
-      console.error('Error cancelling tour:', error)
+      console.log(`🔥 Starting finalization for tour ${tourId} with workflows:`, selectedWorkflows)
       
-      // Revert optimistic update on error
-      setTours(prevTours => 
-        prevTours.map(tour => 
-          tour.id === tourId 
-            ? { ...tour, status: 'scheduled' } // Revert to original status
-            : tour
-        )
-      )
+      const finalizationService = new TourFinalizationService()
+      console.log('🛠️ TourFinalizationService created, calling finalizeTour...')
+      const result = await finalizationService.finalizeTour(tourId, selectedWorkflows)
+      console.log('✅ Finalization result:', result)
       
+      if (result.success) {
+        // Refresh tours to get updated order information
+        await fetchTours()
+        
+        // Show success popup with a brief delay to ensure it's visible
+        const hasErrors = result.workflow_errors && result.workflow_errors.length > 0
+        console.log('🎉 TOUR FINALIZATION SUCCESS - About to show toast, hasErrors:', hasErrors)
+        setTimeout(() => {
+          console.log('🎉 SHOWING TOUR FINALIZATION TOAST NOW')
+          toast({
+            title: hasErrors ? "⚠️ Tour Finalized with Warnings" : "🎉 Tour Finalized Successfully!",
+            description: hasErrors 
+              ? `Tour finalized with ${result.workflow_errors.length} workflow error(s). Created ${result.sales_orders?.length || 0} sales orders and ${result.purchase_orders?.length || 0} purchase orders.`
+              : `Tour finalized successfully! Created ${result.sales_orders?.length || 0} sales orders and ${result.purchase_orders?.length || 0} purchase orders.`,
+            variant: hasErrors ? "destructive" : "default",
+            duration: hasErrors ? 8000 : 7000, // Show errors longer
+          })
+          console.log('🎉 TOUR FINALIZATION TOAST CALLED')
+        }, 200)
+        
+        // selectedTour update logic removed - no longer using view details functionality
+
+        // Finalization results popup removed - using tour summary instead
+      } else {
+        throw new Error(result.message)
+      }
+      
+    } catch (error: any) {
+      console.error('❌ ERROR finalizing tour:', error)
+      console.error('❌ Error details:', JSON.stringify(error, null, 2))
       toast({
-        title: "Error",
-        description: "Failed to cancel tour",
+        title: "❌ Tour Finalization Failed",
+        description: error.message || "Failed to finalize tour. Please try again.",
         variant: "destructive",
+        duration: 8000,
       })
     } finally {
-      setCancellingTourId(null)
+      console.log('🏁 Finalization process complete, cleaning up state')
+      setIsFinalizingTour(false)
+      setFinalizingTourId(null)
     }
   }
 
-  const handleFinalizeTour = async (tourId: string) => {
-    setIsFinalizingTour(true)
-    setFinalizingTourId(tourId)
+  // Removed cancel dialog functions - no longer needed
+
+  const handleClearAllTours = async () => {
+    if (!confirm('⚠️ ARE YOU SURE? This will permanently delete ALL tours from the database. This action cannot be undone!')) {
+      return
+    }
+
+    if (!confirm('🚨 FINAL WARNING: This will delete ALL tour data including participants, orders, and history. Type YES to confirm you understand this is for TESTING ONLY.')) {
+      return
+    }
+
     try {
-      console.log(`Finalizing tour with ID: ${tourId}`)
-      // Order service handles token management internally
-      const orderService = new ShipHeroOrderService()
+      console.log('🗑️ CLEARING ALL TOURS - Starting deletion process...')
       
-      // Create sales orders for all participants + host
-      const salesResult = await orderService.createSalesOrdersForTour(tourId)
+      const supabase = createClient()
       
-      if (!salesResult.success) {
-        throw new Error(`Sales orders failed: ${salesResult.message}`)
-      }
-
-      // Create aggregated purchase order
-      const poResult = await orderService.createPurchaseOrderForTour(tourId)
-      
-      if (!poResult.success) {
-        throw new Error(`Purchase order failed: ${poResult.message}`)
-      }
-
-      // Update tour status to finalized
-      const { error: updateError } = await supabase
+      // Delete all tours (cascade should handle related data)
+      const { error: deleteError } = await supabase
         .from('tours')
-        .update({ status: 'finalized' })
-        .eq('id', tourId)
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all tours
+      
+      if (deleteError) {
+        console.error('❌ Error deleting tours:', deleteError)
+        toast({
+          title: "Error",
+          description: `Failed to clear tours: ${deleteError.message}`,
+          variant: "destructive"
+        })
+        return
+      }
 
-      if (updateError) throw updateError
-
-      // Update local state instead of refetching all tours
-      setTours(prevTours => 
-        prevTours.map(tour => 
-          tour.id === tourId 
-            ? { ...tour, status: 'finalized' } 
-            : tour
-        )
-      )
-
+      console.log('✅ All tours cleared successfully')
       toast({
-        title: "🎉 Tour Finalized Successfully!",
-        description: `Created ${salesResult.ordersCreated} sales orders and 1 purchase order. Tour is now finalized.`,
+        title: "Success",
+        description: "All tours have been cleared from the database",
+        variant: "default"
       })
 
-    } catch (error: any) {
-      console.error('Tour finalization error:', error)
+      // Refresh the tours list
+      fetchTours()
+      
+    } catch (error) {
+      console.error('❌ Error clearing tours:', error)
       toast({
-        title: "Tour Finalization Failed",
-        description: error.message || "Failed to finalize tour. Please try again.",
+        title: "Error",
+        description: "Failed to clear tours. Please try again.",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleViewInstructions = async (tourId: string) => {
+    try {
+      console.log('🔍 DEBUG: Fetching tour summary for ID:', tourId)
+      
+      // Fetch comprehensive tour data including order summary
+      const { data: tourData, error: tourError } = await supabase
+        .from('tours')
+          .select(`
+            id,
+            date,
+            time,
+            status,
+            tour_numeric_id,
+          selected_workflows,
+          selected_skus,
+          order_summary,
+          warehouse:warehouses(id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id),
+            host:team_members(id, first_name, last_name, email),
+          participants:tour_participants(id, first_name, last_name, email, company, title)
+          `)
+          .eq('id', tourId)
+          .single()
+        
+      console.log('🔍 DEBUG: Tour data response:', { tourData, tourError })
+      console.log('🔍 DEBUG: Order summary data:', tourData?.order_summary)
+
+      if (tourError || !tourData) {
+        console.error('❌ DEBUG: Failed to fetch tour data:', tourError)
+        throw new Error('Failed to fetch tour data')
+      }
+
+      // Check if we have order summary data
+      if (!tourData.order_summary) {
+        console.warn('⚠️ DEBUG: No order_summary found in database')
+        toast({
+          title: "No Tour Summary Available",
+          description: "This tour was finalized before comprehensive summaries were saved. Please re-finalize the tour to generate a summary.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      console.log('✅ DEBUG: Order summary found, creating tour summary...')
+
+      try {
+        // Format the date safely
+        const [year, month, day] = tourData.date.split('-').map(Number);
+        const formattedDate = new Date(year, month - 1, day).toLocaleDateString('en-US', { 
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        });
+
+        console.log('🔍 DEBUG: Date formatted successfully:', formattedDate)
+
+        // Handle array vs object data structure from Supabase joins
+        const warehouse = Array.isArray(tourData.warehouse) ? tourData.warehouse[0] : tourData.warehouse
+        const host = Array.isArray(tourData.host) ? tourData.host[0] : tourData.host
+        const participants = Array.isArray(tourData.participants) ? tourData.participants : []
+
+        // Create comprehensive tour summary
+        const tourSummary = {
+          tourId: tourData.id,
+          tourDate: tourData.date,
+          tourTime: tourData.time,
+          tourNumericId: tourData.tour_numeric_id,
+          status: tourData.status,
+          warehouseName: warehouse?.name || 'Unknown Warehouse',
+          warehouseCode: warehouse?.code || '',
+          warehouseAddress: `${warehouse?.address || ''} ${warehouse?.city || ''} ${warehouse?.state || ''} ${warehouse?.zip || ''}`.trim() || 'Address not available',
+          hostName: `${host?.first_name || ''} ${host?.last_name || ''}`.trim(),
+          hostEmail: host?.email || '',
+          selectedWorkflows: tourData.selected_workflows || [],
+          selectedSkus: tourData.selected_skus || [],
+          participantCount: participants?.length || 0,
+          participants: participants || [],
+          orders: {
+            sales_orders: tourData.order_summary?.sales_orders || [],
+            purchase_orders: tourData.order_summary?.purchase_orders || []
+          },
+          summary: tourData.order_summary?.summary || {},
+          instructions: `# 🎯 Tour Summary
+
+## 📋 Tour Information
+- **Tour ID:** ${tourData.tour_numeric_id}
+- **Date:** ${formattedDate}
+- **Time:** ${tourData.time}
+- **Status:** ${tourData.status?.toUpperCase()}
+- **Warehouse:** ${warehouse?.name} (${warehouse?.code})
+- **Address:** ${warehouse?.address}, ${warehouse?.city}, ${warehouse?.state} ${warehouse?.zip}
+
+## 👥 Tour Host & Participants
+- **Host:** ${host?.first_name} ${host?.last_name} (${host?.email})
+- **Participants:** ${participants?.length || 0} registered
+
+## 📦 Order Summary
+- **Total Orders Created:** ${tourData.order_summary?.summary?.total_orders || 0}
+- **Sales Orders:** ${tourData.order_summary?.summary?.total_sales_orders || 0}
+- **Purchase Orders:** ${tourData.order_summary?.summary?.total_purchase_orders || 0}
+
+### 🔗 Quick Links
+- [View All Tour Orders in ShipHero](${generateShipHeroFilterUrl(tourData.tour_numeric_id)})
+
+---
+
+*This summary was generated automatically when the tour was finalized.*`
+        }
+
+        console.log('✅ DEBUG: Tour summary object created successfully')
+        
+        // Set the tour summary data for the new dialog
+        setTourSummaryData(tourSummary)
+        setShowTourSummary(true)
+        
+        console.log('✅ DEBUG: Tour summary dialog should now be visible')
+        
+      } catch (error) {
+        console.error('❌ DEBUG: Error creating tour summary:', error)
+        throw error
+      }
+
+      toast({
+        title: "Tour Summary Retrieved",
+        description: `Comprehensive tour summary with ${tourData.order_summary?.summary?.total_orders || 0} orders`,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Failed to Load Tour Summary",
+        description: error.message,
         variant: "destructive",
       })
-    } finally {
-      setIsFinalizingTour(false)
-      setFinalizingTourId(null)
     }
   }
 
@@ -314,7 +501,10 @@ export function ViewToursPage() {
   const currentTours = sortedTours.slice(startIndex, endIndex)
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    // Parse date as local date to avoid timezone conversion issues
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(year, month - 1, day) // month is 0-indexed
+    return date.toLocaleDateString("en-US", {
       weekday: "short",
       year: "numeric",
       month: "short",
@@ -330,7 +520,94 @@ export function ViewToursPage() {
     })
   }
 
-  const SortableHeader = ({ field, children }: { field: string; children: React.ReactNode }) => {
+  // CSV Export functionality
+  const exportToCSV = () => {
+    const csvData = []
+    
+    // CSV Headers
+    const headers = [
+      'Tour Date',
+      'Tour Time', 
+      'Host First Name',
+      'Host Last Name',
+      'Warehouse Name',
+      'Warehouse Location',
+      'Tour Status',
+      'Purchase Order Number',
+      'Purchase Order URL',
+      'Host Order Number',
+      'Host Order URL',
+      'Participant First Name',
+      'Participant Last Name',
+      'Participant Email',
+      'Participant Company',
+      'Participant Title',
+      'Sales Order Number',
+      'Sales Order URL'
+    ]
+    
+    csvData.push(headers.join(','))
+    
+    // Process each tour
+    sortedTours.forEach(tour => {
+      const baseData = [
+        tour.date,
+        tour.time,
+        tour.host?.first_name || '',
+        tour.host?.last_name || '',
+        tour.warehouse.name,
+        `"${tour.warehouse.address}${tour.warehouse.city ? ', ' + tour.warehouse.city : ''}${tour.warehouse.state ? ', ' + tour.warehouse.state : ''}"`,
+        tour.status || 'scheduled',
+        tour.shiphero_purchase_order_number || '',
+        tour.shiphero_purchase_order_url || '',
+        tour.host_shiphero_sales_order_number || '',
+        tour.host_shiphero_sales_order_url || ''
+      ]
+      
+      // Add row for each participant
+      if (tour.participants && tour.participants.length > 0) {
+        tour.participants.forEach(participant => {
+          const row = [
+            ...baseData,
+            participant.first_name,
+            participant.last_name,
+            participant.email,
+            `"${participant.company || ''}"`,
+            `"${participant.title || ''}"`,
+            participant.shiphero_sales_order_number || '',
+            participant.shiphero_sales_order_url || ''
+          ]
+          csvData.push(row.join(','))
+        })
+      } else {
+        // Tour with no participants
+        const row = [
+          ...baseData,
+          '', '', '', '', '', '', '' // Empty participant data
+        ]
+        csvData.push(row.join(','))
+      }
+    })
+    
+    // Create and download CSV file
+    const csvContent = csvData.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    
+    const filename = `tours_export_${new Date().toISOString().split('T')[0]}.csv`
+    link.href = URL.createObjectURL(blob)
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast({
+      title: "Export Successful",
+      description: `Downloaded ${sortedTours.length} tours to ${filename}`,
+    })
+  }
+
+  const SortableHeader = ({ field, children, className }: { field: string; children: React.ReactNode; className?: string }) => {
     const isActive = sortField === field
     const Icon = isActive 
       ? (sortDirection === 'asc' ? ArrowUp : ArrowDown)
@@ -338,12 +615,12 @@ export function ViewToursPage() {
 
     return (
       <TableHead 
-        className="cursor-pointer hover:bg-muted/50 select-none"
+        className={`cursor-pointer hover:bg-muted/50 select-none ${className || ''}`}
         onClick={() => handleSort(field)}
       >
         <div className="flex items-center gap-2">
-          {children}
-          <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+          <span className="truncate">{children}</span>
+          <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
         </div>
       </TableHead>
     )
@@ -353,14 +630,27 @@ export function ViewToursPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             View Tours
           </CardTitle>
           <CardDescription>Browse and manage existing warehouse tours</CardDescription>
+            </div>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleClearAllTours}
+              className="bg-red-600 hover:bg-red-700"
+            >
+                                            {/* XCircle icon removed with cancel button */}
+              Clear All Tours
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          {/* Search Bar */}
+          {/* Search Bar and Controls */}
           <div className="flex items-center gap-2 mb-6">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -372,12 +662,15 @@ export function ViewToursPage() {
               />
             </div>
             <Button
-              variant={showCancelled ? "default" : "outline"}
-              onClick={() => setShowCancelled(!showCancelled)}
+              variant="outline"
+              onClick={exportToCSV}
+              disabled={sortedTours.length === 0}
               className="whitespace-nowrap"
             >
-              {showCancelled ? "Hide Cancelled" : "Show Cancelled"}
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
             </Button>
+
             <div className="text-sm text-muted-foreground">
               {filteredTours.length} tour{filteredTours.length !== 1 ? "s" : ""} found
             </div>
@@ -388,25 +681,24 @@ export function ViewToursPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableHeader field="date">Date & Time</SortableHeader>
-                  <SortableHeader field="warehouse">Warehouse</SortableHeader>
-                  <SortableHeader field="host">Host</SortableHeader>
-                  <SortableHeader field="participants">Participants</SortableHeader>
-                  <TableHead>Swag Items</TableHead>
-                  <SortableHeader field="status">Status</SortableHeader>
-                  <TableHead className="w-[140px]">Actions</TableHead>
+                  <SortableHeader field="date" className="w-[15%]">Date & Time</SortableHeader>
+                  <SortableHeader field="warehouse" className="w-[25%]">Warehouse</SortableHeader>
+                  <SortableHeader field="host" className="w-[15%] hidden md:table-cell">Host</SortableHeader>
+                  <SortableHeader field="participants" className="w-[15%] hidden lg:table-cell">Participants</SortableHeader>
+                  <SortableHeader field="status" className="w-[15%] hidden xl:table-cell">Status</SortableHeader>
+                  <TableHead className="w-[15%]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       Loading tours...
                     </TableCell>
                   </TableRow>
                 ) : currentTours.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       {searchTerm ? "No tours match your search criteria." : "No tours scheduled yet."}
                     </TableCell>
                   </TableRow>
@@ -415,16 +707,40 @@ export function ViewToursPage() {
                     <TableRow key={tour.id}>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{formatDate(tour.date)}</div>
+                          <div className="font-medium truncate">{formatDate(tour.date)}</div>
                           <div className="text-sm text-muted-foreground">{formatTime(tour.time)}</div>
+                          {/* Show mobile info */}
+                          <div className="md:hidden text-xs text-muted-foreground mt-1">
+                            {tour.host && `Host: ${tour.host.first_name} ${tour.host.last_name}`}
+                          </div>
+                          <div className="lg:hidden text-xs text-muted-foreground mt-1">
+                            {tour.participants.length} participant{tour.participants.length !== 1 ? 's' : ''}
+                          </div>
+                          <div className="xl:hidden text-xs text-muted-foreground mt-1">
+                            <Badge 
+                              variant={
+                                tour.status === 'finalized' 
+                                  ? (tour.order_summary?.workflow_errors?.length > 0 ? 'destructive' : 'default')
+                                  : 'secondary'
+                              } 
+                              className="text-xs"
+                            >
+                              {tour.status === 'finalized' && tour.order_summary?.workflow_errors?.length > 0
+                                ? `finalized (${tour.order_summary.workflow_errors.length} errors)`
+                                : tour.status || 'scheduled'
+                              }
+                            </Badge>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{tour.warehouse.name}</div>
+                          <div className="font-medium truncate" title={tour.warehouse.name}>
+                            {tour.warehouse.name}
+                          </div>
                           <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {tour.warehouse.address}
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{tour.warehouse.address}</span>
                           </div>
                           {tour.shiphero_purchase_order_url && (
                             <div className="mt-1">
@@ -432,7 +748,7 @@ export function ViewToursPage() {
                                 href={tour.shiphero_purchase_order_url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 text-xs underline"
+                                className="text-blue-600 hover:text-blue-800 text-xs underline cursor-pointer truncate block"
                               >
                                 PO: {tour.shiphero_purchase_order_number || 'View Order'}
                               </a>
@@ -440,36 +756,41 @@ export function ViewToursPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div>
                           {tour.host ? (
                             <>
-                              <div className="font-medium">{tour.host.first_name} {tour.host.last_name}</div>
-                              <div className="text-sm text-muted-foreground">{tour.host.email}</div>
+                              <div className="font-medium truncate" title={`${tour.host.first_name} ${tour.host.last_name}`}>
+                                {tour.host.first_name} {tour.host.last_name}
+                              </div>
+                              <div className="text-sm text-muted-foreground truncate" title={tour.host.email}>
+                                {tour.host.email}
+                              </div>
                             </>
                           ) : (
                             <div className="text-sm text-muted-foreground">No host assigned</div>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <Badge variant="secondary" className="flex items-center gap-1 w-fit">
                           <Users className="h-3 w-3" />
                           {tour.participants.length}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                          <Package className="h-3 w-3" />
-                          Manual
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden xl:table-cell">
                         <Badge 
-                          variant={tour.status === 'validated' ? 'default' : tour.status === 'cancelled' ? 'destructive' : 'secondary'}
+                          variant={
+                            tour.status === 'finalized' 
+                              ? (tour.order_summary?.workflow_errors?.length > 0 ? 'destructive' : 'default')
+                              : 'secondary'
+                          }
                           className="capitalize"
                         >
-                          {tour.status || 'draft'}
+                          {tour.status === 'finalized' && tour.order_summary?.workflow_errors?.length > 0
+                            ? `finalized (${tour.order_summary.workflow_errors.length} errors)`
+                            : tour.status || 'scheduled'
+                          }
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -488,34 +809,25 @@ export function ViewToursPage() {
                             </Button>
                           )}
                           
-                          {/* Secondary Actions */}
-                          <div className="flex items-center gap-1">
-                            <Sheet>
-                              <SheetTrigger asChild>
-                                <Button variant="ghost" size="sm" onClick={() => setSelectedTour(tour)} title="View Details">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </SheetTrigger>
-                              <SheetContent className="w-[600px] sm:max-w-[600px]">
-                                <TourDetailsSheet tour={tour} />
-                              </SheetContent>
-                            </Sheet>
-                            
-
-                            
-                            {tour.status !== 'cancelled' && (
+                          {/* View Summary for Finalized Tours */}
+                          {tour.status === 'finalized' && (
+                            <>
                               <Button 
-                                variant="ghost" 
+                                variant="default" 
                                 size="sm" 
-                                title="Cancel Tour" 
-                                onClick={() => handleCancelTour(tour.id)}
-                                disabled={cancellingTourId === tour.id}
-                                className={`text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50 ${cancellingTourId === tour.id ? 'cursor-wait' : ''}`}
+                                onClick={() => handleViewInstructions(tour.id)}
+                                className="w-full bg-green-600 hover:bg-green-700"
                               >
-                                <X className={`h-4 w-4 ${cancellingTourId === tour.id ? 'animate-spin' : ''}`} />
+                                <FileText className="h-4 w-4 mr-2" />
+                                View Summary
                               </Button>
+                              
+                              {/* Cancel button removed per user request */}
+                            </>
                             )}
-                          </div>
+                          
+                          
+                          {/* View details functionality removed per user request */}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -568,388 +880,16 @@ export function ViewToursPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Tour Summary Dialog */}
+      <TourSummaryDialog
+        isOpen={showTourSummary}
+        onClose={() => setShowTourSummary(false)}
+        data={tourSummaryData}
+      />
+
     </div>
   )
 }
 
-function TourDetailsSheet({ tour }: { tour: Tour }) {
-  const [isCreatingOrders, setIsCreatingOrders] = useState(false)
-  const [isCreatingPO, setIsCreatingPO] = useState(false)
-  const [isValidatingTour, setIsValidatingTour] = useState(false)
-  const [isCancellingTour, setIsCancellingTour] = useState(false)
-  const { toast } = useToast()
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
-
-  const formatTime = (timeString: string) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
-  const handleCreateSalesOrders = async () => {
-    setIsCreatingOrders(true)
-    try {
-      const orderService = new ShipHeroOrderService()
-      const result = await orderService.createSalesOrdersForTour(tour.id)
-      
-      if (result.success) {
-        toast({
-          title: "Sales Orders Created",
-          description: result.message,
-        })
-      } else {
-        toast({
-          title: "Failed to Create Sales Orders",
-          description: result.message,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create sales orders. Please check your ShipHero configuration.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreatingOrders(false)
-    }
-  }
-
-  const handleCreatePurchaseOrder = async () => {
-    setIsCreatingPO(true)
-    try {
-      const orderService = new ShipHeroOrderService()
-      const result = await orderService.createPurchaseOrderForTour(tour.id)
-      
-      if (result.success) {
-        toast({
-          title: "Purchase Order Created",
-          description: result.message,
-        })
-      } else {
-        toast({
-          title: "Failed to Create Purchase Order",
-          description: result.message,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create purchase order. Please check your ShipHero configuration.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreatingPO(false)
-    }
-  }
-
-  const handleValidateTour = async () => {
-    setIsValidatingTour(true)
-    try {
-      const supabase = createClient()
-      
-      // Update tour status to validated
-      const { error: updateError } = await supabase
-        .from('tours')
-        .update({ status: 'validated' })
-        .eq('id', tour.id)
-
-      if (updateError) {
-        throw updateError
-      }
-
-      // Create both sales orders and purchase order
-      const orderService = new ShipHeroOrderService()
-      const [salesResult, poResult] = await Promise.all([
-        orderService.createSalesOrdersForTour(tour.id),
-        orderService.createPurchaseOrderForTour(tour.id)
-      ])
-
-      if (salesResult.success && poResult.success) {
-        toast({
-          title: "Tour Validated Successfully!",
-          description: `Created ${salesResult.ordersCreated} sales orders and 1 purchase order`,
-        })
-      } else {
-        const errors = [...(salesResult.errors || []), ...(poResult.errors || [])]
-        toast({
-          title: "Tour Validated with Errors",
-          description: `Tour validated but some orders failed: ${errors.join(', ')}`,
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error('Error validating tour:', error)
-      toast({
-        title: "Error",
-        description: "Failed to validate tour",
-        variant: "destructive",
-      })
-    } finally {
-      setIsValidatingTour(false)
-    }
-  }
-
-  const handleCancelTour = async () => {
-    if (!confirm('Are you sure you want to cancel this tour? This action cannot be undone.')) {
-      return
-    }
-
-    setIsCancellingTour(true)
-    try {
-      const supabase = createClient()
-      
-      // Update tour status to cancelled
-      const { error: updateError } = await supabase
-        .from('tours')
-        .update({ status: 'cancelled' })
-        .eq('id', tour.id)
-
-      if (updateError) {
-        throw updateError
-      }
-
-      toast({
-        title: "Tour Cancelled",
-        description: "The tour has been cancelled successfully",
-      })
-    } catch (error) {
-      console.error('Error cancelling tour:', error)
-      toast({
-        title: "Error",
-        description: "Failed to cancel tour",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCancellingTour(false)
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <SheetHeader>
-        <SheetTitle>Tour Details</SheetTitle>
-        <SheetDescription>View complete information about this warehouse tour</SheetDescription>
-      </SheetHeader>
-
-      {/* Tour Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Tour Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Date</p>
-              <p className="font-medium">{formatDate(tour.date)}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Time</p>
-              <p className="font-medium">{formatTime(tour.time)}</p>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Warehouse</p>
-            <p className="font-medium">{tour.warehouse.name}</p>
-            <div className="text-sm text-muted-foreground">
-              <p className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {tour.warehouse.city && tour.warehouse.state 
-                  ? `${tour.warehouse.address}, ${tour.warehouse.city}, ${tour.warehouse.state} ${tour.warehouse.zip || ''}`.trim()
-                  : tour.warehouse.address
-                }
-              </p>
-              {tour.warehouse.code && (
-                <p className="text-xs">Code: {tour.warehouse.code}</p>
-              )}
-            </div>
-          </div>
-          {tour.host && (
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Host</p>
-              <p className="font-medium">{tour.host.first_name} {tour.host.last_name}</p>
-              <p className="text-sm text-muted-foreground">{tour.host.email}</p>
-            </div>
-          )}
-
-        </CardContent>
-      </Card>
-
-      {/* Participants */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Participants ({tour.participants.length + (tour.host ? 1 : 0)})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {tour.participants.length === 0 && !tour.host ? (
-            <p className="text-sm text-muted-foreground">No participants registered</p>
-          ) : (
-            <div className="space-y-3">
-              {/* Show host first if exists */}
-              {tour.host && (
-                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="grid gap-1">
-                    <p className="font-medium">{tour.host.first_name} {tour.host.last_name}</p>
-                    <p className="text-sm text-muted-foreground">{tour.host.email}</p>
-                  </div>
-                  <Badge variant="default" className="bg-blue-600">Host</Badge>
-                </div>
-              )}
-              {/* Show regular participants */}
-              {tour.participants.map((participant) => (
-                <div key={participant.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <div className="grid gap-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{participant.first_name} {participant.last_name}</p>
-                      {participant.title && (
-                        <span className="text-sm text-muted-foreground">- {participant.title}</span>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{participant.email}</p>
-                    {participant.shiphero_sales_order_url && (
-                      <div className="mt-1">
-                        <a 
-                          href={participant.shiphero_sales_order_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-xs underline"
-                        >
-                          SO: {participant.shiphero_sales_order_number || 'View Order'}
-                        </a>
-                      </div>
-                    )}
-                    {participant.company && (
-                      <p className="text-sm text-muted-foreground">{participant.company}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Swag Items - Manual Addition */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            Swag Items (Manual Addition)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Swag items will be added manually during tour finalization. Each participant and host will receive the standard swag package.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* ShipHero Integration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            ShipHero Orders
-          </CardTitle>
-          <CardDescription>
-            Create sales orders for participants and purchase orders for inventory
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Primary Action - Validate Tour */}
-          {tour.status === 'validated' ? (
-            <div className="space-y-2">
-              <div className="w-full bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <h3 className="font-medium text-green-800">Tour Validated</h3>
-                <p className="text-sm text-green-600">All orders have been created successfully</p>
-              </div>
-            </div>
-          ) : tour.status === 'cancelled' ? (
-            <div className="space-y-2">
-              <div className="w-full bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                <X className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                <h3 className="font-medium text-red-800">Tour Cancelled</h3>
-                <p className="text-sm text-red-600">This tour has been cancelled</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Button 
-                onClick={handleValidateTour}
-                disabled={isValidatingTour}
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-                size="lg"
-              >
-                <CheckCircle className="h-5 w-5 mr-2" />
-                {isValidatingTour ? "Validating Tour..." : "Validate Tour & Create All Orders"}
-              </Button>
-              <p className="text-sm text-muted-foreground text-center">
-                This will create sales orders for all participants (including host) and one purchase order for inventory
-              </p>
-            </div>
-          )}
-
-          {/* Manual Order Creation (for testing/debugging) */}
-          <div className="space-y-3">
-            <div className="text-sm font-medium text-muted-foreground">Manual Order Creation</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Sales Orders</h4>
-                <p className="text-sm text-muted-foreground">
-                  Create individual orders for each participant with their allocated swag items
-                </p>
-                <Button 
-                  onClick={handleCreateSalesOrders}
-                  disabled={isCreatingOrders || tour.participants.length === 0}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  {isCreatingOrders ? "Creating..." : `Create ${tour.participants.length + (tour.host ? 1 : 0)} Sales Orders`}
-                </Button>
-              </div>
-              
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Purchase Order</h4>
-                <p className="text-sm text-muted-foreground">
-                  Create a consolidated purchase order for all swag items needed
-                </p>
-                <Button 
-                  onClick={handleCreatePurchaseOrder}
-                  disabled={isCreatingPO}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  {isCreatingPO ? "Creating..." : "Create Purchase Order"}
-                </Button>
-              </div>
-            </div>
-          </div>
-          
-          <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg">
-            <p><strong>Note:</strong> Make sure you have configured your ShipHero tokens in Settings → ShipHero and that your warehouse has a ShipHero Warehouse ID.</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
+// TourDetailsSheet component removed per user request

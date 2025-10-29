@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { RefreshCw, TestTube, Plus, ShoppingCart } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { RefreshCw, TestTube, Plus, ShoppingCart, Package, Copy, Trash2 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,8 +16,19 @@ import { generateSalesOrderName, generatePurchaseOrderName } from "@/lib/shipher
 
 export function ShipHeroTab() {
   const [refreshToken, setRefreshToken] = useState("")
-
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null)
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
+  const [countdown, setCountdown] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    isExpired: boolean;
+  } | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [tokenSaved, setTokenSaved] = useState(false)
+
   const [isTesting, setIsTesting] = useState(false)
   const [testResults, setTestResults] = useState<any>(null)
   const [showAdhocOrder, setShowAdhocOrder] = useState(false)
@@ -25,70 +37,255 @@ export function ShipHeroTab() {
   const [isCreatingPO, setIsCreatingPO] = useState(false)
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [hosts, setHosts] = useState<any[]>([])
-  const [swagItems, setSwagItems] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
+  const [allProducts, setAllProducts] = useState<any[]>([]) // Store all products for filtering
   const [adhocOrderData, setAdhocOrderData] = useState({
     warehouseId: '',
     hostId: '',
-    swagItemIds: [] as string[],
+    productIds: [] as string[],
     notes: '',
     orderDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] // Tomorrow's date
   })
   const [adhocPOData, setAdhocPOData] = useState({
     warehouseId: '',
     hostId: '',
-    swagItemIds: [] as string[],
-    swagQuantities: {} as Record<string, number>,
+    productIds: [] as string[],
+    productQuantities: {} as Record<string, number>,
     notes: '',
     poDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] // Tomorrow's date
   })
   const [lastError, setLastError] = useState<string | null>(null)
   const [lastOrderResponse, setLastOrderResponse] = useState<any>(null)
   const [lastPOResponse, setLastPOResponse] = useState<any>(null)
+
   const { toast } = useToast()
+
+  // Filter products by selected warehouse
+  const filterProductsByWarehouse = (warehouseId: string) => {
+    if (!warehouseId || !allProducts.length) {
+      setProducts([])
+      return
+    }
+
+    // Find the selected warehouse to get its ShipHero ID
+    const selectedWarehouse = warehouses.find(w => w.id === warehouseId)
+    if (!selectedWarehouse) {
+      setProducts([])
+      return
+    }
+
+    // Filter products that belong to this warehouse
+    const filteredProducts = allProducts.filter(product => {
+      // Check if product has inventory for this specific warehouse
+      return product.warehouse_id === selectedWarehouse.shiphero_warehouse_id
+    })
+
+    console.log('🏭 Filtering products by warehouse:', {
+      warehouseId,
+      warehouseName: selectedWarehouse.name,
+      shipHeroWarehouseId: selectedWarehouse.shiphero_warehouse_id,
+      totalProducts: allProducts.length,
+      filteredProducts: filteredProducts.length,
+      sampleFiltered: filteredProducts.slice(0, 3).map(p => ({ sku: p.sku, available: p.available }))
+    })
+
+    setProducts(filteredProducts)
+  }
 
   useEffect(() => {
     const savedToken = localStorage.getItem('shiphero_refresh_token') || ''
+    const savedExpiresAt = localStorage.getItem('shiphero_token_expires_at')
+    const savedAccessToken = localStorage.getItem('shiphero_access_token')
+    
     setRefreshToken(savedToken)
+    setTokenExpiresAt(savedExpiresAt)
+    
+    // Calculate initial countdown
+    if (savedExpiresAt) {
+      calculateCountdown(savedExpiresAt)
+    }
+
+
+    // Auto-refresh token if it's expired or about to expire
+    const autoRefreshToken = async () => {
+      if (savedToken && savedExpiresAt) {
+        const expirationDate = new Date(savedExpiresAt)
+        const now = new Date()
+        const minutesUntilExpiry = (expirationDate.getTime() - now.getTime()) / (1000 * 60)
+        
+        // If token expires in less than 1 day or already expired, refresh it
+        const oneDayInMinutes = 24 * 60
+        if (minutesUntilExpiry < oneDayInMinutes) {
+          try {
+            await handleRefreshToken()
+          } catch (error) {
+            console.error('Failed to auto-refresh access token:', error)
+          }
+        }
+      }
+    }
+
+    // Load data when component mounts (only if access token exists)
+    if (savedAccessToken) {
+      autoRefreshToken().then(() => {
+        loadAdhocOrderData()
+      })
+    }
   }, [])
 
+  // Update countdown every second for live timer
+  useEffect(() => {
+    if (!tokenExpiresAt) return
+
+    const updateCountdown = () => {
+      calculateCountdown(tokenExpiresAt)
+    }
+
+    // Update immediately
+    updateCountdown()
+
+    // Update every second for live countdown
+    const interval = setInterval(updateCountdown, 1000)
+    return () => clearInterval(interval)
+  }, [tokenExpiresAt])
+
+  const calculateCountdown = (expiresAt: string) => {
+    const expirationDate = new Date(expiresAt)
+    const now = new Date()
+    const diffTime = expirationDate.getTime() - now.getTime()
+    
+    if (diffTime <= 0) {
+      setCountdown({
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        isExpired: true
+      })
+      setDaysRemaining(0)
+      return
+    }
+
+    // Calculate time components
+    const days = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((diffTime % (1000 * 60)) / 1000)
+
+    setCountdown({
+      days,
+      hours,
+      minutes,
+      seconds,
+      isExpired: false
+    })
+    
+    // Keep the old days calculation for compatibility
+    setDaysRemaining(Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24))))
+  }
+
+
+
   const loadAdhocOrderData = async () => {
+    console.log('🔄 Loading adhoc order data...')
+    const startTime = Date.now()
+    
     try {
       const supabase = createClient()
+      const accessToken = localStorage.getItem('shiphero_access_token')
       
-      // Load warehouses, hosts, and swag items directly from Supabase
-      const [warehousesRes, hostsRes, swagItemsRes] = await Promise.all([
-        supabase.from('warehouses').select('id, name, code, address, address2, city, state, zip, country, shiphero_warehouse_id').order('name'),
-        supabase.from('team_members').select('id, first_name, last_name, email').order('first_name'),
-        supabase.from('swag_items').select('id, name, sku, vendor_id').order('name')
+      if (!accessToken) {
+        throw new Error('No ShipHero access token available. Please generate a new access token first.')
+      }
+
+      // Load all data in parallel for better performance
+      console.log('📡 Making parallel API calls...')
+      const [hostsRes, warehousesResponse, productsResponse] = await Promise.all([
+        // Load hosts from Supabase
+        supabase
+          .from('team_members')
+          .select('id, first_name, last_name, email')
+          .order('first_name'),
+        
+        // Fetch ShipHero warehouses
+        fetch('/api/shiphero/warehouses', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        
+        // Fetch ShipHero products
+        fetch('/api/shiphero/inventory', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        })
       ])
 
-      if (warehousesRes.error) {
-        throw new Error(`Warehouses error: ${warehousesRes.error.message}`)
-      }
+      // Process hosts
       if (hostsRes.error) {
         throw new Error(`Hosts error: ${hostsRes.error.message}`)
       }
-      if (swagItemsRes.error) {
-        throw new Error(`Swag items error: ${swagItemsRes.error.message}`)
-      }
-
-      setWarehouses(warehousesRes.data || [])
       setHosts(hostsRes.data || [])
-      setSwagItems(swagItemsRes.data || [])
+
+      // Process warehouses
+      if (!warehousesResponse.ok) {
+        throw new Error('Failed to fetch ShipHero warehouses')
+      }
+      const warehousesResult = await warehousesResponse.json()
+      const shipHeroWarehouses = warehousesResult.data?.account?.data?.warehouses || []
       
-      console.log('Loaded data:', {
-        warehouses: warehousesRes.data?.length || 0,
+      const transformedWarehouses = shipHeroWarehouses.map((warehouse: any) => ({
+        id: warehouse.id,
+        name: warehouse.address?.name || warehouse.identifier,
+        code: warehouse.identifier || '',
+        address: warehouse.address?.address1 || '',
+        city: warehouse.address?.city || '',
+        state: warehouse.address?.state || '',
+        zip: warehouse.address?.zip || '',
+        shiphero_warehouse_id: warehouse.id
+      }))
+      setWarehouses(transformedWarehouses)
+
+      // Process products
+      if (!productsResponse.ok) {
+        throw new Error('Failed to fetch ShipHero products')
+      }
+      const productsResult = await productsResponse.json()
+      const shipHeroProducts = productsResult.products || []
+      
+      const transformedProducts = shipHeroProducts
+        .filter((product: any) => product.active) // Only show active products
+        .map((product: any) => ({
+          id: product.sku,
+          name: product.name,
+          sku: product.sku,
+          available: product.inventory?.available || 0,
+          warehouse_name: product.inventory?.warehouse_name || 'Unknown',
+          warehouse_id: product.inventory?.warehouse_id || null
+        }))
+      
+      // Store all products for filtering
+      setAllProducts(transformedProducts)
+      // Initially show no products until a warehouse is selected
+      setProducts([])
+
+      const loadTime = Date.now() - startTime
+      console.log(`✅ Adhoc order data loaded in ${loadTime}ms`, {
         hosts: hostsRes.data?.length || 0,
-        swagItems: swagItemsRes.data?.length || 0
+        warehouses: transformedWarehouses.length,
+        products: transformedProducts.length
       })
       
-      console.log('Warehouse data:', warehousesRes.data)
-      console.log('Host data:', hostsRes.data)
-      console.log('Swag items data:', swagItemsRes.data)
     } catch (error: any) {
-      console.error('Error loading adhoc order data:', error)
+      const loadTime = Date.now() - startTime
+      console.error(`❌ Error loading adhoc order data (${loadTime}ms):`, error)
       toast({
-        title: "Error",
+        title: "Error Loading Data",
         description: `Failed to load data: ${error.message}`,
         variant: "destructive",
       })
@@ -114,24 +311,62 @@ export function ShipHeroTab() {
 
       if (response.ok) {
         const data = await response.json()
+        console.log('🎉 ShipHero API response:', { 
+          hasAccessToken: !!data.access_token, 
+          expiresIn: data.expires_in,
+          tokenStart: data.access_token ? data.access_token.substring(0, 20) + '...' : 'none'
+        })
         const newAccessToken = data.access_token
         const expiresIn = data.expires_in
         
         if (newAccessToken) {
+          // Store the tokens using enhanced persistence (localStorage + IndexedDB + cookies)
+          const { tokenManager } = await import('@/lib/shiphero/token-manager')
+          tokenManager.storeNewTokens(newAccessToken, refreshToken)
+          
+          // Also store in localStorage for backward compatibility
+          localStorage.setItem('shiphero_access_token', newAccessToken)
+          localStorage.setItem('shiphero_refresh_token', refreshToken)
+          
           // Calculate expiration date
           const expirationDate = new Date(Date.now() + (expiresIn * 1000))
+          localStorage.setItem('shiphero_token_expires_at', expirationDate.toISOString())
+          setTokenExpiresAt(expirationDate.toISOString())
           
-          toast({
-            title: "✅ New Access Token Generated",
-            description: `Token will be valid for 28 days (expires: ${expirationDate.toLocaleDateString()})`,
-            duration: 6000,
-          })
+          // ALSO store in database for centralized access
+          try {
+            console.log('💾 Storing tokens in database...')
+            const dbResponse = await fetch('/api/shiphero/access-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                access_token: newAccessToken,
+                refresh_token: refreshToken,
+                expires_in: expiresIn
+              })
+            })
+            
+            if (dbResponse.ok) {
+              console.log('✅ Tokens stored in database successfully')
+            } else {
+              console.warn('⚠️ Failed to store tokens in database, but localStorage still works')
+            }
+          } catch (dbError) {
+            console.warn('⚠️ Database token storage failed:', dbError)
+          }
+          
+          // Calculate and set countdown (should be 28 days)
+          calculateCountdown(expirationDate.toISOString())
+          
+          // Show success modal
+          setShowSuccessModal(true)
         } else {
           throw new Error('No access token received from refresh')
         }
       } else {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to refresh token')
+        console.error('ShipHero refresh token error:', errorData)
+        throw new Error(errorData.error || `Failed to refresh token (${response.status})`)
       }
     } catch (error: any) {
       toast({
@@ -207,18 +442,140 @@ export function ShipHeroTab() {
     }
   }
 
+  const handleClearTokens = async () => {
+    try {
+      // Import the database token service
+      const { DatabaseTokenService } = await import('@/lib/shiphero/database-token-service')
+      const tokenService = new DatabaseTokenService()
+      
+      // Clear tokens from database
+      const success = await tokenService.clearAllTokens()
+      
+      if (success) {
+        // CRITICAL: Clear all warehouses from database to prevent them from persisting with new tokens
+        console.log('🗑️ Clearing all warehouses from database...')
+        const supabase = createClient()
+        const { error: warehouseError } = await supabase
+          .from('warehouses')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all rows
+        
+        if (warehouseError) {
+          console.warn('⚠️ Warning: Failed to clear warehouses from database:', warehouseError)
+          // Don't fail the whole operation, just warn
+        } else {
+          console.log('✅ All warehouses cleared from database')
+        }
+        
+        // Also clear warehouse codes
+        console.log('🗑️ Clearing all warehouse codes from database...')
+        const { error: codesError } = await supabase
+          .from('warehouse_codes')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all rows
+        
+        if (codesError) {
+          console.warn('⚠️ Warning: Failed to clear warehouse codes from database:', codesError)
+          // Don't fail the whole operation, just warn
+        } else {
+          console.log('✅ All warehouse codes cleared from database')
+        }
+        
+        // Clear ALL local storage items related to ShipHero
+        localStorage.removeItem('shiphero_refresh_token')
+        localStorage.removeItem('shiphero_access_token')
+        localStorage.removeItem('shiphero_token_expires_at')
+        localStorage.removeItem('shiphero_tokens') // Consolidated storage key
+        
+        // Clear cookies
+        try {
+          document.cookie = 'shiphero_refresh=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+        } catch (e) {
+          console.warn('Could not clear cookies:', e)
+        }
+        
+        // Clear IndexedDB
+        try {
+          if (typeof window !== 'undefined' && window.indexedDB) {
+            indexedDB.deleteDatabase('ShipHeroTokens')
+          }
+        } catch (e) {
+          console.warn('Could not clear IndexedDB:', e)
+        }
+        
+        // Reset ALL component state to initial values
+        setRefreshToken("")
+        setTokenExpiresAt(null)
+        setDaysRemaining(null)
+        setCountdown(null)
+        setTokenSaved(false)
+        
+        // Clear test results and loaded data
+        setTestResults(null)
+        setWarehouses([])
+        setHosts([])
+        setProducts([])
+        setAllProducts([])
+        
+        // Clear order/PO data and responses
+        setAdhocOrderData({
+          warehouseId: '',
+          hostId: '',
+          productIds: [],
+          notes: '',
+          orderDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]
+        })
+        setAdhocPOData({
+          warehouseId: '',
+          hostId: '',
+          productIds: [],
+          productQuantities: {},
+          notes: '',
+          poDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]
+        })
+        setLastError(null)
+        setLastOrderResponse(null)
+        setLastPOResponse(null)
+        
+        // Close any open dialogs
+        setShowAdhocOrder(false)
+        setShowAdhocPO(false)
+        
+        // Dispatch a custom event to notify other components (like WarehousesTab) that tokens were cleared
+        window.dispatchEvent(new CustomEvent('shiphero-tokens-cleared'))
+        
+        toast({
+          title: "🗑️ Tokens Cleared",
+          description: "All ShipHero tokens, warehouses, and data have been cleared. You can now connect with a different account.",
+        })
+        
+        console.log('✅ All ShipHero tokens, warehouses, and data cleared successfully')
+      } else {
+        throw new Error('Failed to clear tokens from database')
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Error clearing tokens:', error)
+      toast({
+        title: "Clear Failed",
+        description: error.message || "Failed to clear tokens",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleCreateAdhocOrder = async () => {
     console.log('🚀🚀🚀 handleCreateAdhocOrder called with data:', adhocOrderData)
     
-    if (!adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0) {
+    if (!adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.productIds.length === 0) {
       console.log('Validation failed:', {
         warehouseId: adhocOrderData.warehouseId,
         hostId: adhocOrderData.hostId,
-        swagItemIds: adhocOrderData.swagItemIds
+        productIds: adhocOrderData.productIds
       })
       toast({
         title: "Missing Information",
-        description: "Please select a warehouse, host, and at least one swag item",
+        description: "Please select a warehouse, host, and at least one product",
         variant: "destructive",
       })
       return
@@ -252,15 +609,15 @@ export function ShipHeroTab() {
       // Find selected data
       const warehouse = warehouses.find(w => w.id === adhocOrderData.warehouseId)
       const host = hosts.find(h => h.id === adhocOrderData.hostId)
-      const selectedSwagItems = swagItems.filter(s => adhocOrderData.swagItemIds.includes(s.id))
+      const selectedProducts = products.filter(p => adhocOrderData.productIds.includes(p.id))
 
-      if (!warehouse || !host || selectedSwagItems.length === 0) {
+      if (!warehouse || !host || selectedProducts.length === 0) {
         throw new Error('Selected data not found')
       }
 
       // Create line items
-      const lineItems = selectedSwagItems.map(swagItem => ({
-        sku: swagItem.sku || swagItem.name,
+      const lineItems = selectedProducts.map(product => ({
+        sku: product.sku || product.name,
         quantity: 1,
         price: "0.00"
       }))
@@ -333,7 +690,7 @@ export function ShipHeroTab() {
       console.log('Creating adhoc order with data:', JSON.stringify(orderData, null, 2))
       console.log('Selected warehouse:', warehouse)
       console.log('Selected host:', host)
-      console.log('Selected swag items:', selectedSwagItems)
+      console.log('Selected products:', selectedProducts)
 
       // Create sales order
       console.log('Making request to /api/shiphero/orders with access token:', accessToken ? 'Present' : 'Missing')
@@ -442,7 +799,7 @@ export function ShipHeroTab() {
                 href={shipheroLink} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors cursor-pointer"
               >
                 📦 View Order in ShipHero →
               </a>
@@ -462,7 +819,7 @@ export function ShipHeroTab() {
       setAdhocOrderData({
         warehouseId: '',
         hostId: '',
-        swagItemIds: [],
+        productIds: [],
         notes: '',
         orderDate: ''
       })
@@ -497,15 +854,15 @@ export function ShipHeroTab() {
   const handleCreateAdhocPO = async () => {
     console.log('🚀🚀🚀 handleCreateAdhocPO called with data:', adhocPOData)
     
-    if (!adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.swagItemIds.length === 0) {
+    if (!adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.productIds.length === 0) {
       console.log('PO Validation failed:', {
         warehouseId: adhocPOData.warehouseId,
         hostId: adhocPOData.hostId,
-        swagItemIds: adhocPOData.swagItemIds
+        productIds: adhocPOData.productIds
       })
       toast({
         title: "Missing Information",
-        description: "Please select a warehouse, host, and at least one swag item",
+        description: "Please select a warehouse, host, and at least one product",
         variant: "destructive",
       })
       return
@@ -539,22 +896,22 @@ export function ShipHeroTab() {
       // Find selected data
       const warehouse = warehouses.find(w => w.id === adhocPOData.warehouseId)
       const host = hosts.find(h => h.id === adhocPOData.hostId)
-      const selectedSwagItems = swagItems.filter(s => adhocPOData.swagItemIds.includes(s.id))
+      const selectedProducts = products.filter(p => adhocPOData.productIds.includes(p.id))
 
-      if (!warehouse || !host || selectedSwagItems.length === 0) {
+      if (!warehouse || !host || selectedProducts.length === 0) {
         throw new Error('Selected data not found')
       }
 
       // Create line items for PO
-      const lineItems = selectedSwagItems.map(swagItem => ({
-        sku: swagItem.sku || swagItem.name,
-        quantity: adhocPOData.swagQuantities[swagItem.id] || 1,
+      const lineItems = selectedProducts.map(product => ({
+        sku: product.sku || product.name,
+        quantity: adhocPOData.productQuantities[product.id] || 1,
         expected_weight_in_lbs: "1.00",
         vendor_id: "1076735",
         quantity_received: 0,
         quantity_rejected: 0,
         price: "0.00",
-        product_name: swagItem.name,
+        product_name: product.name,
         fulfillment_status: "pending",
         sell_ahead: 0
       }))
@@ -575,7 +932,8 @@ export function ShipHeroTab() {
         line_items: lineItems,
         fulfillment_status: "pending",
         discount: "0.00",
-        vendor_id: "1076735"
+        vendor_id: "1076735",
+        tags: [warehouse.code || ""].filter(Boolean) // Add airport code as tag
       }
 
       console.log('Creating adhoc PO with data:', JSON.stringify(poData, null, 2))
@@ -613,10 +971,22 @@ export function ShipHeroTab() {
         response: poResult
       })
       
+      // Check for GraphQL errors first
+      if (poResult.errors && poResult.errors.length > 0) {
+        const errorMessages = poResult.errors.map((error: any) => error.message).join(', ')
+        console.error('❌ ShipHero GraphQL errors:', poResult.errors)
+        throw new Error(`ShipHero GraphQL errors: ${errorMessages}`)
+      }
+      
       const poId = poResult.data?.purchase_order_create?.purchase_order?.id
       const poLegacyId = poResult.data?.purchase_order_create?.purchase_order?.legacy_id
       const createdPONumber = poResult.data?.purchase_order_create?.purchase_order?.po_number || poNumber
       const shipheroPOLink = poLegacyId ? `https://app.shiphero.com/dashboard/purchase-orders/details/${poLegacyId}` : null
+      
+      // Check if purchase order was actually created
+      if (!poId) {
+        throw new Error('Purchase order creation failed - no PO ID returned')
+      }
       
       console.log('📦 PO created successfully!', {
         poId,
@@ -647,7 +1017,7 @@ export function ShipHeroTab() {
                 href={shipheroPOLink} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-block px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                className="inline-block px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors cursor-pointer"
               >
                 📦 View PO in ShipHero →
               </a>
@@ -667,8 +1037,8 @@ export function ShipHeroTab() {
       setAdhocPOData({
         warehouseId: '',
         hostId: '',
-        swagItemIds: [],
-        swagQuantities: {},
+        productIds: [],
+        productQuantities: {},
         notes: '',
         poDate: ''
       })
@@ -698,11 +1068,59 @@ export function ShipHeroTab() {
           <CardDescription>
             {refreshToken ? 
               "Connected to ShipHero API. Generate a new access token or test your connection." : 
-              "No refresh token found. Please contact support to configure API access."
+              "Enter your ShipHero refresh token below to enable API access and tour finalization."
             }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Refresh Token Input Section */}
+          <div className="space-y-3">
+            <div className="grid gap-2">
+              <Label htmlFor="refreshToken">ShipHero Refresh Token</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="refreshToken"
+                  type="password"
+                  placeholder="Paste your ShipHero refresh token here"
+                  value={refreshToken}
+                  onChange={(e) => setRefreshToken(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => {
+                    localStorage.setItem('shiphero_refresh_token', refreshToken)
+                    // Clear expiration data when manually saving a new refresh token
+                    localStorage.removeItem('shiphero_token_expires_at')
+                    setTokenExpiresAt(null)
+                    setDaysRemaining(null)
+                    console.log('✅ Refresh token saved to localStorage')
+                    
+                    // Set saved state for visual feedback
+                    setTokenSaved(true)
+                    setTimeout(() => setTokenSaved(false), 3000) // Reset after 3 seconds
+                    
+                    toast({
+                      title: "✅ Refresh Token Saved",
+                      description: "Your ShipHero refresh token has been saved securely. Generate a new access token to start the 28-day countdown.",
+                    })
+                    // Keep the token in the input field for easy access token generation
+                  }}
+                  disabled={!refreshToken.trim()}
+                  variant={tokenSaved ? "default" : "outline"}
+                  className={tokenSaved 
+                    ? "bg-green-600 hover:bg-green-700 text-white border-green-600" 
+                    : "bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+                  }
+                >
+                  {tokenSaved ? "✅ Saved!" : "Save Token"}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Enter your ShipHero refresh token to enable API access. This token is stored locally and securely in your browser.
+              </p>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2">
             <Button
               onClick={handleRefreshToken}
@@ -731,10 +1149,59 @@ export function ShipHeroTab() {
                 <span className="text-green-600">✅</span>
                 <span>API credentials are configured and stored securely</span>
               </p>
-              <p className="flex items-center gap-2">
-                <span className="text-blue-600">💡</span>
-                <span>Access tokens last 28 days. Generate a new one before expiration</span>
-              </p>
+              {countdown !== null ? (
+                <div className="space-y-2">
+                  <p className="flex items-center gap-2">
+                    <span className={`text-lg ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                      ⏰
+                    </span>
+                    <span className={countdown.days <= 3 ? 'text-red-600 font-medium' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}>
+                      {countdown.isExpired ? 'Token has expired! Generate a new one immediately.' :
+                       countdown.days === 0 ? 'Token expires today! Generate a new one immediately.' :
+                       `Token expires in ${countdown.days} day${countdown.days !== 1 ? 's' : ''}`}
+                    </span>
+                  </p>
+                  {!countdown.isExpired && (
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Live Countdown:</p>
+                      <div className="flex items-center gap-4 font-mono text-lg">
+                        <div className="text-center">
+                          <div className={`font-bold ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {countdown.days.toString().padStart(2, '0')}
+                          </div>
+                          <div className="text-xs text-gray-500">DAYS</div>
+                        </div>
+                        <div className="text-gray-400">:</div>
+                        <div className="text-center">
+                          <div className={`font-bold ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {countdown.hours.toString().padStart(2, '0')}
+                          </div>
+                          <div className="text-xs text-gray-500">HOURS</div>
+                        </div>
+                        <div className="text-gray-400">:</div>
+                        <div className="text-center">
+                          <div className={`font-bold ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {countdown.minutes.toString().padStart(2, '0')}
+                          </div>
+                          <div className="text-xs text-gray-500">MINS</div>
+                        </div>
+                        <div className="text-gray-400">:</div>
+                        <div className="text-center">
+                          <div className={`font-bold ${countdown.days <= 3 ? 'text-red-600' : countdown.days <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {countdown.seconds.toString().padStart(2, '0')}
+                          </div>
+                          <div className="text-xs text-gray-500">SECS</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="flex items-center gap-2">
+                  <span className="text-blue-600">💡</span>
+                  <span>Generate a new access token to start the 28-day countdown</span>
+                </p>
+              )}
             </div>
           )}
 
@@ -845,7 +1312,7 @@ export function ShipHeroTab() {
         <CardHeader>
           <CardTitle>Adhoc Sales Order</CardTitle>
           <CardDescription>
-            Create a sales order manually using existing warehouses, hosts, and swag items
+            Create a sales order manually using ShipHero warehouses, hosts, and products
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -892,14 +1359,17 @@ export function ShipHeroTab() {
                   <Label htmlFor="warehouse-select">Warehouse *</Label>
                   <Select
                     value={adhocOrderData.warehouseId}
-                    onValueChange={(value) => setAdhocOrderData({ ...adhocOrderData, warehouseId: value })}
+                    onValueChange={(value) => {
+                      setAdhocOrderData({ ...adhocOrderData, warehouseId: value, productIds: [] })
+                      filterProductsByWarehouse(value)
+                    }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="warehouse-select" className="cursor-pointer">
                       <SelectValue placeholder="Select warehouse" />
                     </SelectTrigger>
                     <SelectContent>
                       {warehouses.map((warehouse) => (
-                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                        <SelectItem key={warehouse.id} value={warehouse.id} className="cursor-pointer">
                           {warehouse.name} ({warehouse.code})
                         </SelectItem>
                       ))}
@@ -913,7 +1383,7 @@ export function ShipHeroTab() {
                     value={adhocOrderData.hostId}
                     onValueChange={(value) => setAdhocOrderData({ ...adhocOrderData, hostId: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="host-select">
                       <SelectValue placeholder="Select host" />
                     </SelectTrigger>
                     <SelectContent>
@@ -928,31 +1398,82 @@ export function ShipHeroTab() {
               </div>
 
               <div className="grid gap-2">
-                <Label>Swag Items *</Label>
-                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded p-2">
-                  {swagItems.map((swagItem) => (
-                    <label key={swagItem.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={adhocOrderData.swagItemIds.includes(swagItem.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setAdhocOrderData({
-                              ...adhocOrderData,
-                              swagItemIds: [...adhocOrderData.swagItemIds, swagItem.id]
-                            })
-                          } else {
-                            setAdhocOrderData({
-                              ...adhocOrderData,
-                              swagItemIds: adhocOrderData.swagItemIds.filter(id => id !== swagItem.id)
-                            })
-                          }
-                        }}
-                      />
-                      <span className="text-sm">{swagItem.name} ({swagItem.sku})</span>
-                    </label>
+                <Label>Products *</Label>
+                {!adhocOrderData.warehouseId ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-slate-50">
+                    👆 Select a warehouse first to see available products
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-slate-50">
+                    No active products found for the selected warehouse
+                  </div>
+                ) : (
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                  {products.map((product) => (
+                    <div 
+                      key={product.id} 
+                      className={`
+                        relative flex items-start space-x-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer
+                        ${adhocOrderData.productIds.includes(product.id)
+                          ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200' 
+                          : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25'
+                        }
+                      `}
+                      onClick={() => {
+                        if (adhocOrderData.productIds.includes(product.id)) {
+                          setAdhocOrderData({
+                            ...adhocOrderData,
+                            productIds: adhocOrderData.productIds.filter(id => id !== product.id)
+                          })
+                        } else {
+                          setAdhocOrderData({
+                            ...adhocOrderData,
+                            productIds: [...adhocOrderData.productIds, product.id]
+                          })
+                        }
+                      }}
+                    >
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={adhocOrderData.productIds.includes(product.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAdhocOrderData({
+                                ...adhocOrderData,
+                                productIds: [...adhocOrderData.productIds, product.id]
+                              })
+                            } else {
+                              setAdhocOrderData({
+                                ...adhocOrderData,
+                                productIds: adhocOrderData.productIds.filter(id => id !== product.id)
+                              })
+                            }
+                          }}
+                          className="cursor-pointer mt-1"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-slate-900 truncate">
+                          {product.sku}
+                        </div>
+                        <div className="text-xs text-slate-500 truncate">
+                          {product.name}
+                        </div>
+                        <div className="flex items-center">
+                          <span className={`text-xs font-medium px-2 py-1 rounded ${
+                            (product.available || 0) > 0 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {product.available || 0} available
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -968,7 +1489,7 @@ export function ShipHeroTab() {
 
               <Button
                 onClick={handleCreateAdhocOrder}
-                disabled={isCreatingOrder || !adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.swagItemIds.length === 0}
+                disabled={isCreatingOrder || !adhocOrderData.warehouseId || !adhocOrderData.hostId || adhocOrderData.productIds.length === 0}
                 className="w-full"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -984,7 +1505,7 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {lastOrderResponse.request?.graphqlQuery || 'Query not available'}
+                          {lastOrderResponse?.request?.graphqlQuery || 'Query not available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -997,7 +1518,9 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(lastOrderResponse.request?.originalData, null, 2)}
+                          {lastOrderResponse?.request?.originalData 
+                            ? JSON.stringify(lastOrderResponse.request.originalData, null, 2)
+                            : 'No request data available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1010,7 +1533,9 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(lastOrderResponse.response, null, 2)}
+                          {lastOrderResponse?.response 
+                            ? JSON.stringify(lastOrderResponse.response, null, 2)
+                            : 'No response data available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1027,7 +1552,7 @@ export function ShipHeroTab() {
         <CardHeader>
           <CardTitle>Create Adhoc Purchase Order</CardTitle>
           <CardDescription>
-            Create a test purchase order using existing warehouse, host, and swag item data
+            Create a test purchase order using ShipHero warehouse, host, and product data
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1074,14 +1599,17 @@ export function ShipHeroTab() {
                   <Label htmlFor="po-warehouse-select">Warehouse *</Label>
                   <Select
                     value={adhocPOData.warehouseId}
-                    onValueChange={(value) => setAdhocPOData({ ...adhocPOData, warehouseId: value })}
+                    onValueChange={(value) => {
+                      setAdhocPOData({ ...adhocPOData, warehouseId: value, productIds: [], productQuantities: {} })
+                      filterProductsByWarehouse(value)
+                    }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="po-warehouse-select" className="cursor-pointer">
                       <SelectValue placeholder="Select warehouse" />
                     </SelectTrigger>
                     <SelectContent>
                       {warehouses.map((warehouse) => (
-                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                        <SelectItem key={warehouse.id} value={warehouse.id} className="cursor-pointer">
                           {warehouse.name} ({warehouse.code})
                         </SelectItem>
                       ))}
@@ -1095,7 +1623,7 @@ export function ShipHeroTab() {
                     value={adhocPOData.hostId}
                     onValueChange={(value) => setAdhocPOData({ ...adhocPOData, hostId: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="po-host-select">
                       <SelectValue placeholder="Select host" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1110,66 +1638,120 @@ export function ShipHeroTab() {
               </div>
 
               <div className="grid gap-2">
-                <Label>Swag Items *</Label>
-                <div className="space-y-3">
-                  {swagItems.map((swagItem) => (
-                    <div key={swagItem.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`po-swag-${swagItem.id}`}
-                          checked={adhocPOData.swagItemIds.includes(swagItem.id)}
-                          onChange={(e) => {
-                            const newIds = e.target.checked
-                              ? [...adhocPOData.swagItemIds, swagItem.id]
-                              : adhocPOData.swagItemIds.filter(id => id !== swagItem.id)
-                            
-                            // Reset quantity when unchecking
-                            const newQuantities = { ...adhocPOData.swagQuantities }
-                            if (!e.target.checked) {
-                              delete newQuantities[swagItem.id]
-                            } else {
-                              newQuantities[swagItem.id] = 1 // Default to 1
-                            }
-                            
-                            setAdhocPOData({ 
-                              ...adhocPOData, 
-                              swagItemIds: newIds,
-                              swagQuantities: newQuantities
-                            })
-                          }}
-                          className="rounded"
-                        />
-                        <Label htmlFor={`po-swag-${swagItem.id}`} className="text-sm font-medium">
-                          {swagItem.name} ({swagItem.sku})
-                        </Label>
+                <Label>Products *</Label>
+                {!adhocPOData.warehouseId ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-slate-50">
+                    👆 Select a warehouse first to see available products
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-slate-50">
+                    No active products found for the selected warehouse
+                  </div>
+                ) : (
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                  {products.map((product) => (
+                    <div 
+                      key={product.id} 
+                      className={`
+                        relative flex flex-col space-y-3 p-4 rounded-lg border transition-all duration-200 cursor-pointer
+                        ${adhocPOData.productIds.includes(product.id)
+                          ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200' 
+                          : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-blue-25'
+                        }
+                      `}
+                      onClick={() => {
+                        const newIds = adhocPOData.productIds.includes(product.id)
+                          ? adhocPOData.productIds.filter(id => id !== product.id)
+                          : [...adhocPOData.productIds, product.id]
+                        
+                        // Reset quantity when unchecking
+                        const newQuantities = { ...adhocPOData.productQuantities }
+                        if (adhocPOData.productIds.includes(product.id)) {
+                          delete newQuantities[product.id]
+                        } else {
+                          newQuantities[product.id] = 1 // Default to 1
+                        }
+                        
+                        setAdhocPOData({ 
+                          ...adhocPOData, 
+                          productIds: newIds,
+                          productQuantities: newQuantities
+                        })
+                      }}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            id={`po-product-${product.id}`}
+                            checked={adhocPOData.productIds.includes(product.id)}
+                            onChange={(e) => {
+                              const newIds = e.target.checked
+                                ? [...adhocPOData.productIds, product.id]
+                                : adhocPOData.productIds.filter(id => id !== product.id)
+                              
+                              // Reset quantity when unchecking
+                              const newQuantities = { ...adhocPOData.productQuantities }
+                              if (!e.target.checked) {
+                                delete newQuantities[product.id]
+                              } else {
+                                newQuantities[product.id] = 1 // Default to 1
+                              }
+                              
+                              setAdhocPOData({ 
+                                ...adhocPOData, 
+                                productIds: newIds,
+                                productQuantities: newQuantities
+                              })
+                            }}
+                            className="cursor-pointer mt-1"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-slate-900 truncate">
+                            {product.sku}
+                          </div>
+                          <div className="text-xs text-slate-500 truncate">
+                            {product.name}
+                          </div>
+                          <div className="flex items-center">
+                            <span className={`text-xs font-medium px-2 py-1 rounded ${
+                              (product.available || 0) > 0 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {product.available || 0} available
+                            </span>
+                          </div>
+                        </div>
                       </div>
                       
-                      {adhocPOData.swagItemIds.includes(swagItem.id) && (
-                        <div className="flex items-center space-x-2">
+                      {adhocPOData.productIds.includes(product.id) && (
+                        <div className="flex items-center space-x-2 pt-2 border-t border-slate-200" onClick={(e) => e.stopPropagation()}>
                           <Label className="text-sm text-gray-600">Qty:</Label>
                           <Input
                             type="number"
                             min="1"
                             max="999"
-                            value={adhocPOData.swagQuantities[swagItem.id] || 1}
+                            value={adhocPOData.productQuantities[product.id] || 1}
                             onChange={(e) => {
                               const quantity = Math.max(1, parseInt(e.target.value) || 1)
                               setAdhocPOData({
                                 ...adhocPOData,
-                                swagQuantities: {
-                                  ...adhocPOData.swagQuantities,
-                                  [swagItem.id]: quantity
+                                productQuantities: {
+                                  ...adhocPOData.productQuantities,
+                                  [product.id]: quantity
                                 }
                               })
                             }}
-                            className="w-20 h-8"
+                            className="flex-1 h-8"
                           />
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -1184,7 +1766,7 @@ export function ShipHeroTab() {
 
               <Button
                 onClick={handleCreateAdhocPO}
-                disabled={isCreatingPO || !adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.swagItemIds.length === 0}
+                disabled={isCreatingPO || !adhocPOData.warehouseId || !adhocPOData.hostId || adhocPOData.productIds.length === 0}
                 className="w-full"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1200,7 +1782,7 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {lastPOResponse.request?.graphqlQuery || 'Query not available'}
+                          {lastPOResponse?.request?.graphqlQuery || 'Query not available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1213,7 +1795,9 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(lastPOResponse.request?.originalData, null, 2)}
+                          {lastPOResponse?.request?.originalData 
+                            ? JSON.stringify(lastPOResponse.request.originalData, null, 2)
+                            : 'No request data available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1226,7 +1810,9 @@ export function ShipHeroTab() {
                     <CardContent className="p-0">
                       <div className="p-4 bg-muted rounded-md overflow-auto max-h-96">
                         <pre className="text-xs whitespace-pre-wrap">
-                          {JSON.stringify(lastPOResponse.response, null, 2)}
+                          {lastPOResponse?.response 
+                            ? JSON.stringify(lastPOResponse.response, null, 2)
+                            : 'No response data available'}
                         </pre>
                       </div>
                     </CardContent>
@@ -1235,8 +1821,101 @@ export function ShipHeroTab() {
               )}
             </div>
           )}
+
+          {/* Note about Products Tab */}
+          <div className="border-t pt-6">
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="h-5 w-5 text-blue-600" />
+                <span className="font-medium text-blue-900 dark:text-blue-100">Product Catalog</span>
+              </div>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                View your complete ShipHero product catalog with real-time inventory levels in the <strong>Products</strong> tab above.
+              </p>
+            </div>
+          </div>
+
+          
         </CardContent>
       </Card>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-green-600 text-2xl">🎉</span>
+              Access Token Generated Successfully!
+            </DialogTitle>
+            <DialogDescription className="space-y-3">
+              <p>Your new ShipHero access token has been generated and is now active.</p>
+              
+              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-green-600 font-medium">✅ Token Details:</span>
+                </div>
+                <ul className="text-sm space-y-1 text-green-700 dark:text-green-300">
+                  <li>• <strong>Validity:</strong> 28 days from now</li>
+                  <li>• <strong>Expires:</strong> {tokenExpiresAt ? new Date(tokenExpiresAt).toLocaleDateString('en-US', { 
+                    weekday: 'long',
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : 'Unknown'}</li>
+                  <li>• <strong>Status:</strong> Active & ready for use</li>
+                </ul>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-blue-600 font-medium">⏰ Live Countdown:</span>
+                </div>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  The countdown timer has been reset and is now actively tracking your token expiration in real-time!
+                </p>
+              </div>
+
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                You can now use all ShipHero features. Remember to generate a new token before this one expires!
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-end gap-2 mt-4">
+            <Button 
+              onClick={() => setShowSuccessModal(false)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Awesome! Let's Go 🚀
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Danger Zone - Moved to bottom */}
+      {refreshToken && (
+        <div className="pt-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-red-800">⚠️ Danger Zone</h4>
+                <p className="text-xs text-red-600 mt-1">Clear all ShipHero tokens and disable API access</p>
+              </div>
+              <Button
+                onClick={handleClearTokens}
+                variant="destructive"
+                size="sm"
+                disabled={isRefreshing || isTesting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All Tokens
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

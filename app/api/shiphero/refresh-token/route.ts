@@ -4,13 +4,17 @@ export async function POST(request: NextRequest) {
   console.log('ShipHero refresh token API route called');
   
   try {
-    const { refresh_token } = await request.json();
+    const body = await request.json();
+    console.log('Request body received:', { ...body, refresh_token: body.refresh_token ? `${body.refresh_token.substring(0, 10)}...` : 'MISSING' });
+    
+    const { refresh_token } = body;
     
     if (!refresh_token) {
+      console.error('No refresh token in request body');
       return NextResponse.json({ error: 'Refresh token required' }, { status: 400 });
     }
     
-    console.log('Refreshing token with ShipHero...');
+    console.log('Refreshing token with ShipHero...', `Token: ${refresh_token.substring(0, 10)}...`);
     
     // Use the correct refresh endpoint from the documentation
     const response = await fetch('https://public-api.shiphero.com/auth/refresh', {
