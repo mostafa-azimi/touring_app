@@ -452,6 +452,35 @@ export function ShipHeroTab() {
       const success = await tokenService.clearAllTokens()
       
       if (success) {
+        // CRITICAL: Clear all warehouses from database to prevent them from persisting with new tokens
+        console.log('🗑️ Clearing all warehouses from database...')
+        const supabase = createClient()
+        const { error: warehouseError } = await supabase
+          .from('warehouses')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all rows
+        
+        if (warehouseError) {
+          console.warn('⚠️ Warning: Failed to clear warehouses from database:', warehouseError)
+          // Don't fail the whole operation, just warn
+        } else {
+          console.log('✅ All warehouses cleared from database')
+        }
+        
+        // Also clear warehouse codes
+        console.log('🗑️ Clearing all warehouse codes from database...')
+        const { error: codesError } = await supabase
+          .from('warehouse_codes')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all rows
+        
+        if (codesError) {
+          console.warn('⚠️ Warning: Failed to clear warehouse codes from database:', codesError)
+          // Don't fail the whole operation, just warn
+        } else {
+          console.log('✅ All warehouse codes cleared from database')
+        }
+        
         // Clear ALL local storage items related to ShipHero
         localStorage.removeItem('shiphero_refresh_token')
         localStorage.removeItem('shiphero_access_token')
@@ -512,12 +541,15 @@ export function ShipHeroTab() {
         setShowAdhocOrder(false)
         setShowAdhocPO(false)
         
+        // Dispatch a custom event to notify other components (like WarehousesTab) that tokens were cleared
+        window.dispatchEvent(new CustomEvent('shiphero-tokens-cleared'))
+        
         toast({
           title: "🗑️ Tokens Cleared",
-          description: "All ShipHero tokens and data have been cleared. You can now connect with a different account.",
+          description: "All ShipHero tokens, warehouses, and data have been cleared. You can now connect with a different account.",
         })
         
-        console.log('✅ All ShipHero tokens and data cleared successfully')
+        console.log('✅ All ShipHero tokens, warehouses, and data cleared successfully')
       } else {
         throw new Error('Failed to clear tokens from database')
       }

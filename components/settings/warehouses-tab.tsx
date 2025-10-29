@@ -89,6 +89,25 @@ export function WarehousesTab() {
       console.log('🔄 Auto-loading ShipHero warehouses on component mount')
       fetchShipHeroWarehouses()
     }
+    
+    // Listen for token clearing events from ShipHero tab
+    const handleTokensCleared = () => {
+      console.log('🗑️ Warehouses tab received tokens-cleared event, clearing warehouse data...')
+      setShipHeroWarehouses([])
+      setWarehouseCodes({})
+      setLastShipHeroSync(null)
+      toast({
+        title: "Warehouses Cleared",
+        description: "Warehouse data has been cleared. Sync with ShipHero to load new warehouses.",
+      })
+    }
+    
+    window.addEventListener('shiphero-tokens-cleared', handleTokensCleared)
+    
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('shiphero-tokens-cleared', handleTokensCleared)
+    }
   }, [])
 
   const loadWarehouseCodes = async () => {
